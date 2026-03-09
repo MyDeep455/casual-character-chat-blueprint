@@ -16,21 +16,13 @@ Create your own AI characters, start role-playing chats, and keep full control o
 
 ### ✨ Gallery
 
-| Main Screen - Starter Characters | Main Screen - Individual Characters | Persona Management | Chat List Dashboard |
-| :---: | :---: | :---: | :---: |
-| ![Main Screen - Starter Characters](gallery/01-starter-pack.png) | ![Main Screen - Individual Characters](gallery/01-main-screen.png) | ![Persona Management](gallery/02-persona-manager.png) | ![Chat List Dashboard](gallery/03-chat-list-screen.png) |
+| Character Selection | API Settings | Chat List Screen |
+| :---: | :---: | :---: |
+| ![Character Selection](gallery/01_character_selection.png) | ![API Settings](gallery/02_api_settings.png) | ![Chat List Screen](gallery/03_chat_list_screen.png) |
 
-| Character Editor - Names, Images, Description | Character Editor - Lorebook, AI Prompts, Scenarios | Scenario Selection - New Chat | Chat Screen - Full-Screen | 
-| :---: | :---: | :---: | :---: |
-| ![Character Editor - Names, Images, Description](gallery/04-character-editor.png) | ![Character Editor - Lorebook, AI Prompts, Scenarios](gallery/05-character-editor.png) | ![Scenario Selection - New Chat](gallery/06-scenario-selection.png) | ![Chat Screen - Full-Screen](gallery/07-chat-window.png) |
-
-| Chat Settings | Group Chat Selection | Persona Selection | App Settings - API Key & AI Models |
-| :---: | :---: | :---: | :---: |
-| ![Chat Settings](gallery/08-chat-settings.png) | ![Group Chat Selection](gallery/09-group-chat-selection.png) | ![Persona Selection](gallery/10-persona-selection.png) | ![App Settings - API Key & AI Models](gallery/11-app-settings.png) |
-
-| App Settings - Global AI Instructions & Reminders | App Settings - AI Model Options |
-| :---: | :---: |
-| ![App Settings - Global AI Instructions & Reminders](gallery/12-app-settings.png) | ![App Settings - AI Model Options](gallery/13-app-settings.png) |
+| Character Editor | Chat Window | Chat Settings Menu |
+| :---: | :---: | :---: |
+| ![Character Editor](gallery/04_character_editor.png) | ![Chat Window](gallery/05_chat_window.png) | ![Chat Settings Menu](gallery/06_chat_settings_menu.png) |
 
 ---
 
