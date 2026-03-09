@@ -1,8 +1,18 @@
 # Casual Character Chat
 
-Welcome! This application is a fully functional, 100% free, private, and uncensored app designed for creating, managing, and interacting with any AI characters you want in dynamic, text-based role-playing chats. It runs entirely locally in your browser — no server, no installation, no cloud required.
+Casual Character Chat is a free, private, fully local AI character chat app — no installation, no account, no cloud. Everything runs directly in your browser.
 
-This app has been developed from scratch to offer all the best AI chat features, complete control, and maximum intuitiveness. It is freely available for everyone to use forever on your own computer.
+Create your own AI characters, start role-playing chats, and keep full control of your data. All conversations and settings are stored in your browser's local storage and never leave your device. API calls go straight from your browser to your chosen AI provider — no middleman, no server of its own.
+
+---
+
+### 🚀 Quick Start
+
+1. **Download** — Click the green **<> Code** button above and select **Download ZIP**, then extract it.
+2. **Open the app** — On **desktop**: double-click `index.html`. On **mobile**: open the **standalone HTML file** instead (or use a live server app), as smartphones block linked CSS/scripts when opening HTML files directly.
+3. **Add your API key** — In the app, go to **⚙️ Global App Settings** and paste your API key from a provider - e.g., [OpenRouter](https://openrouter.ai). Done!
+
+---
 
 ### ✨ Gallery
 
@@ -21,16 +31,6 @@ This app has been developed from scratch to offer all the best AI chat features,
 | App Settings - Global AI Instructions & Reminders | App Settings - AI Model Options |
 | :---: | :---: |
 | ![App Settings - Global AI Instructions & Reminders](gallery/12-app-settings.png) | ![App Settings - AI Model Options](gallery/13-app-settings.png) |
-
----
-
-### Upcoming Features
-
-Here are some of the features planned for future updates:
-
-* AI-powered reply suggestions for users
-* Fully responsive mobile app for smartphones
-* In-chat AI image generation with individual API
 
 ---
 
@@ -251,8 +251,11 @@ A: This happens if your browser's site data was deleted. This can be caused by b
 
 1.  On this repository page, click the green **<> Code** button and select **Download ZIP**.
 2.  Extract the ZIP. You'll have a folder with all the app files.
-3.  Open the folder in VS Code and use the **Live Server** extension to launch `index.html` — this enables the starter character pack to load automatically on first launch.
-    * Alternatively, double-click `index.html` to open it directly in your browser. The starter pack won't load, but everything else works perfectly.
+3.  **On desktop:** Just double-click `index.html` to open it in your browser — everything works.
+    * To also load the starter character pack on first launch, open the folder in VS Code and use the **Live Server** extension to serve `index.html`.
+4.  **On mobile:** Smartphones block linked CSS and scripts when opening an HTML file directly, so the app won't look or work right that way. Use one of these options instead:
+    * Open the **standalone HTML file** (included in the folder) in your mobile browser — it bundles everything into one file and works out of the box.
+    * Or open `index.html` via a **live server app** on your device (e.g. the "Live Server" app).
 
 ### Step 2: Get Your API Key from OpenRouter
 

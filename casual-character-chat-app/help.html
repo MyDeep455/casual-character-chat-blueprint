@@ -519,7 +519,7 @@ No one else, including the developer, can access your characters or conversation
     <p>A: Since the app communicates directly with your AI provider, slowdowns are caused by the provider's servers (e.g., OpenRouter) being under high load or a free model being temporarily unavailable. The app will automatically retry the request. If you keep getting errors, try switching to a different AI model in the settings, or wait a few minutes and try again.</p>
 
     <h3>Q: The chat was working, but now I always get an error like "AI Model did not respond...". What's wrong?</h3>
-    <p>A: Most of the time this means that either the AI model itself has problems, or your API key isn't valid, or you have reached a rate limit with your provider for requests per minute/per day. Try to use another AI model, another provider/different API key, check any limits of your provider, or simply try again later. In some cases it can also happen while improvements are being made to the website (a few minutes/hours, maximum one day). Please also note that free AI models are often shut down by the providers after a certain period of time - you'll keep getting error messages in such cases.</p>
+    <p>A: Most of the time this means that either the AI model itself has problems, or your API key isn't valid, or you have reached a rate limit with your provider for requests per minute/per day. Try to use another AI model, another provider/different API key, check any limits of your provider, or simply try again later. Please also note that free AI models are often shut down by the providers after a certain period of time — you'll keep getting error messages in such cases.</p>
 
     <h3>Q: What's the difference between <code>Character Description</code> and <code>Lorebook</code>?</h3>
     <p>A: Think of it this way: The <code>Character Description</code> defines who the character is - their active personality, their appearance, how they behave right now. The <code>Lorebook</code> contains background knowledge from the character and the world - memories, historical facts, details about the world, etc. This separation helps the AI focus on the active personality while still being able to pull from deeper knowledge when needed. You can also integrate all kinds of additional facts about the character in the lorebook that are not necessary or have less relevance for the character description.</p>
@@ -536,9 +536,21 @@ This can happen when you clear your browser's cache or have settings that automa
 Simply export your data after making major changes or creating new characters, and you're 100% safe. Please note that you won't see your newly created characters and chats in an Incognito-Tab of your browser since cookies are disabled in incognito mode and it doesn't check your local storage.</p>
 
     <h2>10. Getting Started (Required Setup)</h2>
-<h3>The Only Step: Connect Your API Key</h3>
+
+<h3>Opening the App</h3>
+<ul>
+    <li><strong>On desktop:</strong> Just double-click <code>index.html</code> to open it in your browser — everything works fine.</li>
+    <li><strong>On mobile:</strong> Smartphones block linked CSS and script files when opening an HTML file directly, so the app won't look or work right that way. Use one of these options instead:
+        <ul>
+            <li>Open the <strong>standalone HTML file</strong> (included in the app folder) in your mobile browser — it has everything bundled into a single file and works out of the box.</li>
+            <li>Or open <code>index.html</code> via a <strong>live server app</strong> on your device (e.g. the "Live Server" app).</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>The Only Other Step: Connect Your API Key</h3>
 <blockquote>
-    <p>To use any AI models, the app needs your personal API key of course. This is the only setup step required.</p>
+    <p>To use any AI models, the app needs your personal API key. This is the only setup step required.</p>
 </blockquote>
 <p>
     The web app itself is free, but AI model usage is billed through your own key, if you use paid models. While you can add different providers/API keys for different models, it is recommended to use <strong><a href="https://openrouter.ai/" target="_blank">OpenRouter.ai</a></strong> as your main API provider, because the web app is is optimized for OpenRouter and this provider gives you access to most existing AI models in one place. They give you 50 free messages a day - 1000 free massages a day, when you have $10 in your account balance (one-time payment).
