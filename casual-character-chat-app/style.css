@@ -2955,7 +2955,7 @@ max-height: 27em;
   background: inherit;
   background-size: cover;
   background-position: center;
-  filter: blur(12px);
+  filter: blur(6px);
   z-index: 0;
 }
 
