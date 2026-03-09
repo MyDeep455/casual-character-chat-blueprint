@@ -18,11 +18,11 @@ Create your own AI characters, start role-playing chats, and keep full control o
 
 | Character Selection | API Settings | Chat List Screen |
 | :---: | :---: | :---: |
-| ![Character Selection](gallery/01_character_selection.png) | ![API Settings](gallery/02_api_settings.png) | ![Chat List Screen](gallery/03_chat_list_screen.png) |
+| ![Character Selection](casual-character-chat-app/gallery/01_character_selection.png) | ![API Settings](casual-character-chat-app/gallery/02_api_settings.png) | ![Chat List Screen](casual-character-chat-app/gallery/03_chat_list_screen.png) |
 
 | Character Editor | Chat Window | Chat Settings Menu |
 | :---: | :---: | :---: |
-| ![Character Editor](gallery/04_character_editor.png) | ![Chat Window](gallery/05_chat_window.png) | ![Chat Settings Menu](gallery/06_chat_settings_menu.png) |
+| ![Character Editor](casual-character-chat-app/gallery/04_character_editor.png) | ![Chat Window](casual-character-chat-app/gallery/05_chat_window.png) | ![Chat Settings Menu](casual-character-chat-app/gallery/06_chat_settings_menu.png) |
 
 ---
 
