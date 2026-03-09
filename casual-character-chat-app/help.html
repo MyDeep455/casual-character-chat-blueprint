@@ -1,0 +1,684 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help & Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            line-height: 1.6;
+            padding: 20px 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #9cdcfe;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid #555;
+            margin-bottom: 30px;
+        }
+        h3 {
+            color: #4ec9b0;
+            border-bottom: none;
+            margin-top: 25px;
+        }
+        code {
+            background-color: #333;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+            color: #ce9178;
+        }
+        a {
+            color: #569cd6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        blockquote {
+            background-color: #2a2a2a;
+            border-left: 4px solid #4ec9b0;
+            padding: 10px 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .search-tip {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+  
+    #search-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        width: 100%;
+        background-color: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        position: sticky;
+        top: 10px;
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        z-index: 100;
+        backdrop-filter: blur(5px);
+        box-sizing: border-box;
+    }
+    #search-input {
+        flex-grow: 1;
+        min-width: 0;
+        padding: 8px 12px;
+        border-radius: 5px;
+        background-color: #333;
+        border: 1px solid #555;
+        color: #d4d4d4;
+        font-size: 14px;
+    }
+    #search-input:focus {
+        outline: none;
+        border-color: #569cd6;
+    }
+    #search-container button {
+        background-color: #4e83c9;
+        color: white;
+        border: none;
+        padding: 6px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        min-width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #search-container button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    #search-counter {
+        font-size: 14px;
+        color: #aaa;
+        padding: 0 6px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    mark.highlight {
+        background-color: #f9ff70;
+        color: #000;
+        padding: 1px 2px;
+        border-radius: 2px;
+        scroll-margin-top: 96px;
+    }
+    @media (max-width: 600px) {
+        body {
+            padding: 16px;
+        }
+
+        #search-container {
+            gap: 6px;
+            padding: 8px 12px;
+            top: calc(env(safe-area-inset-top, 0px) + 8px);
+        }
+
+        #search-input {
+            padding: 6px 10px;
+            font-size: 14px;
+        }
+
+        #search-container button {
+            height: 32px;
+            min-width: 32px;
+            padding: 4px;
+        }
+
+        #search-counter {
+            font-size: 12px;
+            padding: 0 4px;
+        }
+    }
+    mark.current-match {
+        background-color: #ff9800;
+        outline: 1px solid #fff;
+    }
+</style>
+
+</head>
+<body>
+    <h1>Casual Character Chat - Help & Guide</h1>
+
+    <div style="background-color: #1e2d3a; border-left: 4px solid #569cd6; padding: 14px 20px; border-radius: 6px; margin-bottom: 28px; line-height: 1.7;">
+        <p style="margin: 0 0 8px 0;">
+            <strong style="color: #9cdcfe;">A free tool for everyone — by choice, not by accident.</strong>
+        </p>
+        <p style="margin: 0; color: #b5b5b5;">
+            This app was created as a voluntary passion project with one goal: to give everyone access to a private, uncensored, and independent AI companion experience — completely free of charge, forever. No subscriptions, no accounts, no data collection. Everything runs locally in your browser, so your conversations truly belong to you.
+            <br><br>
+            It is offered in this spirit and must stay that way. You're welcome to use it, adapt it for your own private needs, and share the original with others. All that's asked is that you don't redistribute modified versions publicly or use it commercially — so that everyone can always benefit from it equally.
+        </p>
+    </div>
+
+    <div id="search-container">
+    <input type="search" id="search-input" placeholder="Search this page...">
+    <button id="search-prev" title="Previous Result">▲</button>
+    <span id="search-counter">0 / 0</span>
+    <button id="search-next" title="Next Result">▼</button>
+</div>
+<br>
+    <h2>1. Introduction & Core Concept</h2>
+
+    <h3>What is this App?</h3>
+    <p>
+        Welcome! This is a fully functional application designed for creating, managing, and interacting with your own detailed AI characters. The core feature is the ability to engage in dynamic, text-based role-playing chats with any characters you want. The app has been developed from scratch with the aim of being easier, more intuitive, and faster to use than other platforms.
+    </p>
+
+ <h3>Who am I?</h3>
+    <p>
+        Hi, my name is Michael and I'm just an Austrian guy in his 30s who enjoys these AI character roleplays himself a lot. Although there are many good character chat platforms, there were always things that bothered me. Either they lacked certain features, weren't user-friendly enough, didn't have the best AI models, or required payment. So I decided to simply program my own platform with all the features I wanted. Then I thought, why not just make it freely accessible to everyone? And so, a new AI character chat application was born, freely accessible to everyone while keeping your data 100% private. Have fun with it! :)
+    </p>
+    <p>
+       I'm still developing and improving this app and try to implement even more and better features, while keeping it super simple to use for anyone. So, stay tuned for more cool Updates!
+</p>
+
+    <h3>How Does It Work?</h3>
+    <p>
+        The app runs entirely in your browser — no installation, no account, no cloud storage required. When you send a message, your browser connects <strong>directly</strong> to your chosen AI provider (e.g., OpenRouter) using the personal API key you store in the App Settings. Your key never passes through any third-party server.
+    </p>
+
+    <h3>A Note on Your Data & Privacy</h3>
+    <p>
+        <p>
+Your privacy is paramount. All of your data—including every character you create, all your chat histories, images, and your personal settings—is stored directly on your computer inside your browser's secure <strong>IndexedDB</strong> database.
+This technology allows for large amounts of data to be stored privately and offline.
+This means your data remains entirely on your device and is preserved even after you close the browser tab.
+No one else, including the developer, can access your characters or conversations.
+</p>
+    </p>
+
+    <h2>2. The Main Screen: Character Selection</h2>
+    <p>
+        This is the first screen you see when you open the app. From here, you can access all of your characters and core features.
+    </p>
+
+    <h3>The Top Bar (Header)</h3>
+    <p>The header provides access to the app's main functions:</p>
+    <ul>
+        <li><strong>🤖 + Create Character:</strong> Click this to open the Character Editor and start building a new AI character from scratch.</li>
+        <li><strong>🎭 Manage Personas:</strong> This opens a panel where you can create and manage your different user profiles, or "Personas". A Persona defines who <em>you</em> are in a chat.</li>
+        <li><strong>⚙️ Global App Settings:</strong> Here you have to enter your personal (global) API key at the top of the section. It is recommended to use an OpenRouter API as your provider, but you can also enter API keys from other providers for specific models and manage the list of available AI models here. As long as you enter the correct provider URL and provider-specific model-ID, any provider will work.</li>        
+        <li><strong>⬆️ Import / ⬇️ Export:</strong> These buttons allow you to save your entire collection of characters and personas into a single <code>.json</code> file for backup. All AI models and global model prompts are included in the backup. You can use the Import button to load all your data back into the app on any computer. ALSO: You can import any Character Cards from other online platforms, both PNG and JSON - try it!</li>
+        <li><strong>❓Help & FAQ:</strong> This button brings you to the help and FAQ page you are currently reading.</li>
+        <li><strong>🔒 Privacy & Terms:</strong> Opens the Privacy Policy and Terms of Use for the app.</li>
+    </ul>
+
+    <h3>⭐ The Favorites Bar</h3>
+    <p>This bar gives you quick access to your most-used and favourite characters. To add a character to this bar, simply hover over their card in the main list below and click the star icon (★) in the top-right corner.</p>
+    
+    <h3>🔎 The Search Bars</h3>
+    <p>To help you find specific characters quickly, the app features two separate search bars:</p>
+    <ul>
+        <li><strong>Search Name:</strong> Filters the character list in real-time as you type a character's name.</li>
+        <li><strong>Search Tag:</strong> Filters the list based on the tags you've assigned to your characters in the editor.</li>
+    </ul>
+
+    <h3>The Character List & Character Cards</h3>
+    <p>This is the main area where all of your non-archived characters are displayed as individual cards, automatically sorted in alphabetical order. Clicking a card takes you to that character's chat dashboard. When you hover over a card, two buttons appear:</p>
+    <ul>
+        <li><strong>Favorite Button (★):</strong> Located in the top-right. Click it to add or remove the character from your Favorites Bar. A yellow star indicates the character is a favorite.</li>
+        <li><strong>Archive Button (↓/↑):</strong> Located in the bottom-left. Click the down-arrow (↓) to move the character to the archive. On an archived character, this button will be an up-arrow (↑) to move them back to the main list.</li>
+    </ul>
+    
+    <h3>🗑️ The Bulk Delete Button</h3>
+    <p>Here you can select and delete multiple characters or even all characters with a single click if you want.</p>
+
+    <h3>🗃️ The Archive</h3>
+    <p>If your character list gets too crowded or you simply want to hide a character, you can move characters to the archive to keep your main screen clean. This section appears at the bottom of the screen once you have at least one archived character. Click the "Show" / "Hide" button to expand or collapse the list of archived characters.</p>
+
+    <h2>3. The Chat Dashboard: Your Conversation Hub</h2>
+    <p>After clicking on a character card from the main screen, you'll land on their personal dashboard. This is the central hub for all your conversations with that specific character.</p>
+
+    <h3>The Top Bar</h3>
+    <ul>
+        <li><strong>← Back to Main Menu:</strong> This will take you back to the main character selection screen.</li>
+        <li><strong>Delete Character:</strong> This button will permanently delete the current character and all of their saved chats. A confirmation window will appear to prevent accidental deletion.</li>
+    </ul>
+    
+    <h3>The Character Header</h3>
+    <p>This central element displays the character's avatar and name, along with two important management functions:</p>
+    <ul>
+        <li><strong>Edit Character:</strong> A convenient shortcut that opens the Character Editor for the character you are currently viewing.</li>
+        <li><strong>Copy Character:</strong> Creates an exact duplicate of the current character, including all their settings, descriptions, and scenarios. The chat history will not be copied. This is useful for creating variations of a character or for starting a new story branch with the same base character.</li>
+    </ul>
+    
+    <h3>The Chat List (Saved Chats)</h3>
+    <p>This section shows all the separate chat sessions you have saved with this character. Each character can have dozens of independent conversations.</p>
+    <ul>
+        <li><strong>+ Start new Chat:</strong> Click this to begin a brand-new conversation. If the character has scenarios defined, a window will pop up asking you to either select a scenario to start with or begin with an empty chat. If no scenarios exist, it will immediately create a new, empty chat session.</li>
+        <li><strong>Chat Entries:</strong> Each chat you've had is listed here. Next to each entry, you have two options:
+            <ul>
+                <li><strong>Rename:</strong> Allows you to change the name of that specific chat session to keep things organized.</li>
+                <li><strong>Delete:</strong> Deletes only that single chat session.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>4. The Character Editor</h2>
+    <p>
+        This is where you bring your characters to life. You can access the editor by clicking the <code>🤖 + Create Character</code> button on the main screen or the <code>Edit Character</code> button on a character's chat dashboard. Any changes you make in this character editor will take effect immediately for the character, without having to refresh the site (even during chats).
+    </p>
+
+    <h3>The Editor Header</h3>
+    <ul>
+        <li><strong>Estimated Tokens Counter:</strong> In the top-right corner, a counter gives you a live estimate of the "tokens" your character definition uses. Tokens are pieces of words that the AI processes. A higher token count means a more detailed character but also a larger context for the AI to handle in every message, which can affect API costs and response times.</li>
+    </ul>
+
+    <h3>The Input Fields in Detail</h3>
+    <ul>
+        <li><strong>Card Name:</strong> The full, official name displayed on the character's card on the main screen (e.g., "Natsuki Subaru - Re:Zero"). Use this to include the series title or any other identifier to help you tell characters apart at a glance.</li>
+        <li><strong>In-Chat Name:</strong> The shorter name used as the character's actual name in dialogue and in the AI's context (e.g., "Subaru"). This is what the AI treats as <code>{{char}}</code> and what appears in the chat interface.</li>
+        <li><strong>Character Avatar URL:</strong> A direct link to an image for your character's profile picture (e.g., a <code>.png</code>, <code>.jpg</code>). You can also upload a local image from your computer by clicking the folder icon (📁) next to the input field.</li>
+        <li><strong>Background Image URL:</strong> A direct link to an image that will be used as the background for the character's dashboard and chat screen. You can also upload a local file by clicking the folder icon (📁). This allows you to set a specific mood or environment for ideal immersion.</li>
+        <li><strong>Character Description:</strong> The most crucial field. Describe your character's identity, personality, physical appearance, abilities, speech style, and even provide dialogue examples. The more detail you provide here, the better the AI will portray your character.
+            <blockquote>Note: An ideal amount of words here is often between 500 and 1000 words. This way, your character will be very detailed without causing memory/context problems for the AI. But it's also still alright if you have a little more, e.g., 1200 words. For anything beyond that, you can simply use the lorebook below.</blockquote>
+        </li>
+        <li><strong>Lorebook:</strong> Use this field for deeper background information, world-building details, important relationships, trivia, or any facts the AI should know but that aren't part of the core personality. This helps the AI maintain consistency without cluttering the main description.</li>
+        <li><strong>Tags:</strong> Add keywords here to help you organize and find your characters later (e.g., "anime, fantasy, villain"). Separate tags with a comma. You can search for these tags on the main screen.</li>
+        <li><strong>AI Instructions:</strong> Give the AI general commands or system-level prompts that apply to the character (e.g. "Write short and creative sentences," or "Always respond in a formal tone").</li>
+        <li><strong>Character Reminder & Narrator Reminder:</strong> These are powerful fields for short, critical instructions that get attached to every single message you send to the AI, ensuring it doesn't forget key details.
+            <ul>
+                <li>Use the <strong>Character Reminder</strong> for prompts related to direct dialogue. (e.g. "Reply only as {{char}} now," or "Refer to {{user}} as Mike-sama")</li>
+                <li>Use the <strong>Narrator Reminder</strong> for prompts when you use the <code>📖 Narrator</code> button. (e.g. "Reply only as an omniscient narrator now," or "Describe what happens in the current scene")</li>
+            </ul>
+            <blockquote>You can use the dynamic placeholder <code>{{char}}</code> in these fields, and it will be automatically replaced with the character's name in the prompt. This allows you for example to copy your instructions to multiple characters without having to enter the individual character names each time.</blockquote>
+        </li>
+        <h3>What are "Global Model Prompts"?</h3>
+<p>
+    Global Model Prompts are standard instructions and reminders that you can set directly for a specific AI model.
+</p>
+<p>
+    <b>Why is this useful?</b> 
+    Imagine you're using an AI model that always requires a specific base instruction for the right role-playing style or a special format. Instead of entering this instruction for every single character, you simply define it once globally for the model.
+</p>
+<ul>
+    <li><b>Saves Time:</b> You don't have to duplicate recurring instructions for every character.</li>
+    <li><b>Consistency:</b> Ensures that a model always operates with the same important ground rules.</li>
+    <li><b>Flexibility:</b> Ideal for models that require special system prompts for optimal results.</li>
+</ul>
+
+<h4>Where can I find this setting?</h4>
+<p>
+    You can find this setting in the <b>"App Settings"</b> window (the gear icon ⚙️ in the main menu). For each of your listed AI models, there is a collapsible section called <b>"Global Prompts"</b>. Simply click on it to open the three text fields for <code>AI Instructions</code>, <code>Character Reminder</code>, and <code>Narrator Reminder</code> and enter your global instructions. Don't forget to click <b>"Save Settings"</b> at the end.
+</p>
+
+<h4>How do they work with character prompts?</h4>
+<p>
+    Important to know: If you have entered both a global prompt for the model and a specific prompt for the character, <strong>both</strong> will be used. The app combines them intelligently:
+</p>
+<p>
+    The global prompt from the model is always placed <strong>before</strong> the character-specific prompt. This means the AI first receives the general instruction and then the specific one, which usually leads to the best results.
+</p>
+    </ul>
+
+    <h3>Dynamic Scenario Management</h3>
+    <p>Scenarios are pre-written starting points for a chat. This is perfect for setting up a specific scene or situation. Each scenario consists of a <strong>Title</strong> (for your own reference) and a <strong>Description</strong>, which usually contains the opening message of the chat.</p>
+    <blockquote>
+        <p>Optional: At the beginning of the scenario description, you can add an "Out-of-character note" for the AI with important meta information about the scenario. It has usually even higher priority for the AI than the character description. For example: If your character description says that the character is good, then you can simply write in an OOC-note that the chracter is evil in this scenario. You can add other OOC-notes also in your messages during the chat anytime, whenever you need to clarify things for the AI. A note could look like this for example:</p>
+        <code>### OOC: {{user}} is the equivalent of Natsuki Subaru and replaces him in this scenario. Emilia plays a cold and detached opponent of {{user}}. Elsa Granhiert plays a trustful and loyal ally of {{user}}.
+<br>---
+<br>Scenario: [Here comes your actual scenario description with a starting scene, including first message of your character if you want.]</code>
+    </blockquote>
+    <ul>
+        <li>Click the <code>+ Add Scenario</code> button to add a new, empty scenario block.</li>
+        <li>Click the <code>🗑️</code> button next to a scenario to delete that scenario.</li>
+    </ul>
+
+    <h2>5. The Chat: Interacting with the AI</h2>
+    <p>This is where the magic happens. The chat screen is designed to be immersive and give you a high degree of control over the conversation and its appearance.</p>
+
+    <h3>The Chat Header</h3>
+    <p>The bar at the top of the chat screen provides context and quick access to important features.</p>
+    <ul>
+        <li><strong>Back Arrow (←):</strong> Takes you back to the character's chat dashboard.</li>
+        <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
+        <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
+        <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history.</li>
+        <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, or reminders the AI tends to forget over long conversations.</li>
+        <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
+        <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
+        <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
+    </ul>
+    
+    <h3>The Settings Panel</h3>
+    <p>This panel gives you deep control over the look and feel of the chat and the AI's responses. All settings are saved locally and automatically applied to all chats.</p>
+    <ul>
+        <li><strong>Font Size:</strong> Adjusts the size of the text within the chat bubbles.</li>
+        <li><strong>Message Spacing:</strong> Controls the vertical gap between messages.</li>
+        <li><strong>Colour Pickers:</strong> You can set custom colors for the Main Text, spoken Dialog (text in quotes), and the chat bubbles for both the User and the AI.</li>
+        <li><strong>Opacity Sliders:</strong> Controls the transparency of the User and AI chat bubbles independently.</li>
+        <li><strong>Blur Filter:</strong> Applies a "frosted glass" blur effect to the chat bubbles, making them more or less translucent.</li>
+        <li><strong>Character Avatar Size:</strong> Changes the size of the Character's avatar displayed next to their messages.</li>
+        <li><strong>AI Model:</strong> A dropdown menu to select the specific AI model you want to use for the chat responses.
+        </li>
+<li>
+    <strong>Temperature (AI Creativity):</strong> This slider controls the randomness of the AI. Unlike other settings, Temperature is respected by almost all models (including free ones) and is the most important tool for changing the AI's "feel."
+    <ul>
+        <li><strong>0.1 - 0.6:</strong> Focused, predictable, and coherent. Good for sticking strictly to facts or character traits.</li>
+        <li><strong>0.7 (Default):</strong> A balanced default. Creative enough for natural conversation while staying coherent.</li>
+        <li><strong>0.8 - 1.0:</strong> More creative and varied. The AI will take more risks and follow instructions more loosely. Values above 1.0 often result in only gibberish being received and even get rejected by a lot of models.</li>
+    </ul>
+</li>        <li><strong>Notification Sound:</strong> A toggle switch to enable or disable the brief sound effect that plays when an AI message is fully received.</li>
+        <li><strong>Show Think Blocks:</strong> A toggle to show or hide the collapsible "thoughts" box that reasoning AI models produce. When enabled, you can click "Show Thoughts" on any AI message to read the model's internal reasoning. When disabled, the think block is stripped away and only the final response is shown.</li>
+        <li><strong>Reset to Default Values:</strong> This button resets all settings on this panel to their original values.</li>
+    </ul>
+
+    <h3>The Chat Window & Message Interaction</h3>
+    <p>This is the main area where your conversation is displayed.</p>
+    <ul>
+        <li><strong>Editing Messages:</strong> You can edit any message in the chat history by simply <strong>double-clicking</strong> on it. This will open an editor window. You can edit your message as you wish. When you're done, simply click the save button with the checkmark. Optionally, you can simply press <code>ENTER</code> or double-click outside the editor window. All your changes are saved automatically.</li>
+        <li><strong>Deleting Messages:</strong> When you hover over a message, a small trashcan icon (🗑️) appears. Clicking it will delete that message <strong>and all messages that came after it</strong>. This is useful for pruning the chat history to go back to an earlier point in the conversation and to try a new plot line from that point onward.</li>
+        <li><strong>Response Variations:</strong> For every AI response, you can generate multiple versions.
+            <ul>
+                <li><strong>Browse:</strong> If multiple versions exist, <code><</code> and <code>></code> buttons appear below the message. Use these buttons, or the <code>Left</code> and <code>Right Arrow Keys</code> on your keyboard, to cycle through the different responses.</li>
+                <li><strong>Regenerating:</strong> To generate a new response variation, click the refresh icon (⟳) below the message. Alternatively, if you are on the last available variant, pressing the <code>Right Arrow Key</code> will also trigger a regeneration of the AI's last response.</li>
+                <li><strong>Continuing a Response:</strong> Next to the regenerate icon, you'll find a continue button (»). Clicking this prompts the AI to intelligently continue its last message, seamlessly finishing cut-off sentences before adding new content. It’s perfect for extending a good response or when an answer feels incomplete.</li>
+            </ul>
+        </li>
+        <li><strong>AI Thoughts:</strong> Some AI models (Reasoning models) can provide their "thoughts" in a special <code>&lt;think&gt;</code> block. It will be automatically displayed in a collapsible box ("think block") above the main response. You can click "Show Thoughts" to see the AI's reasoning or internal monologue for its response.
+        </li>
+    </ul>
+
+    <h3>The Input Area</h3>
+    <p>This is where you write your messages.</p>
+    <ul>
+        <li><strong>💬 Character vs. 📖 Narrator:</strong> You have two send buttons. <code>Character</code> is for standard character responses and dialogue. <code>Narrator</code> instructs the AI to respond purely as an omniscient, third-person narrator, describing the scene and actions without speaking as the character.</li>
+        <li><strong>Context Continuation:</strong> If you leave the input field empty and click either send button, the app will use the last message in the chat as the new prompt to generate a continuation. This is great for letting the AI move the story forward on its own.
+            <blockquote>Note: Sometimes, the AI might get repetitive and it can look like as if the AI ignores the last message and doesn't drive the plot forward. In that case, simply make use of your Reminder instructions (e.g., "Drive the plot actively forward and let something new happen.") and also adjust the Temperature slider.</blockquote>
+        </li>
+        <li><strong>Tag Suggestions:</strong> When you click on the input field in a group chat, suggestions for selecting one of the participants will appear above the input field. Simply click one of the tags to speak to that specific Character. As long as you leave the tag for the selected character selected, all your messages will be sent to that particular character.</li>
+        <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind.</li>
+    </ul>
+
+    <h3>Other Chat Functions</h3>
+    <ul>
+        <li><strong>Scroll to Top Button (↑):</strong> This floating button appears in the bottom-right corner after you've scrolled down a bit. Click it to jump instantly to the beginning of the chat.</li>
+        <li><strong>Fullscreen Mode:</strong> When using the app on your computer, simply press the <code>F</code> key on your keyboard to toggle a distraction-free, immersive fullscreen mode. Press <code>F</code> again (or <code>ESC</code>) to exit fullscreen mode.</li>
+    </ul>
+
+    <h2>6. Who Are You? Persona Management</h2>
+    <p>
+        While most of the app is about the AI characters you chat with, the Persona system is all about defining who <em>you</em> are in the conversation.
+    </p>
+
+    <h3>The Difference: Character vs. Persona</h3>
+    <ul>
+        <li>A <strong>Character</strong> is the AI entity you create and interact with. It has its own detailed personality, backstory, and instructions.</li>
+        <li>A <strong>Persona</strong> is a reusable profile for you, the user. It defines your name, your appearance, and your role in the story. This information is given to the AI so it knows who it is talking to, leading to much more personalized and context-aware responses.</li>
+    </ul>
+
+    <h3>The Persona Management Window</h3>
+    <p>You can access this feature by clicking the <code>🎭 Manage Personas</code> button on the main screen. This will open a dedicated modal window where you can:</p>
+    <ul>
+        <li>See a list of all your created Personas.</li>
+        <li>Use the search bar to find a specific Persona.</li>
+        <li>Click <code>+ Create new Persona</code> to open the Persona Editor.</li>
+        <li><strong>Edit</strong> (⚙️ icon) or <strong>Delete</strong> (🗑️ icon) any existing Persona directly from the list.</li>
+    </ul>
+
+    <h3>The Persona Editor</h3>
+    <p>The Persona Editor is a streamlined version of the Character Editor, designed for quickly defining your user profile.</p>
+    <ul>
+        <li><strong>Persona Name:</strong> The name you want to be called in the chat.</li>
+        <li><strong>Persona Avatar URL:</strong> A direct image link for your avatar. This optional picture will appear next to all of your messages in a chat where the Persona is active.</li>
+        <li><strong>Persona Description:</strong> Describe your identity, appearance, and role in the world. This description is passed to the AI as part of the system prompt. If possible, keep it rather concise, as this saves a lot of tokens and makes it easier for most AI models to think.</li>
+        <li><strong>Estimated Tokens Counter:</strong> Just like in the Character Editor, this shows a live estimate of the token count for your Persona's definition.</li>
+    </ul>
+
+    <h3>Using a Persona in a Chat</h3>
+    <p>Inside a chat, if you have not yet assigned a Persona, a <code>🎭 Select Persona</code> button will be visible in the header. Clicking it opens a selection screen where you can choose one of your saved Personas for that specific chat session. You can unselect the persona by clicking the button again.</p>
+
+    <h2>7. All Together: Group Chats</h2>
+    <p>You aren't limited to one-on-one conversations. Any chat can be turned into a group chat with multiple AI characters interacting with you and each other.</p>
+
+    <h3>Starting a Group Chat</h3>
+    <p>To add more characters to an existing conversation, simply click the <code>Add Participant (👥)</code> button in the chat header. This will open a selection modal where you can choose any of your other characters to join the chat.</p>
+
+    <h3>Managing Participants</h3>
+    <ul>
+        <li><strong>Adding:</strong> In the participant selection window, simply click on the character you want to add. You can add as many as you like. Use the search bar in the modal to find characters quickly.</li>
+        <li><strong>Removing:</strong> All current participants (besides the main character) are shown as small, overlapping icons in the chat header. To remove a character from the chat, just click on their icon. A confirmation prompt will appear.</li>
+    </ul>
+
+    <h3>Addressing Specific Characters in a Group Chat</h3>
+    <p>To direct your message to a specific character in the group, you must use a simple command: Start your message with a forward slash <code>/</code> followed immediately by the character's name (e.g., <code>/Akame "How are you?"</code>).</p>
+    <ul>
+        <li><strong>Tag Suggestions:</strong> To make this quick and easy, whenever the input box is empty, clickable suggestions for all participants (e.g., <code>&lt;/Akame&gt;</code>) will appear just above it. Clicking one will add the command to the input box for you.</li>
+    </ul>
+    <p>The AI is instructed to respond only as the character you addressed. If you don't specify a character, the response will come from the chat's primary character.</p>
+    <blockquote>
+        However, to be certain, always put the instruction “Reply only as {{char}} now” in the Character Reminder. It will ensure that only your targeted character will speak.
+    </blockquote>
+
+    <h2>8. Import, Export & Backups</h2>
+    <p>Your data is stored locally in your browser (IndexedDB), which means it's private but also vulnerable if your browser data is cleared. The Import and Export feature is the best way to safeguard your creations.</p>
+
+    <h3>Why should I use this feature?</h3>
+    <ul>
+        <li><strong>Backups:</strong> Create a safe copy of all your hard work. If you ever accidentally clear your browser's cache or cookies, you could lose everything – all Characters and all Personas. An exported file is your insurance policy and it doesn't cost you anything - except 5 seconds of your time.</li>
+        <li><strong>Migration:</strong> Move your entire collection of characters and personas to a different computer or another web browser.</li>
+    </ul>
+
+    <h3>How to Export Your Data</h3>
+    <p>Exporting creates a single <code>.json</code> file containing all your characters and personas.</p>
+    <ol>
+        <li>Click the <code>⬇️ Export</code> button in the header of the main screen.</li>
+        <li>Your browser will open a "Save File" dialog.</li>
+        <li>The file will be named <code>casualcharacterchat_export_[date].json</code>. Choose a safe location on your computer and click "Save". That's it!</li>
+    </ol>
+
+    <h3>How to Import Your Data</h3>
+    <p>Importing allows you to load a previously exported backup file as well as any other .json file with characters in the same format.</p>
+    <ol>
+        <li>Click the <code>⬆️ Import</code> button in the header.</li>
+        <li>Select the <code>.json</code> backup file from your computer - or upload any character card (png/V2 or .json) from any other character chat platform.</li>
+    </ol>
+    <p>A confirmation window will apear. Once you confirm, the app will load the data. A success message will appear, telling you exactly how many characters and personas were successfully imported. Your existing data will NOT get overwritten and is save! Only the new data will be added to your existing characters and Personas.</p>
+    
+    <h2>9. Frequently Asked Questions (FAQ)</h2>
+    <p>Here are answers to some common questions and issues.</p>
+    
+    <h3>Q: My AI's responses are weird/short/repetitive. What can I do?</h3>
+    <p>A: The quality of AI responses depends heavily on your settings and prompts. If you're not getting the results you want, try the following:</p>
+    <ul>
+        <li><strong>Check Your Prompts:</strong> The most important factor is a well-written <code>Character Description</code>. Be detailed. Give the AI clear instructions on personality, speech style, and motivations. The same goes for your <code>AI Instructions</code> and <code>Reminder</code> fields.</li>
+        <li><strong>Adjust Temperature:</strong> In the <code>⚙️ Settings</code> panel, try adjusting the <code>Temperature</code> slider. A lower value makes the AI more predictable and focused. A higher value makes it more creative but can lead to randomness.</li>
+        <li><strong>Regenerate the Response:</strong> Don't be afraid to use the <code>⟳</code> button (or the right arrow key). Sometimes the AI's first attempt isn't its best, and the next variation might be perfect.</li>
+        <li><strong>Change topic:</strong> Often it helps to change the topic yourself by making a time jump for example and start a totally new situation or scene, so that the AI has to come up with other ideas for the new circumstances.</li>
+    </ul>
+
+    <h3>Q: The app is slow, or the AI isn't responding. What's wrong?</h3>
+    <p>A: Since the app communicates directly with your AI provider, slowdowns are caused by the provider's servers (e.g., OpenRouter) being under high load or a free model being temporarily unavailable. The app will automatically retry the request. If you keep getting errors, try switching to a different AI model in the settings, or wait a few minutes and try again.</p>
+
+    <h3>Q: The chat was working, but now I always get an error like "AI Model did not respond...". What's wrong?</h3>
+    <p>A: Most of the time this means that either the AI model itself has problems, or your API key isn't valid, or you have reached a rate limit with your provider for requests per minute/per day. Try to use another AI model, another provider/different API key, check any limits of your provider, or simply try again later. In some cases it can also happen while improvements are being made to the website (a few minutes/hours, maximum one day). Please also note that free AI models are often shut down by the providers after a certain period of time - you'll keep getting error messages in such cases.</p>
+
+    <h3>Q: What's the difference between <code>Character Description</code> and <code>Lorebook</code>?</h3>
+    <p>A: Think of it this way: The <code>Character Description</code> defines who the character is - their active personality, their appearance, how they behave right now. The <code>Lorebook</code> contains background knowledge from the character and the world - memories, historical facts, details about the world, etc. This separation helps the AI focus on the active personality while still being able to pull from deeper knowledge when needed. You can also integrate all kinds of additional facts about the character in the lorebook that are not necessary or have less relevance for the character description.</p>
+
+    <h3>Q: Can I use my characters on another computer or in a different browser?</h3>
+    <p>A: Yes. This is precisely what the <code>Export</code> and <code>Import</code> functions are for. Use <code>Export</code> on your old device/browser to save your data to a file, then use <code>Import</code> on the new one to load it all back in.</p>
+    <blockquote>
+        <strong>IMPORTANT:</strong> If you want to run your app on another device, you must copy your app folder with the three code files (<code>index.html</code>, <code>style.css</code>, <code>script.js</code>) to that device. Only then can you start the app on that device by opening the <code>index.html</code> file in the browser as usual.
+    </blockquote>
+
+    <h3>Q: Why are my Characters and Personas suddenly gone?</h3>
+    <p>A: This means that your browser's site data (including the IndexedDB database) has been deleted.
+This can happen when you clear your browser's cache or have settings that automatically delete site data upon closing the browser. That's why the quick and easy "Export" feature is always your perfect insurance.
+Simply export your data after making major changes or creating new characters, and you're 100% safe. Please note that you won't see your newly created characters and chats in an Incognito-Tab of your browser since cookies are disabled in incognito mode and it doesn't check your local storage.</p>
+
+    <h2>10. Getting Started (Required Setup)</h2>
+<h3>The Only Step: Connect Your API Key</h3>
+<blockquote>
+    <p>To use any AI models, the app needs your personal API key of course. This is the only setup step required.</p>
+</blockquote>
+<p>
+    The web app itself is free, but AI model usage is billed through your own key, if you use paid models. While you can add different providers/API keys for different models, it is recommended to use <strong><a href="https://openrouter.ai/" target="_blank">OpenRouter.ai</a></strong> as your main API provider, because the web app is is optimized for OpenRouter and this provider gives you access to most existing AI models in one place. They give you 50 free messages a day - 1000 free massages a day, when you have $10 in your account balance (one-time payment).
+</p>
+<ol>
+    <li>Create a free account at <strong><a href="https://openrouter.ai/" target="_blank">OpenRouter.ai</a></strong>.</li>
+    <li>Go to your account settings and create a new API Key. Copy this key.</li>
+    <li>In Casual Character Chat, click the <strong>"⚙️ Global App Settings"</strong> button in the header.</li>
+    <li>Paste your key into the <strong>"Default API Key (OpenRouter)"</strong> field and click "Save Settings".</li>
+</ol>
+<p>That's it! The app is now fully configured and ready to use.</p>
+
+Cheers!
+<p></p>
+<br>
+<p style="text-align: center;">--- END ---</p>
+<br>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    const searchCounter = document.getElementById('search-counter');
+    const prevBtn = document.getElementById('search-prev');
+    const nextBtn = document.getElementById('search-next');
+    const content = document.body;
+
+    let matches = [];
+    let currentIndex = -1;
+
+    function clearHighlights() {
+        const marks = content.querySelectorAll('mark.highlight');
+        marks.forEach(mark => {
+            const parent = mark.parentNode;
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize(); 
+        });
+        matches = [];
+        currentIndex = -1;
+    }
+
+    function performSearch() {
+        clearHighlights();
+        const term = searchInput.value;
+
+        if (term === '') {
+            updateUI();
+            return;
+        }
+
+        const regex = new RegExp(term, 'gi');
+        const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        const textNodes = [];
+        while (node = walker.nextNode()) {
+             if (!node.parentElement.closest('#search-container, script, style')) {
+                textNodes.push(node);
+             }
+        }
+        
+        textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            let match;
+            let lastIndex = 0;
+            const fragment = document.createDocumentFragment();
+
+            while ((match = regex.exec(text)) !== null) {
+                if (match.index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                }
+                const mark = document.createElement('mark');
+                mark.className = 'highlight';
+                mark.textContent = match[0];
+                fragment.appendChild(mark);
+                
+                lastIndex = regex.lastIndex;
+            }
+
+            if (lastIndex < text.length) {
+                fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+            }
+            
+            if(fragment.hasChildNodes()){
+                 textNode.parentNode.replaceChild(fragment, textNode);
+            }
+        });
+
+        matches = Array.from(content.querySelectorAll('mark.highlight'));
+        if (matches.length > 0) {
+            currentIndex = 0;
+            jumpToMatch();
+        }
+        updateUI();
+    }
+
+    function jumpToMatch() {
+        matches.forEach(m => m.classList.remove('current-match'));
+        if (currentIndex >= 0 && currentIndex < matches.length) {
+            const current = matches[currentIndex];
+            current.classList.add('current-match');
+            current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }
+
+    function updateUI() {
+        searchCounter.textContent = `${matches.length > 0 ? currentIndex + 1 : 0} / ${matches.length}`;
+        prevBtn.disabled = matches.length === 0;
+        nextBtn.disabled = matches.length === 0;
+    }
+
+    searchInput.addEventListener('input', performSearch);
+    searchInput.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' && matches.length > 0) {
+            e.preventDefault();
+            currentIndex = (currentIndex + 1) % matches.length;
+            jumpToMatch();
+            updateUI();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (matches.length > 0) {
+            currentIndex = (currentIndex + 1) % matches.length;
+            jumpToMatch();
+            updateUI();
+        }
+    });
+
+    prevBtn.addEventListener('click', () => {
+        if (matches.length > 0) {
+            currentIndex = (currentIndex - 1 + matches.length) % matches.length;
+            jumpToMatch();
+            updateUI();
+        }
+    });
+});
+
+</script>
+
+</body>
+</html>

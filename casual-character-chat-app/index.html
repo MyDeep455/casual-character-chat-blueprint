@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casual Character Chat</title>
+    <link rel="icon" href="data:image/svg+xml,
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+  <text y='.9em' font-size='90'>🔒</text> 
+</svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app-loader">
+    <div id="app-loader-title">Casual Character Chat</div>
+    <div id="app-loader-spinner"></div>
+    <div id="app-loader-hint">Loading…</div>
+</div>
+
+<input type="file" id="file-importer" class="hidden">
+
+    <div id="stars-container">
+            <div id="stars"></div>
+            <div id="stars2"></div>
+            <div id="stars3"></div>
+        </div>
+      
+    <div id="character-selection-screen" class="is-inactive"> 
+        
+        <h2 class="main-title">Casual Character Chat</h2>
+
+    <div class="main-header">
+        <div class="header-left-group">
+            <button id="new-character-btn" title="Create a new Character from scratch">🤖 + Create Character </button> 
+            <button id="manage-personas-btn" title="Create and edit your Personas for chat">🎭 Manage Personas</button>
+            <button id="app-settings-btn" title="Global AI model settings">⚙️ Global App Settings</button>
+        </div>
+
+        <h3>⭐ Favorites</h3>
+
+        <div class="header-right-group">
+            
+            <div class="header-menu">
+                <button id="import-btn" title="Import your own data or external Character Cards (V2/PNG/json)">⬆️ Import Data</button>
+                <button id="export-btn" title="Export all your Characters, Personas, and Models">⬇️ Export Data</button> 
+                <a href="help.html" target="_blank" id="help-btn" title="Help Document & FAQ">❓Help & FAQ<span id="help-notification-dot" class="notification-dot hidden"></span><span id="help-tooltip" class="help-tooltip hidden">Useful Tips & Tricks!</span></a>
+                <a href="privacy & terms.html" target="_blank" id="privacy-btn" title="Privacy & Terms">🔒 Privacy & Terms</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="favorites-bar-container">
+        <div id="favorites-bar">
+            </div>
+    </div>
+    <div id="search-bar-container">
+    <input type="search" id="search-input" placeholder="🔎 Search Name...">
+    <input type="search" id="tag-search-input" placeholder="🔎 Search Tag...">
+</div>
+    <div id="character-list">
+    </div>
+    
+<div id="bulk-actions-bar">
+    <button id="bulk-delete-btn" title="Choose and delete multiple characters at once">🗑️ Delete multiple characters</button>
+  </div>
+
+    <div id="archive-section" class="hidden">
+    <div id="archive-header">
+        <h3>🗃️ Archive</h3>
+        <button id="archive-toggle-btn">Show Characters</button>
+    </div>
+    <div id="archive-content" class="collapsed">
+        <div id="archived-character-list">
+            </div>
+    </div>
+</div>
+<div id="copyright-notice">© 2026 Casual Character Chat</div>
+</div>
+
+    <div id="chat-list-screen" class="is-inactive">
+    <div class="chat-list-top-bar">
+        <button id="back-to-main-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg> Back to Main Menu</button>
+        <button id="delete-character-btn-dashboard">Delete Character</button> 
+    </div>
+
+    <div class="chat-list-content-wrapper">
+
+        <div class="chat-list-character-header">
+    <div id="chat-list-avatar-container" class="effect-container">
+    <img id="chat-list-avatar" src="" alt="Avatar">
+</div>
+    <div id="chat-list-avatar-placeholder" class="hidden">👤</div>
+    <h2 id="chat-list-character-name"></h2>
+    <div class="header-button-group">
+        <button id="edit-character-btn">Edit Character</button>
+        <button id="copy-character-btn">Copy Character</button>
+    </div>
+</div>
+
+        <hr class="chat-list-separator">
+
+        <div class="chat-list-session-header">
+            <h3>Saved Chats:</h3>
+            <button id="start-new-chat-btn">+ Start new Chat</button>
+        </div>
+
+        <div id="chat-session-list">
+            </div>
+    </div>
+</div>
+
+    <div id="chat-screen" class="is-inactive">
+        <div id="chat-header">
+    <button id="back-to-selection-btn" title="Back to Chat List"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+    <img id="chat-avatar" src="" alt="Avatar">
+    <div id="chat-avatar-placeholder" class="hidden">👤</div>
+    <div id="participant-icon-list"></div>
+    <h2 id="chat-character-name"></h2>
+    <div id="token-info-container">
+    <span id="token-info-icon">ℹ️</span>
+    <div id="token-tooltip"></div>
+</div>
+    <div id="settings-container">
+        <button id="chat-memories-btn" title="Chat Memories">🧠</button>
+        <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
+        <button id="select-persona-btn" title="Select Persona">🎭</button>
+        <button id="settings-btn" title="Chat Settings">⚙️</button>
+        <div id="settings-panel" class="hidden">
+                    <div class="setting">
+                        <label for="font-size-slider">Font Size: <span id="font-size-value">16px</span></label>
+                        <input type="range" id="font-size-slider" min="14" max="36" value="16" step="1">
+                    </div>
+                    <div class="setting">
+                        <label for="spacing-slider">Message Spacing: <span id="spacing-value">10px</span></label>
+                        <input type="range" id="spacing-slider" min="5" max="100" value="10" step="1">
+                    </div>
+                    <div class="setting-grid">
+                    <div class="setting">
+                        <label for="main-text-color-picker"><span>Main Text Colour</span></label>
+                        <input type="color" id="main-text-color-picker" value="#FFFFFF" style="width: 120px;">
+                    </div>
+                    <div class="setting">
+                        <label for="dialogue-color-picker"><span>Dialog Colour</span></label>
+                        <input type="color" id="dialogue-color-picker" value="#CCEEFF" style="width: 120px;">
+                    </div>
+                    <div class="setting">
+                        <label for="user-bubble-color-picker"><span>User Bubble Colour</span></label>
+                        <input type="color" id="user-bubble-color-picker" value="#007BFF" style="width: 120px;">
+                    </div>
+                    <div class="setting">
+                        <label for="ai-bubble-color-picker"><span>AI Bubble Colour</span></label>
+                        <input type="color" id="ai-bubble-color-picker" value="#323232" style="width: 120px;">
+                    </div>
+                    </div>
+                    <div class="setting">
+                        <label for="user-bubble-opacity-slider">Opacity User Bubble: <span id="user-bubble-opacity-value">70%</span></label>
+                        <input type="range" id="user-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
+                    </div>
+                    <div class="setting">
+                        <label for="ai-bubble-opacity-slider">Opacity AI Bubble: <span id="ai-bubble-opacity-value">70%</span></label>
+                        <input type="range" id="ai-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
+                    </div>
+                    <div class="setting">
+                        <label for="blur-slider">Blur Filter: <span id="blur-value">0px</span></label>
+                        <input type="range" id="blur-slider" min="0" max="20" value="0" step="1">
+                    </div>
+                    <div class="setting">
+                        <label for="avatar-size-slider">Character Avatar Size: <span id="avatar-size-value">50px</span></label>
+                        <input type="range" id="avatar-size-slider" min="30" max="1000" value="200" step="5">
+                    </div>
+
+<div class="setting">
+  <label for="model-select">AI Model:</label>
+  <select id="model-select"></select>
+</div>
+
+                    <div class="setting">
+                        <label for="temperature-slider">Temperature (AI Creativity): <span id="temperature-value">0.7</span></label>
+                        <input type="range" id="temperature-slider" min="0.1" max="1.0" value="0.7" step="0.05">
+                    </div>
+
+
+                    <div class="setting">
+                        <label for="sound-toggle">
+                            <span>Notification Sound:</span>
+                            <input type="checkbox" id="sound-toggle" class="toggle-switch">
+                        </label>
+                    </div>
+
+                    <div class="setting">
+                        <label for="think-toggle">
+                            <span>Show Think Blocks:</span>
+                            <input type="checkbox" id="think-toggle" class="toggle-switch">
+                        </label>
+                    </div>
+
+                    <button id="reset-settings-btn" class="settings-action-btn">Reset to Default Values</button>
+                </div>
+            </div>
+        </div>
+        <div id="chat-window">
+        </div>
+    
+        <form id="chat-form">
+    <div class="textarea-wrapper">
+        <div id="group-char-dropdown" class="hidden"></div>
+        <div id="group-char-bubble" class="hidden">
+            <span id="group-char-bubble-name"></span>
+            <button type="button" id="group-char-bubble-dismiss" title="Clear selection">×</button>
+        </div>
+        <textarea id="message-input" placeholder="Write a message..." rows="1"></textarea>
+        <button type="button" id="stop-stream-btn" class="hidden" title="Stop Generation"><span class="stop-square"></span></button>
+    </div>
+    <button type="submit" id="dialog-btn"><span class="btn-icon" aria-hidden="true">💬</span><span class="btn-text">Character</span></button>
+    <button type="button" id="story-btn"><span class="btn-icon" aria-hidden="true">📖</span><span class="btn-text">Narrator</span></button>
+    </form>
+        
+        <button id="scroll-top-fab" title="Jump to beginning of the Chat">↑</button>
+    </div>
+
+    <div id="chat-memories-modal" class="hidden">
+        <div class="chat-memories-content">
+            <h2>Chat Memories</h2>
+            <p class="chat-memories-hint">High-priority notes for this chat. They are sent with every request.</p>
+            <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and story beats to remember..."></textarea>
+            <div class="editor-action-row">
+                <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
+                </button>
+                <button type="button" id="cancel-memories-edit-btn" class="editor-action-btn cancel-btn" title="Discard Changes">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
+            </div>
+            <div class="editor-info chat-memories-info">Optional: Press ENTER or double-click outside the editor to Save and Close</div>
+        </div>
+    </div>
+
+    <div id="character-editor-modal" class="hidden">
+        <div class="modal-content" id="character-editor-modal-content">
+            
+                <span id="editor-token-counter"></span>
+            <div class="editor-header">
+    <div class="editor-avatar-container effect-container">
+        <img id="editor-avatar-img" src="" alt="Editor Avatar">
+        <div id="editor-avatar-placeholder" class="hidden">👤</div>
+    </div>
+    <h2>Character Editor</h2>
+    <div class="editor-header-buttons">
+        <button type="button" id="save-edit-btn-top">Save Character</button>
+        <button type="button" id="cancel-edit-btn-top">Cancel</button>
+    </div>
+</div>
+            
+            <form id="character-form">
+                <input type="file" id="image-uploader" class="visually-hidden" accept="image/*">
+                <input type="hidden" id="editing-char-id">
+                
+                <div class="form-row">
+    <div class="form-group">
+        <label for="card-name">Card Name:</label>
+        <textarea id="card-name" rows="1" placeholder="e.g., 'Natsuki Subaru - Re:Zero'" required></textarea>
+    </div>
+    <div class="form-group">
+        <label for="chat-name">In-Chat Name:</label>
+        <input type="text" id="chat-name" placeholder="e.g., 'Subaru'" required>
+    </div>
+</div>
+
+                <div class="form-row">
+  <div class="form-group">
+    <label for="char-avatar">Character Img URL:</label>
+    <div class="input-with-button">
+      <input type="url" id="char-avatar" placeholder="https://... or upload local file">
+      <button type="button" id="upload-avatar-btn" class="upload-btn" title="Upload local image">📁</button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="char-background">Background Img URL:</label>
+    <div class="input-with-button">
+      <input type="url" id="char-background" placeholder="https://... or upload local file"> 
+      <button type="button" id="upload-bg-btn" class="upload-btn" title="Upload local image">📁</button>
+    </div>
+  </div>
+</div>
+
+                <label for="char-description">Character Description:</label>
+                <textarea id="char-description" rows="1" placeholder="Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc."></textarea>
+                
+                <label for="char-lore">Lorebook:</label>
+                <textarea id="char-lore" rows="1" placeholder="Deeper Background Story, World & Relationships of the Character, Fun Facts etc."></textarea>
+
+                <label for="char-tags">Tags:</label>
+                <textarea id="char-tags" rows="1" placeholder="Series title, Genre, Personality type, etc. (comma-separated!)"></textarea>
+
+         <label for="char-instructions">AI Instructions:</label>
+                <textarea id="char-instructions" rows="1" placeholder="General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')"></textarea>
+
+<label for="char-reminder">Character Reminder:</label>
+<textarea id="char-reminder" rows="1" placeholder="Character Reminder for this character... (e.g., 'Reply only as {{char}} now.')"></textarea>
+
+<label for="char-narrator-reminder">Narrator Reminder:</label>
+<textarea id="char-narrator-reminder" rows="1" placeholder="Narrator Reminder for this character... (e.g., 'Reply only as an omniscient narrator now.')"></textarea>
+
+                <label>Scenarios:</label>
+<div id="scenario-editor-list" class="scenario-list-container">
+    </div>
+<button type="button" id="add-scenario-btn" class="add-scenario-button">+ Add Scenario</button>
+       
+               <div class="form-buttons">
+    <button type="submit" id="save-edit-btn-bottom">Save Character</button>
+    <button type="button" id="cancel-edit-btn">Cancel</button>
+</div>
+            </form>
+        </div>
+    </div>
+    <div id="loading-indicator" class="hidden"></div>
+
+    <div id="message-editor-modal" class="hidden">
+        <div class="message-editor-content">
+            <h2>Edit Message</h2>
+            <textarea id="message-editor-textarea"></textarea>
+            <div class="editor-action-row">
+                <button type="button" id="save-message-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
+                </button>
+                <button type="button" id="cancel-message-edit-btn" class="editor-action-btn cancel-btn" title="Discard Changes">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
+            </div>
+            <div class="editor-info">Optional: Press ENTER or double-click outside the editor to Save and Close</div>
+        </div>
+    </div>
+
+<div id="scenario-selection-modal" class="hidden">
+        <div class="modal-content" id="scenario-modal-content">
+            <h2>Scenario Selection</h2>
+            <p>Select Scenario or start empty Chat:</p>
+            <div id="scenario-selection-list">
+                </div>
+            <div class="form-buttons">
+                <button type="button" id="start-empty-chat-btn">Start empty Chat</button>
+                <button type="button" id="cancel-scenario-selection-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+<div id="participant-selection-modal" class="hidden">
+    <div class="modal-content" id="participant-modal-content">
+        <h2>Group Chat Selection</h2>
+        <p>Choose any of your Characters to join the Chat:</p>
+        <div class="modal-search-container">
+  <input type="search" id="participant-search-input" class="modal-search-input" placeholder="🔎 Search Character...">
+</div>
+        <div id="participant-selection-list">
+            </div>
+        <div class="form-buttons">
+            <button type="button" id="cancel-participant-selection-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="persona-selection-modal" class="hidden">
+    <div class="modal-content">
+        <h2>Persona Selection</h2>
+        <p>Choose one of your Personas for this Chat:</p>
+        <div class="modal-search-container">
+  <input type="search" id="persona-search-input" class="modal-search-input" placeholder="🔎 Search Persona...">
+</div>
+<div id="persona-selection-list">
+            </div>
+        <div class="form-buttons">
+            <button type="button" id="cancel-persona-select-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="persona-list-modal" class="hidden">
+    <div class="modal-content">
+        <h2>Your Personas</h2>
+        <p>Manage your individual Persona Profiles:</p>
+        <div class="modal-search-container">
+  <input type="search" id="persona-list-search-input" class="modal-search-input" placeholder="🔎 Search Persona...">
+</div>
+<div id="persona-list-container">
+            </div>
+        <div class="form-buttons">
+            <button type="button" id="create-new-persona-btn">+ Create new Persona</button>
+            <button type="button" id="close-persona-list-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="persona-editor-modal" class="hidden">
+    <div class="modal-content">
+        <span id="persona-editor-token-counter"></span>
+        <div class="editor-header">
+            <h2>Persona Editor</h2>
+        </div>
+        <div class="editor-avatar-container" id="persona-editor-avatar-container">
+        <img id="persona-editor-avatar-img" src="" alt="Persona Avatar">
+        <div id="persona-editor-avatar-placeholder" class="placeholder-icon">👤</div>
+        </div>
+        <form id="persona-form">
+            <input type="hidden" id="editing-persona-id">
+         
+            <label for="persona-name">Persona Name:</label>
+            <input type="text" id="persona-name" placeholder="Name oder Alias..." required>
+
+            <label for="persona-avatar">Persona Img URL:</label>
+<div class="input-with-button">
+  <input type="url" id="persona-avatar" placeholder="https://... or upload local file">
+  <button type="button" id="upload-persona-avatar-btn" class="upload-btn" title="Upload local image">📁</button>
+</div>
+
+            <label for="persona-description">Persona Description:</label>
+            <textarea id="persona-description" rows="4" placeholder="Identity, Appearance, Role in the world..."></textarea>
+
+            <div class="form-buttons">
+                <button type="submit">Save Persona</button>
+                <button type="button" id="cancel-persona-edit-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="app-settings-modal" class="hidden">
+    <div class="modal-content" id="app-settings-modal-content">
+    <div class="modal-header-container">
+        <h2>App Settings</h2>
+        <button type="button" id="reset-app-settings-btn">Reset to Default</button>
+    </div>
+    <p>Manage models & providers:</p>
+
+        <form id="app-settings-form">
+            
+<div class="settings-input-group">
+    <label for="api-key-input">Default API Key (OpenRouter):</label>
+    <input type="password" id="api-key-input" class="settings-input" placeholder="sk-or-...">
+</div>
+
+            <hr class="settings-separator">
+
+            <label>List of your AI Models:</label>
+            <div id="model-list-container" class="scenario-list-container">
+                </div>
+            <button type="button" id="add-model-btn" class="add-scenario-button">+ Add new Model</button>
+
+            <div class="form-buttons">
+                <button type="submit" id="save-app-settings-btn">Save Settings</button>
+                <button type="button" id="cancel-app-settings-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <script src="starter_pack_data.js"></script>
+    <script src="script.js"></script>
+    <script>
+    (function() {
+        var loader = document.getElementById('app-loader');
+        if (!loader) return;
+        loader.classList.add('fade-out');
+        loader.addEventListener('transitionend', function() { loader.remove(); }, { once: true });
+    })();
+    </script>
+
+    <!-- ===================== TUTORIAL TOUR ===================== -->
+    <div id="tutorial-backdrop"></div>
+    <div id="tutorial-spotlight"></div>
+    <div id="tutorial-tooltip" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-text">
+        <div class="tutorial-step-indicator" id="tutorial-step-indicator"></div>
+        <h3 class="tutorial-title" id="tutorial-title"></h3>
+        <p class="tutorial-text" id="tutorial-text"></p>
+        <div class="tutorial-buttons">
+            <button type="button" id="tutorial-skip-btn" class="tutorial-btn-skip">Skip Tour</button>
+            <button type="button" id="tutorial-next-btn" class="tutorial-btn-next">Next</button>
+        </div>
+    </div>
+    <!-- =================== END TUTORIAL TOUR =================== -->
+
+</body>
+</html>
+
+
+
+
