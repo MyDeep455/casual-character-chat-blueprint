@@ -161,6 +161,46 @@
         background-color: #ff9800;
         outline: 1px solid #fff;
     }
+    #feedback-form {
+        margin-top: 16px;
+    }
+    #feedback-form textarea {
+        width: 100%;
+        background-color: #2a2a2a;
+        color: #d4d4d4;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        resize: vertical;
+        box-sizing: border-box;
+    }
+    #feedback-form textarea:focus {
+        outline: none;
+        border-color: #569cd6;
+    }
+    #feedback-form button {
+        margin-top: 10px;
+        background-color: #569cd6;
+        color: #1e1e1e;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 22px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+    #feedback-form button:hover {
+        background-color: #4ec9b0;
+        transform: translateY(-1px);
+    }
+    #feedback-form button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: translateY(0);
+    }
 </style>
 
 </head>
@@ -184,6 +224,32 @@
     <span id="search-counter">0 / 0</span>
     <button id="search-next" title="Next Result">▼</button>
 </div>
+<br>
+
+<h2>Send Feedback</h2>
+<p>
+    This form is anonymous by default — no personal data is collected unless you choose to provide it.
+</p>
+<p>
+    <strong>Want a reply?</strong> Leave your email address below. This is the <em>only</em> way I can get back to you — there is no other contact channel.
+</p>
+
+<form id="feedback-form" action="https://formsubmit.co/e6f4bceeec6606a4ed37624d6d6c4862" method="POST">
+    <label for="feedback-email" style="display:block; margin-bottom:4px; font-weight:bold;">
+        Your email <span style="font-weight:normal;">(optional — only needed if you want a reply)</span>
+    </label>
+    <input type="email" id="feedback-email" name="email" placeholder="you@example.com"
+        style="width:100%; background:#2a2a2a; color:#d4d4d4; border:1px solid #444; border-radius:6px; padding:10px; font-size:14px; box-sizing:border-box; margin-bottom:12px;">
+    <label for="feedback-text" style="display:block; margin-bottom:4px; font-weight:bold;">Your message</label>
+    <textarea id="feedback-text" name="feedback" rows="5" style="width: 100%;"></textarea>
+
+  <button type="submit">Send Feedback</button>
+</form>
+
+<p id="feedback-success-message" style="display: none; color: #28a745;">
+  Thanks! Your feedback has been sent successfully.
+</p>
+
 <br>
     <h2>1. Introduction & Core Concept</h2>
 
@@ -566,10 +632,66 @@ Simply export your data after making major changes or creating new characters, a
 Cheers!
 <p></p>
 <br>
+
 <p style="text-align: center;">--- END ---</p>
 <br>
 
 <script>
+(() => {
+  const form = document.getElementById('feedback-form');
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const successMsg = document.getElementById('feedback-success-message');
+
+  let errorMsg = document.getElementById('feedback-error-message');
+  if (!errorMsg) {
+    errorMsg = document.createElement('p');
+    errorMsg.id = 'feedback-error-message';
+    errorMsg.style.display = 'none';
+    errorMsg.style.color = '#e74c3c';
+    errorMsg.style.fontWeight = 'bold';
+    errorMsg.textContent = 'Oops – that did not work. Please try again later.';
+    form.insertAdjacentElement('afterend', errorMsg);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    errorMsg.style.display = 'none';
+    submitBtn.disabled = true;
+    const oldLabel = submitBtn.textContent;
+    submitBtn.textContent = 'Senden…';
+
+    let ok = false;
+    try {
+      const formData = new FormData(form);
+      const url = form.action.replace('formsubmit.co/', 'formsubmit.co/ajax/');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: formData,
+      });
+
+      if (!resp.ok) throw new Error('Network error');
+      try { await resp.json(); } catch (_) {}
+      ok = true;
+      form.reset();
+      submitBtn.style.display = 'none';
+      successMsg.style.display = 'block';
+      successMsg.setAttribute('role', 'status');
+      successMsg.setAttribute('aria-live', 'polite');
+    } catch (err) {
+      errorMsg.style.display = 'block';
+    } finally {
+      if (!ok) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = oldLabel;
+      }
+    }
+  });
+})();
+
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const searchCounter = document.getElementById('search-counter');
