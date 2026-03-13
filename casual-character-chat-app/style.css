@@ -954,6 +954,8 @@ h1 {
     background: transparent;
     flex-shrink: 0;
     align-items: flex-end;
+    position: relative;
+    z-index: 10;
 }
 
 #message-input {
@@ -4319,11 +4321,20 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     width: 28px !important;
     height: 28px !important;
   }
-  .textarea-wrapper { align-items: flex-end; }
+  .textarea-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #group-char-bubble {
+    margin-right: 0;
+    align-self: flex-start;
+  }
   #message-input {
     max-height: 38vh;
     padding-right: 40px;
     font-size: 15px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* Chatlist: Buttons untereinander */
