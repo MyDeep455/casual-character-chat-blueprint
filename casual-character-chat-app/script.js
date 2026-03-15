@@ -5723,12 +5723,12 @@ async function initializeApp() {
             loadCharactersFromDB(),
             loadPersonasFromDB(),
             loadAppSettingsFromDB(),
-            loadAndApplySettingsFromDB()
         ]);
+        populateModelSelector();
+        await loadAndApplySettingsFromDB();
         if (Object.keys(characters).length === 0) {
             await loadStarterPack();
         }
-        populateModelSelector();
         enforceResponsiveSettingLimits();
         renderCharacterList();
         restoreLastSession();
