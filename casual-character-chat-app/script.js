@@ -2758,19 +2758,24 @@ const messages = [
     { role: 'user', content: finalMessageForAPI },
     ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
-const response = await fetch(targetApiUrlToSend, {
+const isLocal = targetApiUrlToSend && (
+    targetApiUrlToSend.includes('localhost') ||
+    targetApiUrlToSend.includes('127.0.0.1')
+);
+const fetchUrl = targetApiUrlToSend;
+const fetchBody = JSON.stringify({
+    model: currentModel,
+    messages,
+    temperature: parseFloat(currentTemperature),
+    stream: true
+});
+const response = await fetch(fetchUrl, {
     method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKeyToSend}`
-    },
+    headers: isLocal
+        ? { 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: currentStreamController.signal,
-    body: JSON.stringify({
-        model: currentModel,
-        messages,
-        temperature: parseFloat(currentTemperature),
-        stream: true
-    })
+    body: fetchBody
 });
 
     clearStreamTimers();
@@ -3209,19 +3214,24 @@ const messages = [
     { role: 'user', content: messageForAPIRegen },
     ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
-const response = await fetch(targetApiUrlToSend, {
+const isLocal = targetApiUrlToSend && (
+    targetApiUrlToSend.includes('localhost') ||
+    targetApiUrlToSend.includes('127.0.0.1')
+);
+const fetchUrl = targetApiUrlToSend;
+const fetchBody = JSON.stringify({
+    model: currentModelId,
+    messages,
+    temperature: parseFloat(currentTemperature),
+    stream: true
+});
+const response = await fetch(fetchUrl, {
     method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKeyToSend}`
-    },
+    headers: isLocal
+        ? { 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: currentStreamController.signal,
-    body: JSON.stringify({
-        model: currentModelId,
-        messages,
-        temperature: parseFloat(currentTemperature),
-        stream: true
-    })
+    body: fetchBody
 });
             clearStreamTimers();
             if (response.status === 429) {
@@ -3684,19 +3694,24 @@ const messages = [
     { role: 'user', content: messageForAPI },
     ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
-const response = await fetch(targetApiUrlToSend, {
+const isLocal = targetApiUrlToSend && (
+    targetApiUrlToSend.includes('localhost') ||
+    targetApiUrlToSend.includes('127.0.0.1')
+);
+const fetchUrl = targetApiUrlToSend;
+const fetchBody = JSON.stringify({
+    model: currentModelId,
+    messages,
+    temperature: parseFloat(currentTemperature),
+    stream: true
+});
+const response = await fetch(fetchUrl, {
     method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKeyToSend}`
-    },
+    headers: isLocal
+        ? { 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: currentStreamController.signal,
-    body: JSON.stringify({
-        model: currentModelId,
-        messages,
-        temperature: parseFloat(currentTemperature),
-        stream: true
-    })
+    body: fetchBody
 });
             clearStreamTimers();
 
