@@ -2767,7 +2767,10 @@ const fetchBody = JSON.stringify({
     model: currentModel,
     messages,
     temperature: parseFloat(currentTemperature),
-    stream: true
+    stream: true,
+    options: {
+        num_ctx: 32768
+    }
 });
 const response = await fetch(fetchUrl, {
     method: 'POST',
@@ -3223,7 +3226,10 @@ const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
-    stream: true
+    stream: true,
+    options: {
+        num_ctx: 32768
+    }
 });
 const response = await fetch(fetchUrl, {
     method: 'POST',
@@ -3703,7 +3709,10 @@ const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
-    stream: true
+    stream: true,
+    options: {
+        num_ctx: 32768
+    }
 });
 const response = await fetch(fetchUrl, {
     method: 'POST',
