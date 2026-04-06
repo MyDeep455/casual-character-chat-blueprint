@@ -2743,12 +2743,6 @@ let characterNarratorReminder = applyUserPlaceholder((targetCharacter.narratorRe
             const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
             const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
 
-            if (type === 'dialog' && combinedDialogReminder) {
-                finalMessageForAPI += '\n' + combinedDialogReminder;
-            } else if (type === 'story' && combinedNarratorReminder) {
-                finalMessageForAPI += '\n' + combinedNarratorReminder;
-            }
-
             const characterForAPI = { ...targetCharacter, description: fullSystemPrompt };
             const currentTemperature = temperatureSlider.value;
             const currentModel = modelSelect.value;
@@ -2757,10 +2751,12 @@ let characterNarratorReminder = applyUserPlaceholder((targetCharacter.narratorRe
 const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 
+const reminderContent = type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...historyForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: finalMessageForAPI }
+    { role: 'user', content: finalMessageForAPI },
+    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const response = await fetch(targetApiUrlToSend, {
     method: 'POST',
@@ -3143,12 +3139,6 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
     const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
 
-    if (messageType === 'dialog' && combinedDialogReminder) {
-        messageForAPIRegen += '\n' + combinedDialogReminder;
-    } else if (messageType === 'story' && combinedNarratorReminder) {
-        messageForAPIRegen += '\n' + combinedNarratorReminder;
-    }
-
     const characterForAPI = { ...speakerCharacter };
     let fullSystemPrompt = '';
 
@@ -3212,10 +3202,12 @@ const startTime = Date.now();
             const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 
+const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...mappedHistoryForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: messageForAPIRegen }
+    { role: 'user', content: messageForAPIRegen },
+    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const response = await fetch(targetApiUrlToSend, {
     method: 'POST',
@@ -3619,12 +3611,6 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
     const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
 
-    if (messageType === 'dialog' && combinedDialogReminder) {
-        messageForAPI += '\n' + combinedDialogReminder;
-    } else if (messageType === 'story' && combinedNarratorReminder) {
-        messageForAPI += '\n' + combinedNarratorReminder;
-    }
-
     const historyForAPIcall = historyCopy.map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
     if (msg.sender === 'ai') {
@@ -3691,10 +3677,12 @@ const clearStreamTimers = () => {
             const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 
+const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...historyForAPIcall.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: messageForAPI }
+    { role: 'user', content: messageForAPI },
+    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const response = await fetch(targetApiUrlToSend, {
     method: 'POST',
