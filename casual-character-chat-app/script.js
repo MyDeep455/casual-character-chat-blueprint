@@ -2750,18 +2750,21 @@ let characterNarratorReminder = applyUserPlaceholder((targetCharacter.narratorRe
 
 const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
-
-const reminderContent = type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const messages = [
-    { role: 'system', content: characterForAPI.description },
-    ...historyForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: finalMessageForAPI },
-    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
-];
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
     targetApiUrlToSend.includes('127.0.0.1')
 );
+
+const reminderContent = type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const lastUserContent = (isLocal && reminderContent)
+    ? `${finalMessageForAPI}\n[${reminderContent}]`
+    : finalMessageForAPI;
+const messages = [
+    { role: 'system', content: characterForAPI.description },
+    ...historyForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
+    { role: 'user', content: lastUserContent },
+    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
+];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModel,
@@ -3209,18 +3212,21 @@ const startTime = Date.now();
             const currentTemperature = temperatureSlider.value;
             const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
-
-const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const messages = [
-    { role: 'system', content: characterForAPI.description },
-    ...mappedHistoryForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: messageForAPIRegen },
-    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
-];
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
     targetApiUrlToSend.includes('127.0.0.1')
 );
+
+const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const lastUserContent = (isLocal && reminderContent)
+    ? `${messageForAPIRegen}\n[${reminderContent}]`
+    : messageForAPIRegen;
+const messages = [
+    { role: 'system', content: characterForAPI.description },
+    ...mappedHistoryForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
+    { role: 'user', content: lastUserContent },
+    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
+];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModelId,
@@ -3692,18 +3698,21 @@ const clearStreamTimers = () => {
             const currentTemperature = temperatureSlider.value;
             const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiKey;
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
-
-const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const messages = [
-    { role: 'system', content: characterForAPI.description },
-    ...historyForAPIcall.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
-    { role: 'user', content: messageForAPI },
-    ...(reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
-];
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
     targetApiUrlToSend.includes('127.0.0.1')
 );
+
+const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const lastUserContent = (isLocal && reminderContent)
+    ? `${messageForAPI}\n[${reminderContent}]`
+    : messageForAPI;
+const messages = [
+    { role: 'system', content: characterForAPI.description },
+    ...historyForAPIcall.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
+    { role: 'user', content: lastUserContent },
+    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
+];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModelId,
