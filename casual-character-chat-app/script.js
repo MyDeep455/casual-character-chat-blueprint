@@ -2676,6 +2676,7 @@ const clearStreamTimers = () => {
 
 const startTime = Date.now();
     chatWindow.scrollTop = chatWindow.scrollHeight;
+    chatWindow._autoScroll = true;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
@@ -2880,7 +2881,7 @@ if (elapsedTime > 20000) {
 
                 const sanitizedMainOnly = sanitizeModelOutput(mainOnly);
                 aiMessageObject.variations[0].main = sanitizedMainOnly;
-                mainTypewriter.update(sanitizedMainOnly, t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
+                mainTypewriter.update(sanitizedMainOnly, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
 
                 if (thinkEnabled && streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
@@ -2905,9 +2906,6 @@ if (elapsedTime > 20000) {
         } catch {
             continue;
         }
-    }
-    if (chatWindow.scrollHeight - chatWindow.clientHeight <= chatWindow.scrollTop + 100) {
-        chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 }
             const hasAnyReplyText = fullReply.trim() !== '' || reasoningBuf.trim() !== '';
@@ -3202,7 +3200,7 @@ const clearStreamTimers = () => {
 };
 
 const startTime = Date.now();
-
+    chatWindow._autoScroll = true;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
@@ -3340,7 +3338,7 @@ continue;
                 }
 
                 const sanitizedMainOnly = sanitizeModelOutput(mainOnly);
-                mainTypewriter.update(sanitizedMainOnly, t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
+                mainTypewriter.update(sanitizedMainOnly, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                 message.variations[message.activeVariant].main = sanitizedMainOnly;
                 newVariant = { main: sanitizedMainOnly, think: null };
 
@@ -3369,9 +3367,6 @@ continue;
         } catch {
             continue;
         }
-    }
-    if (chatWindow.scrollHeight - chatWindow.clientHeight <= chatWindow.scrollTop + 100) {
-        chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 }
             const hasAnyReplyText = fullReply.trim() !== '' || reasoningBuf.trim() !== '';
@@ -3689,6 +3684,7 @@ const clearStreamTimers = () => {
     clearTimeout(coldStartTimer);
     clearTimeout(serverHungTimer);
 };
+    chatWindow._autoScroll = true;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
@@ -3824,7 +3820,7 @@ const response = await fetch(fetchUrl, {
 
                             const combinedTextRaw = (originalText ? `${originalText} ${mainOnly}` : mainOnly).trim();
                             const sanitizedCombined = sanitizeModelOutput(combinedTextRaw);
-                            mainTypewriter.update(sanitizedCombined, t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
+                            mainTypewriter.update(sanitizedCombined, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                             activeVariant.main = sanitizedCombined;
 
                             if (thinkEnabled && streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
@@ -3849,11 +3845,8 @@ const response = await fetch(fetchUrl, {
                         }
                     } catch { continue; }
                 }
-                if (chatWindow.scrollHeight - chatWindow.clientHeight <= chatWindow.scrollTop + 100) {
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                }
             }
-            
+
             const hasAnyReplyText = fullReply.trim() !== '' || reasoningBuf.trim() !== '';
             if (hasAnyReplyText) {
                 console.log(`Successful response after ${attempt} attempts.`);
@@ -5494,7 +5487,8 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
   ? `chatScrollPos:${currentCharacterId}:${currentChatId}`
   : 'chatScrollPos';
 localStorage.setItem(k, String(chatWindow.scrollTop));
-    });
+        chatWindow._autoScroll = chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop < 50;
+    }, { passive: true });
 
     chatWindow.addEventListener('dblclick', (event) => {
         const partElement = event.target.closest('[data-edit-part="main"]');
