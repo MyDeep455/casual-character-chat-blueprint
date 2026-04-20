@@ -2625,7 +2625,7 @@ async function handleChatSubmit(type) {
     dialogBtn.disabled = true;
     storyBtn.disabled = true;
     stopStreamBtn.classList.remove('hidden');
-    const MAX_RETRIES = 8;
+    const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
     let fullReply = '';
     let streamAbortedByUser = false;
@@ -2783,8 +2783,7 @@ const response = await fetch(fetchUrl, {
 
     clearStreamTimers();
             if (response.status === 429) {
-                const waitTime = Math.min(2 ** attempt, 30);
-const elapsedTime = Date.now() - startTime;
+                const elapsedTime = Date.now() - startTime;
 if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === newMessageId);
     if (messageToUpdate) {
@@ -2792,7 +2791,7 @@ if (elapsedTime > 20000) {
         updateSingleMessageView(newMessageId);
     }
 }
-                await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
                 continue;
             }
@@ -2994,7 +2993,9 @@ if (elapsedTime > 20000) {
             errorMsg = "Could not connect to the AI provider. Please check your API key and internet connection, then try again.";
         }
         aiMessageObject.variations[0].main = errorMsg;
-        if(mainContentEl) mainContentEl.innerHTML = errorMsg;
+        const freshSendEl = document.querySelector(`[data-message-id="${newMessageId}"] .main-content`);
+        if(freshSendEl) freshSendEl.innerHTML = errorMsg;
+        else if(mainContentEl) mainContentEl.innerHTML = errorMsg;
         await saveSingleCharacterToDB(mainCharacter);
         break;
     }
@@ -3169,7 +3170,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
     characterForAPI.description = fullSystemPrompt;
-    const MAX_RETRIES = 8;
+    const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
     let fullReply = '';
     let newVariant = null;
@@ -3246,8 +3247,7 @@ const response = await fetch(fetchUrl, {
 });
             clearStreamTimers();
             if (response.status === 429) {
-                const waitTime = Math.min(2 ** attempt, 30);
-const elapsedTime = Date.now() - startTime;
+                const elapsedTime = Date.now() - startTime;
 if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === messageId);
     if (messageToUpdate) {
@@ -3255,7 +3255,7 @@ if (elapsedTime > 20000) {
         updateSingleMessageView(messageId);
     }
 }
-await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+await new Promise(resolve => setTimeout(resolve, 1000));
 if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
 continue;
             }
@@ -3662,7 +3662,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     }
     characterForAPI.description = fullSystemPrompt;
 
-    const MAX_RETRIES = 8;
+    const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
     let fullReply = '';
     let reasoningBuf = '';
@@ -3736,7 +3736,6 @@ const response = await fetch(fetchUrl, {
             clearStreamTimers();
 
             if (response.status === 429) {
-    const waitTime = Math.min(2 ** attempt, 30);
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === messageId);
@@ -3745,7 +3744,7 @@ const response = await fetch(fetchUrl, {
         updateSingleMessageView(messageId);
     }
     }
-    await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
     continue;
 }
