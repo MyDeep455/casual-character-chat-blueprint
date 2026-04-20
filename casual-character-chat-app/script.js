@@ -2887,7 +2887,7 @@ if (elapsedTime > 20000) {
                     thinkBlockEl.classList.remove('hidden');
                     thinkBlockEl.open = true;
                     const sanitizedThink = sanitizeModelOutput(streamThinkText);
-                    thinkTypewriter.update(sanitizedThink, t => { if (thinkBlockContentEl) thinkBlockContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                    thinkTypewriter.update(sanitizedThink, t => { if (thinkBlockContentEl) { thinkBlockContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                     if (streamThinkComplete) {
                         aiMessageObject.variations[0].think = sanitizedThink;
                     }
@@ -2899,7 +2899,7 @@ if (elapsedTime > 20000) {
                     thinkBlockEl.classList.remove('hidden');
                     thinkBlockEl.open = true;
                     const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
-                    thinkTypewriter.update(sanitizedReasoning, t => { if (thinkBlockContentEl) thinkBlockContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                    thinkTypewriter.update(sanitizedReasoning, t => { if (thinkBlockContentEl) { thinkBlockContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                     aiMessageObject.variations[0].think = sanitizedReasoning;
                 }
             }
@@ -3200,7 +3200,6 @@ const clearStreamTimers = () => {
 };
 
 const startTime = Date.now();
-    chatWindow._autoScroll = true;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
@@ -3346,7 +3345,7 @@ continue;
                     thinkBlockEl.classList.remove('hidden');
                     if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                     const sanitizedThink = sanitizeModelOutput(streamThinkText);
-                    thinkTypewriter.update(sanitizedThink, t => { if (thinkContentEl) thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                    thinkTypewriter.update(sanitizedThink, t => { if (thinkContentEl) { thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                     if (streamThinkComplete) {
                         message.variations[message.activeVariant].think = sanitizedThink;
                         newVariant.think = sanitizedThink;
@@ -3359,7 +3358,7 @@ continue;
                     thinkBlockEl.classList.remove('hidden');
                     if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                     const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
-                    thinkTypewriter.update(sanitizedReasoning, t => { if (thinkContentEl) thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                    thinkTypewriter.update(sanitizedReasoning, t => { if (thinkContentEl) { thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                     message.variations[message.activeVariant].think = sanitizedReasoning;
                     newVariant.think = sanitizedReasoning;
                 }
@@ -3684,7 +3683,6 @@ const clearStreamTimers = () => {
     clearTimeout(coldStartTimer);
     clearTimeout(serverHungTimer);
 };
-    chatWindow._autoScroll = true;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
@@ -3827,7 +3825,7 @@ const response = await fetch(fetchUrl, {
                                 thinkBlockEl.classList.remove('hidden');
                                 if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                                 const sanitizedThink = sanitizeModelOutput(streamThinkText);
-                                thinkTypewriter.update(sanitizedThink, t => { if (thinkContentEl) thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                                thinkTypewriter.update(sanitizedThink, t => { if (thinkContentEl) { thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                                 if (streamThinkComplete) {
                                     activeVariant.think = sanitizedThink;
                                 }
@@ -3839,7 +3837,7 @@ const response = await fetch(fetchUrl, {
                                const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
                                thinkBlockEl.classList.remove('hidden');
                                if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
-                               thinkTypewriter.update(sanitizedReasoning, t => { if (thinkContentEl) thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; });
+                               thinkTypewriter.update(sanitizedReasoning, t => { if (thinkContentEl) { thinkContentEl.innerHTML = `&lt;think&gt;<br>${formatSubString(t)}<br>&lt;/think&gt;`; if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                                activeVariant.think = sanitizedReasoning;
                            }
                         }
