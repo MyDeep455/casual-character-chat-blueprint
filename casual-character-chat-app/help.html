@@ -405,6 +405,29 @@ No one else, including the developer, can access your characters or conversation
 </p>
     </ul>
 
+    <h3>Model Parameters: Context Length & Top-P</h3>
+<p>
+    Each model entry in the <b>"App Settings"</b> window also has two optional numeric fields for advanced parameters. These are found directly in the model's input row (outside the "Global Prompts" collapsible section).
+</p>
+<ul>
+    <li>
+        <strong>Context Length (Ollama <code>num_ctx</code>):</strong> This field sets the maximum number of tokens (words / word-fragments) that the AI is allowed to hold in its "memory window" for a single conversation. It only affects local models running via <a href="https://ollama.com" target="_blank">Ollama</a> — cloud providers manage context size on their end and ignore this value.
+        <ul>
+            <li>If left blank, the app defaults to <strong>131072</strong> tokens (~100 000 words), which is large enough for most long chats.</li>
+            <li>Lower values (e.g., <code>8192</code>) use significantly less RAM. Raise the value only if your machine has enough VRAM/RAM and your model supports it.</li>
+            <li>Setting this higher than the model's maximum has no effect — the model silently clamps it.</li>
+        </ul>
+    </li>
+    <li>
+        <strong>Top-P (nucleus sampling):</strong> This is a secondary randomness control that works alongside Temperature. It limits token selection to the smallest group of likely words that together cover <em>P%</em> of the probability mass. A value of <code>0.9</code> means only the top 90% most-probable words are candidates for the next token.
+        <ul>
+            <li><strong>Recommended: leave this field empty.</strong> When blank, the field is not sent to the API at all, so the model uses its own built-in default — which is already tuned by the model maker.</li>
+            <li>Only fill it in if a specific model produces incoherent or overly repetitive text despite a good Temperature setting. A value of <code>0.9</code> is a safe starting point.</li>
+            <li>Avoid setting both Temperature and Top-P to non-default values at the same time — combining them can produce unpredictable results and make it hard to tell which parameter is responsible for a change in quality.</li>
+        </ul>
+    </li>
+</ul>
+
     <h3>Dynamic Scenario Management</h3>
     <p>Scenarios are pre-written starting points for a chat. This is perfect for setting up a specific scene or situation. Each scenario consists of a <strong>Title</strong> (for your own reference) and a <strong>Description</strong>, which usually contains the opening message of the chat.</p>
     <blockquote>

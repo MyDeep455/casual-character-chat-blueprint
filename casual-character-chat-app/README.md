@@ -103,6 +103,14 @@ This is where you bring your characters to life. All changes you make here take 
 * **AI Instructions:** General, system-level commands for the AI's behavior (e.g., "Write short and creative sentences."). If possible, keep your instructions concise. It will be easier then for the AI to follow your prompts. Less is more!
 * **Character & Narrator Reminders:** Short, critical instructions attached to every message to prevent the AI from forgetting key details. Use the dynamic placeholder `{{char}}` to automatically insert the character's name for the AI. If the AI ignores some of your AI Instructions, you can put them here. Reminders have very high priority for the AI. But here too: keep it concise.
 
+### Model Parameters in App Settings
+
+Each model entry in **⚙️ Global App Settings** has two optional numeric fields for advanced control:
+
+* **Context Length (`num_ctx`):** Sets the maximum token window for the conversation. Only relevant for **local Ollama models** — cloud providers handle context size on their end. Leave blank to use the app's default of 131 072 tokens. Lower values (e.g., `8192`) reduce RAM/VRAM usage.
+
+* **Top-P:** A secondary randomness parameter (nucleus sampling). **Recommended: leave blank.** When empty, the field is not sent to the API at all and the model uses its own built-in default. Only set a value (e.g., `0.9`) if a specific model produces incoherent output despite correct Temperature settings. Avoid adjusting both Temperature and Top-P at the same time.
+
 ### Dynamic Scenario Management
 
 Scenarios are pre-written starting points for a chat. Each scenario consists of a **Title** and a **Description** (the opening message). You can add, edit, and delete as many scenarios as you like for each character.

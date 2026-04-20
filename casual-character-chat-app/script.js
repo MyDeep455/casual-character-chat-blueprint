@@ -708,9 +708,13 @@ async function saveAppSettings() {
         const instructions = entry.querySelector('.model-instructions-input').value.trim();
         const reminder = entry.querySelector('.model-reminder-input').value.trim();
         const narratorReminder = entry.querySelector('.model-narrator-reminder-input').value.trim();
+        const numCtxRaw = entry.querySelector('.model-num-ctx-input').value;
+        const topPRaw = entry.querySelector('.model-top-p-input').value;
+        const numCtx = numCtxRaw !== '' ? parseInt(numCtxRaw, 10) : null;
+        const topP = topPRaw !== '' ? parseFloat(topPRaw) : null;
 
         if (name && id) {
-            models.push({ name, id, targetApiUrl, apiKey, instructions, reminder, narratorReminder }); 
+            models.push({ name, id, targetApiUrl, apiKey, instructions, reminder, narratorReminder, numCtx, topP });
         }
     });
 
@@ -2565,6 +2569,7 @@ async function handleChatSubmit(type) {
     if (finalUserMessage) {
         addNewMessage(finalUserMessage, 'user', type, true);
         messageForAPI = finalUserMessage;
+        const isMultiChar = chat.participants && chat.participants.length > 1;
         historyForAPI = chat.history.slice(0, -1).map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
     if (msg.sender === 'ai') {
@@ -2572,11 +2577,11 @@ async function handleChatSubmit(type) {
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: `${speakerName}: ${processedText}` };
-    } else { 
+        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+    } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
-        return { sender: 'user', main: `${userName}: ${processedText}` };
+        return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
 });
     } else { 
@@ -2593,15 +2598,17 @@ async function handleChatSubmit(type) {
         if (lastMessage.sender === 'ai') {
             messageForAPI += "\n\n(Continue the scene from your previous reply with new content. Do not repeat earlier sentences and drive the scene actively forward.)";
         }
+        const isMultiChar = chat.participants && chat.participants.length > 1;
         historyForAPI = historyCopy.map(msg => {
             if (msg.sender === 'ai') {
                 const speaker = characters[msg.speakerId || currentCharacterId];
                 const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
-                return { sender: 'ai', main: `${speakerName}: ${applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName)}` };
+                const text = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
+                return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${text}` : text };
             }
             const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
             const userName = persona?.name || 'User';
-            return { sender: 'user', main: `${userName}: ${msg.main}` };
+            return { sender: 'user', main: isMultiChar ? `${userName}: ${msg.main}` : msg.main };
         });
     }
 }
@@ -2618,7 +2625,7 @@ async function handleChatSubmit(type) {
     dialogBtn.disabled = true;
     storyBtn.disabled = true;
     stopStreamBtn.classList.remove('hidden');
-    const MAX_RETRIES = 90;
+    const MAX_RETRIES = 8;
     currentStreamController = new AbortController();
     let fullReply = '';
     let streamAbortedByUser = false;
@@ -2677,74 +2684,58 @@ const clearStreamTimers = () => {
 const startTime = Date.now();
     chatWindow.scrollTop = chatWindow.scrollHeight;
     chatWindow._autoScroll = true;
+
+    let fullSystemPrompt = '';
+    if (modelSettings && modelSettings.instructions && modelSettings.instructions.trim() !== '') {
+        fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(modelSettings.instructions.trim(), charNameForAI), persona)}\n\n`;
+    }
+    if (persona) {
+        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
+    }
+    if (type === 'story') {
+        fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any character and narrate the scene objectively.]\n\n`;
+        fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
+        chat.participants.forEach(pid => {
+            const pChar = characters[pid];
+            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+        });
+        const mainCharacterForLore = characters[currentCharacterId];
+        if (mainCharacterForLore && mainCharacterForLore.lore) {
+            fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
+        }
+    } else {
+        if (chat.participants && chat.participants.length > 1) {
+            fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
+            chat.participants.forEach(pid => {
+                const pChar = characters[pid];
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            });
+            fullSystemPrompt += `\n`;
+        }
+        if (targetCharId !== currentCharacterId) {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
+        }
+        if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
+        if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
+        if (targetCharacter.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetCharacter.lore.trim()}\n\n`;
+    }
+    const chatMemoriesText = (chat.memories || '').trim();
+    if (chatMemoriesText) {
+        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
+    }
+    const finalMessageForAPI = messageForAPI;
+    const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
+    const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
+    const characterDialogReminder = applyUserPlaceholder((targetCharacter.reminder || ''), persona).replace(/{{char}}/g, charNameForAI).trim();
+    const characterNarratorReminder = applyUserPlaceholder((targetCharacter.narratorReminder || ''), persona).replace(/{{char}}/g, charNameForAI).trim();
+    const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
+    const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
+    const characterForAPI = { ...targetCharacter, description: fullSystemPrompt };
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (!currentStreamController) { streamAbortedByUser = true; break; }
         try {
             console.log(`Send request (Attempt ${attempt}/${MAX_RETRIES})...`);
-            let fullSystemPrompt = '';
-
-            if (modelSettings && modelSettings.instructions && modelSettings.instructions.trim() !== '') {
-    fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${
-        applyUserPlaceholder(applyCharPlaceholder(modelSettings.instructions.trim(), charNameForAI), persona)
-    }\n\n`;
-}
-
-            if (persona) {
-    fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
-}
-            if (type === 'story') {
-    fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any character and narrate the scene objectively.]\n\n`;
-    fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
-    chat.participants.forEach(pid => {
-        const pChar = characters[pid];
-        if (pChar) {
-            fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
-        }
-    });
-
-    const mainCharacterForLore = characters[currentCharacterId];
-    if (mainCharacterForLore && mainCharacterForLore.lore) {
-        fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
-    }
-} else {
-if (chat.participants && chat.participants.length > 1) {
-    fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
-    chat.participants.forEach(pid => {
-        const pChar = characters[pid];
-        if (pChar) {
-            fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
-        }
-    });
-    fullSystemPrompt += `\n`;
-}
-                if (targetCharId !== currentCharacterId) {
-                    fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
-                }
-                if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
-                if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
-                if (targetCharacter.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetCharacter.lore.trim()}\n\n`;
-            }
-
-            const chatMemoriesText = (chat.memories || '').trim();
-            if (chatMemoriesText) {
-                fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
-            }
-
-            let finalMessageForAPI = messageForAPI;
-const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder(
-    (modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '',
-    charNameForAI
-), persona);
-const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder(
-    (modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '',
-    charNameForAI
-), persona);
-let characterDialogReminder = applyUserPlaceholder((targetCharacter.reminder || ''), persona).replace(/{{char}}/g, charNameForAI).trim();
-let characterNarratorReminder = applyUserPlaceholder((targetCharacter.narratorReminder || ''), persona).replace(/{{char}}/g, charNameForAI).trim();
-            const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
-            const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
-
-            const characterForAPI = { ...targetCharacter, description: fullSystemPrompt };
             const currentTemperature = temperatureSlider.value;
             const currentModel = modelSelect.value;
             const lastMessageInHistory = chat.history[chat.history.length - 1];
@@ -2753,27 +2744,32 @@ const apiKeyToSend = (modelSettings && modelSettings.apiKey) || appSettings.apiK
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
-    targetApiUrlToSend.includes('127.0.0.1')
+    targetApiUrlToSend.includes('127.0.0.1') ||
+    targetApiUrlToSend.includes('::1') ||
+    /^https?:\/\/192\.168\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/10\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
 const reminderContent = type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const lastUserContent = (isLocal && reminderContent)
+const lastUserContent = reminderContent
     ? `${finalMessageForAPI}\n[${reminderContent}]`
     : finalMessageForAPI;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...historyForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
     { role: 'user', content: lastUserContent },
-    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModel,
     messages,
     temperature: parseFloat(currentTemperature),
+    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
     stream: true,
     options: {
-        num_ctx: 32768
+        num_ctx: modelSettings?.numCtx || 131072,
+        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
     }
 });
 const response = await fetch(fetchUrl, {
@@ -2787,7 +2783,7 @@ const response = await fetch(fetchUrl, {
 
     clearStreamTimers();
             if (response.status === 429) {
-                const waitTime = Math.min(1 * attempt, 1);
+                const waitTime = Math.min(2 ** attempt, 30);
 const elapsedTime = Date.now() - startTime;
 if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === newMessageId);
@@ -3119,6 +3115,7 @@ if (messageElement) {
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
     const modelSettings = appSettings.availableModels.find(m => m.id === currentModelId);
+    const isMultiChar = chat.participants && chat.participants.length > 1;
     const mappedHistoryForAPI = historyForAPIcall.map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
     if (msg.sender === 'ai') {
@@ -3126,11 +3123,11 @@ if (messageElement) {
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: `${speakerName}: ${processedText}` };
-    } else { 
+        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+    } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
-        return { sender: 'user', main: `${userName}: ${processedText}` };
+        return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
 });
 
@@ -3172,7 +3169,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
     characterForAPI.description = fullSystemPrompt;
-    const MAX_RETRIES = 90;
+    const MAX_RETRIES = 8;
     currentStreamController = new AbortController();
     let fullReply = '';
     let newVariant = null;
@@ -3211,27 +3208,32 @@ const startTime = Date.now();
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
-    targetApiUrlToSend.includes('127.0.0.1')
+    targetApiUrlToSend.includes('127.0.0.1') ||
+    targetApiUrlToSend.includes('::1') ||
+    /^https?:\/\/192\.168\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/10\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
 const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const lastUserContent = (isLocal && reminderContent)
+const lastUserContent = reminderContent
     ? `${messageForAPIRegen}\n[${reminderContent}]`
     : messageForAPIRegen;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...mappedHistoryForAPI.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
     { role: 'user', content: lastUserContent },
-    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
+    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
     stream: true,
     options: {
-        num_ctx: 32768
+        num_ctx: modelSettings?.numCtx || 131072,
+        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
     }
 });
 const response = await fetch(fetchUrl, {
@@ -3244,7 +3246,7 @@ const response = await fetch(fetchUrl, {
 });
             clearStreamTimers();
             if (response.status === 429) {
-                const waitTime = Math.min(1 * attempt, 1);
+                const waitTime = Math.min(2 ** attempt, 30);
 const elapsedTime = Date.now() - startTime;
 if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === messageId);
@@ -3627,6 +3629,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     const combinedDialogReminder = [globalDialogReminder, characterDialogReminder].filter(Boolean).join('\n');
     const combinedNarratorReminder = [globalNarratorReminder, characterNarratorReminder].filter(Boolean).join('\n');
 
+    const isMultiChar = chat.participants && chat.participants.length > 1;
     const historyForAPIcall = historyCopy.map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
     if (msg.sender === 'ai') {
@@ -3634,11 +3637,11 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: `${speakerName}: ${processedText}` };
-    } else { 
+        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+    } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
-        return { sender: 'user', main: `${userName}: ${processedText}` };
+        return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
 });
 
@@ -3659,7 +3662,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     }
     characterForAPI.description = fullSystemPrompt;
 
-    const MAX_RETRIES = 90;
+    const MAX_RETRIES = 8;
     currentStreamController = new AbortController();
     let fullReply = '';
     let reasoningBuf = '';
@@ -3694,27 +3697,32 @@ const clearStreamTimers = () => {
 const targetApiUrlToSend = (modelSettings && modelSettings.targetApiUrl) || DEFAULT_API_URL;
 const isLocal = targetApiUrlToSend && (
     targetApiUrlToSend.includes('localhost') ||
-    targetApiUrlToSend.includes('127.0.0.1')
+    targetApiUrlToSend.includes('127.0.0.1') ||
+    targetApiUrlToSend.includes('::1') ||
+    /^https?:\/\/192\.168\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/10\./.test(targetApiUrlToSend) ||
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
 const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
-const lastUserContent = (isLocal && reminderContent)
+const lastUserContent = reminderContent
     ? `${messageForAPI}\n[${reminderContent}]`
     : messageForAPI;
 const messages = [
     { role: 'system', content: characterForAPI.description },
     ...historyForAPIcall.map(h => ({ role: h.sender === 'ai' ? 'assistant' : 'user', content: h.main })),
     { role: 'user', content: lastUserContent },
-    ...(!isLocal && reminderContent ? [{ role: 'user', content: `[${reminderContent}]` }] : [])
 ];
 const fetchUrl = targetApiUrlToSend;
 const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
+    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
     stream: true,
     options: {
-        num_ctx: 32768
+        num_ctx: modelSettings?.numCtx || 131072,
+        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
     }
 });
 const response = await fetch(fetchUrl, {
@@ -3728,7 +3736,7 @@ const response = await fetch(fetchUrl, {
             clearStreamTimers();
 
             if (response.status === 429) {
-    const waitTime = Math.min(1 * attempt, 1);
+    const waitTime = Math.min(2 ** attempt, 30);
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime > 20000) {
     const messageToUpdate = chat.history.find(m => m.id === messageId);
@@ -4767,11 +4775,13 @@ function createModelEntry(model = {}) {
 
     const name = model.name || '';
     const id = model.id || '';
-    const targetApiUrl = model.targetApiUrl || ''; 
-    const apiKey = model.apiKey || '';    
+    const targetApiUrl = model.targetApiUrl || '';
+    const apiKey = model.apiKey || '';
     const instructions = model.instructions || '';
     const reminder = model.reminder || '';
     const narratorReminder = model.narratorReminder || '';
+    const numCtx = model.numCtx != null ? model.numCtx : '';
+    const topP = model.topP != null ? model.topP : '';
 
     entryDiv.innerHTML = `
     <div class="model-content-wrapper">
@@ -4780,6 +4790,8 @@ function createModelEntry(model = {}) {
             <input type="text" class="model-id-input" placeholder="Technical Model ID (e.g., provider/model-name)" value="${id}">
             <input type="url" class="model-target-api-url-input" placeholder="Other provider URL (https://.../v1/chat/completions)" value="${targetApiUrl}">
             <input type="password" class="model-api-key-input" placeholder="Other provider API Key (sk-1a2b3c...xyz)" value="${apiKey}">
+            <input type="number" class="model-num-ctx-input" placeholder="Context length / Ollama num_ctx (e.g. 131072)" min="512" step="512" value="${numCtx}">
+            <input type="number" class="model-top-p-input" placeholder="Top-P nucleus sampling (0–1, e.g. 0.9)" min="0" max="1" step="0.05" value="${topP}">
         </div>
         <details class="global-prompts-container">
             <summary class="global-prompts-summary">Global Prompts</summary>
