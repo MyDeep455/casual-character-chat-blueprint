@@ -3676,6 +3676,40 @@ hr.settings-separator {
     padding-bottom: 0;
 }
 
+.model-drag-handle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 7px;
+    cursor: grab;
+    color: rgba(255, 255, 255, 0.28);
+    width: 20px;
+    justify-content: center;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+.model-drag-handle:hover {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.model-drag-handle:active {
+    cursor: grabbing;
+}
+
+.model-entry.dragging {
+    opacity: 0.35;
+}
+
+.model-entry.drag-over-top {
+    border-top: 2px solid #5865f2;
+    margin-top: -2px;
+}
+
+.model-entry.drag-over-bottom {
+    border-bottom: 2px solid #5865f2;
+}
+
 
 
 #persona-description {

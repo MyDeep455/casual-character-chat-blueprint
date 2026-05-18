@@ -236,6 +236,31 @@ const defaultSettings = {
     const resetAppSettingsBtn = document.getElementById('reset-app-settings-btn');
     const cancelAppSettingsBtn = document.getElementById('cancel-app-settings-btn');
     const appSettingsModalContent = document.getElementById('app-settings-modal-content');
+    let dragSrcEl = null;
+    let dragScrollRAF = null;
+    let dragScrollDir = 0;
+    function updateDragScroll() {
+        if (dragScrollDir !== 0) {
+            appSettingsModalContent.scrollTop += dragScrollDir * 10;
+            dragScrollRAF = requestAnimationFrame(updateDragScroll);
+        } else {
+            dragScrollRAF = null;
+        }
+    }
+    document.addEventListener('dragover', (e) => {
+        if (!dragSrcEl) return;
+        const modalRect = appSettingsModalContent.getBoundingClientRect();
+        if (e.clientY < modalRect.top + 80) {
+            dragScrollDir = -1;
+        } else if (e.clientY > modalRect.bottom - 80) {
+            dragScrollDir = 1;
+        } else {
+            dragScrollDir = 0;
+        }
+        if (dragScrollDir !== 0 && !dragScrollRAF) {
+            dragScrollRAF = requestAnimationFrame(updateDragScroll);
+        }
+    });
 
 
 
@@ -4783,6 +4808,13 @@ function createModelEntry(model = {}) {
     const topP = model.topP != null ? model.topP : '';
 
     entryDiv.innerHTML = `
+    <div class="model-drag-handle" title="Drag to reorder">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="2" y1="2" x2="12" y2="2"/>
+            <line x1="2" y1="6" x2="12" y2="6"/>
+            <line x1="2" y1="10" x2="12" y2="10"/>
+        </svg>
+    </div>
     <div class="model-content-wrapper">
         <div class="model-entry-inputs">
             <input type="text" class="model-name-input" placeholder="Display Name (e.g., My favorite Model)" value="${name}">
@@ -4824,6 +4856,63 @@ function createModelEntry(model = {}) {
     entryDiv.querySelector('.delete-model-btn').addEventListener('click', async () => {
         if (await showCustomConfirm('Are you sure you want to delete this model?', true)) {
             entryDiv.remove();
+        }
+    });
+
+    const dragHandle = entryDiv.querySelector('.model-drag-handle');
+
+    dragHandle.addEventListener('mousedown', () => {
+        entryDiv.setAttribute('draggable', 'true');
+    });
+
+    entryDiv.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+        setTimeout(() => entryDiv.classList.add('dragging'), 0);
+        dragSrcEl = entryDiv;
+    });
+
+    entryDiv.addEventListener('dragend', () => {
+        entryDiv.removeAttribute('draggable');
+        entryDiv.classList.remove('dragging');
+        document.querySelectorAll('.model-entry').forEach(el => {
+            el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        dragSrcEl = null;
+        if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
+        dragScrollDir = 0;
+    });
+
+    entryDiv.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!dragSrcEl || dragSrcEl === entryDiv) return;
+        const rect = entryDiv.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (e.clientY < midY) {
+            entryDiv.classList.add('drag-over-top');
+        } else {
+            entryDiv.classList.add('drag-over-bottom');
+        }
+    });
+
+    entryDiv.addEventListener('dragleave', (e) => {
+        if (!entryDiv.contains(e.relatedTarget)) {
+            entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
+        }
+    });
+
+    entryDiv.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!dragSrcEl || dragSrcEl === entryDiv) return;
+        entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
+        const rect = entryDiv.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+            modelListContainer.insertBefore(dragSrcEl, entryDiv);
+        } else {
+            modelListContainer.insertBefore(dragSrcEl, entryDiv.nextSibling);
         }
     });
 
