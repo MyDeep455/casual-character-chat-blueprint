@@ -734,12 +734,10 @@ async function saveAppSettings() {
         const reminder = entry.querySelector('.model-reminder-input').value.trim();
         const narratorReminder = entry.querySelector('.model-narrator-reminder-input').value.trim();
         const numCtxRaw = entry.querySelector('.model-num-ctx-input').value;
-        const topPRaw = entry.querySelector('.model-top-p-input').value;
         const numCtx = numCtxRaw !== '' ? parseInt(numCtxRaw, 10) : null;
-        const topP = topPRaw !== '' ? parseFloat(topPRaw) : null;
 
         if (name && id) {
-            models.push({ name, id, targetApiUrl, apiKey, instructions, reminder, narratorReminder, numCtx, topP });
+            models.push({ name, id, targetApiUrl, apiKey, instructions, reminder, narratorReminder, numCtx });
         }
     });
 
@@ -2790,11 +2788,11 @@ const fetchBody = JSON.stringify({
     model: currentModel,
     messages,
     temperature: parseFloat(currentTemperature),
-    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
+    top_p: 0.95,
     stream: true,
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
-        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
+        top_p: 0.95
     }
 });
 const response = await fetch(fetchUrl, {
@@ -3255,11 +3253,11 @@ const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
-    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
+    top_p: 0.95,
     stream: true,
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
-        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
+        top_p: 0.95
     }
 });
 const response = await fetch(fetchUrl, {
@@ -3743,11 +3741,11 @@ const fetchBody = JSON.stringify({
     model: currentModelId,
     messages,
     temperature: parseFloat(currentTemperature),
-    ...(modelSettings?.topP != null && { top_p: modelSettings.topP }),
+    top_p: 0.95,
     stream: true,
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
-        ...(modelSettings?.topP != null && { top_p: modelSettings.topP })
+        top_p: 0.95
     }
 });
 const response = await fetch(fetchUrl, {
@@ -4805,7 +4803,6 @@ function createModelEntry(model = {}) {
     const reminder = model.reminder || '';
     const narratorReminder = model.narratorReminder || '';
     const numCtx = model.numCtx != null ? model.numCtx : '';
-    const topP = model.topP != null ? model.topP : '';
 
     entryDiv.innerHTML = `
     <div class="model-drag-handle" title="Drag to reorder">
@@ -4821,8 +4818,7 @@ function createModelEntry(model = {}) {
             <input type="text" class="model-id-input" placeholder="Technical Model ID (e.g., provider/model-name)" value="${id}">
             <input type="url" class="model-target-api-url-input" placeholder="Other provider URL (https://.../v1/chat/completions)" value="${targetApiUrl}">
             <input type="password" class="model-api-key-input" placeholder="Other provider API Key (sk-1a2b3c...xyz)" value="${apiKey}">
-            <input type="number" class="model-num-ctx-input" placeholder="Context length / Ollama num_ctx (e.g. 131072)" min="512" step="512" value="${numCtx}">
-            <input type="number" class="model-top-p-input" placeholder="Top-P nucleus sampling (0–1, e.g. 0.9)" min="0" max="1" step="0.05" value="${topP}">
+            <input type="number" class="model-num-ctx-input" placeholder="Context length (only relevant for Ollama - e.g. 8192)" min="512" step="512" value="${numCtx}">
         </div>
         <details class="global-prompts-container">
             <summary class="global-prompts-summary">Global Prompts</summary>
