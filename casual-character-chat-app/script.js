@@ -73,7 +73,6 @@ const defaultSettings = {
     let replyOptionsLoading = false;
     let pendingReplyOptions = null;
     let replyOptionsReqId = 0;
-    let messageInputFocused = false;
     let suggestionModelId = null;
     let characters = {};
     let currentCharacterId = null;
@@ -2674,6 +2673,7 @@ async function handleChatSubmit(type) {
     const userMessageRaw = messageInput.value.trim();
     messageInput.value = '';
     autoResizeTextarea({ target: messageInput });
+    messageInput.focus();
     let mainCharacter = characters[currentCharacterId];
     let chat = mainCharacter.chats[currentChatId];
     let targetCharId = currentCharacterId;
@@ -5407,7 +5407,7 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = ''; btn1.className = 'reply-option-btn reply-option-loading'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn reply-option-loading'; btn2.style.display = ''; }
-        if (messageInputFocused) dropdown.classList.remove('hidden');
+        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownOptions(opt1, opt2) {
@@ -5416,7 +5416,7 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = opt1; btn1.className = 'reply-option-btn'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = opt2; btn2.className = 'reply-option-btn'; btn2.style.display = ''; }
-        if (messageInputFocused) dropdown.classList.remove('hidden');
+        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownError(msg) {
@@ -5426,7 +5426,7 @@ personaEditorAvatarImg.onerror = () => {
         const shortMsg = msg.length > 90 ? msg.substring(0, 87) + '…' : msg;
         if (btn1) { btn1.textContent = `⚠ ${shortMsg}`; btn1.className = 'reply-option-btn reply-option-error'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn'; btn2.style.display = 'none'; }
-        if (messageInputFocused) dropdown.classList.remove('hidden');
+        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
     }
 
     async function generateReplyOptionsInBackground() {
@@ -5453,16 +5453,29 @@ personaEditorAvatarImg.onerror = () => {
             : '';
         const modelId = suggestionModelId || modelSelect?.value || defaultSettings.model;
 
-        const systemPrompt = `You are a creative assistant for a character roleplay app. Generate exactly 2 short reply options for the user based on the character's latest message. Each option must be a single dialog sentence the user could say next — no narration, just dialog. Make them plot-relevant and scene-specific, offering two distinct directions the story could go.${personaContext} Output ONLY a JSON array with exactly 2 strings, like: ["Option one.", "Option two."]`;
+        const systemPrompt = `You are a creative assistant for a character roleplay app. Generate exactly 2 short reply options that the HUMAN USER can send to the AI character. These are the user's own words — what the user says or does in response to the character's latest message. Never write from the character's perspective. Each option must be a single sentence in first-person voice from the user's point of view. No narration, no stage directions — just the user's spoken reply. Make them plot-relevant and scene-specific, offering two distinct directions the user could take.${personaContext} Output ONLY a JSON array with exactly 2 strings, like: ["Option one.", "Option two."]`;
         const userMsg = `${charName} just said: "${lastAIText.substring(0, 600)}"\n\nProvide 2 reply options for the user.`;
 
         try {
             const result = await callAISimple(systemPrompt, userMsg, modelId);
             if (replyOptionsReqId !== reqId) return;
-            const match = result.match(/\[[\s\S]*?\]/);
+            const cleaned = stripThinkTags(result).trim();
             let parsed = null;
-            if (match) {
-                try { parsed = JSON.parse(match[0]); } catch (_) {}
+            try { parsed = JSON.parse(cleaned); } catch (_) {}
+            if (!Array.isArray(parsed)) {
+                const start = cleaned.indexOf('[');
+                if (start !== -1) {
+                    let pos = start;
+                    while (pos < cleaned.length) {
+                        const end = cleaned.indexOf(']', pos);
+                        if (end === -1) break;
+                        try {
+                            const candidate = JSON.parse(cleaned.slice(start, end + 1));
+                            if (Array.isArray(candidate)) { parsed = candidate; break; }
+                        } catch (_) {}
+                        pos = end + 1;
+                    }
+                }
             }
             if (Array.isArray(parsed) && parsed.length >= 2 && typeof parsed[0] === 'string' && typeof parsed[1] === 'string') {
                 pendingReplyOptions = [String(parsed[0]).trim(), String(parsed[1]).trim()];
@@ -6090,19 +6103,23 @@ participantSelectionList.addEventListener('click', (event) => {
 });
 
 messageInput.addEventListener('focus', () => {
-    messageInputFocused = true;
     showGroupCharDropdown();
     showReplyOptionsDropdown();
+    if (!pendingReplyOptions && !replyOptionsLoading && replyOptionsEnabled) {
+        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+        const lastMsg = chat?.history?.[chat.history.length - 1];
+        if (lastMsg && lastMsg.sender !== 'user') {
+            generateReplyOptionsInBackground();
+        }
+    }
 });
 
 messageInput.addEventListener('click', () => {
-    messageInputFocused = true;
     showGroupCharDropdown();
     showReplyOptionsDropdown();
 });
 
 messageInput.addEventListener('blur', () => {
-    messageInputFocused = false;
     setTimeout(hideGroupCharDropdown, 200);
     hideReplyOptionsDropdown();
 });

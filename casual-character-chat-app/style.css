@@ -2085,13 +2085,14 @@ max-height: 27em;
 
 .setting select {
   width: 100%;
-  padding: 7px;
-  border: 1px solid #666;
-  background-color: #444;
-  color: #eee;
-  border-radius: 4px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #2a2a3a;
+  color: #fff;
+  border-radius: 6px;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.85em;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
@@ -5528,8 +5529,35 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 .setting-info-icon {
     cursor: help;
     font-style: normal;
-    opacity: 0.75;
     font-size: 0.9em;
+    position: relative;
+}
+
+.setting-info-icon[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    right: 0;
+    width: 220px;
+    background: #1a1a2a;
+    color: #f0f0f0;
+    font-size: 0.88em;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1.55;
+    padding: 8px 11px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    white-space: normal;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+.setting-info-icon[data-tooltip]:hover::after {
+    opacity: 1;
 }
 
 #suggestion-model-setting select {
