@@ -5670,23 +5670,97 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         }
     });
 
+    function showCharacterGeneratorModal(isEditing) {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'custom-alert-overlay';
+            const modal = document.createElement('div');
+            modal.className = 'custom-alert-modal';
+            modal.style.maxWidth = '480px';
+
+            const h3 = document.createElement('h3');
+            h3.style.cssText = 'margin:0 0 10px;font-size:1.05em;';
+            h3.textContent = '✨ AI Generate Character';
+            modal.appendChild(h3);
+
+            const p = document.createElement('p');
+            p.style.cssText = 'margin:0 0 12px;font-size:0.9em;color:#ccc;line-height:1.5;';
+            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, lore, tags, and AI instructions. For well-known characters from series, games, or manga, it will try to research accurate information online.';
+            modal.appendChild(p);
+
+            if (isEditing) {
+                const warn = document.createElement('p');
+                warn.style.cssText = 'margin:0 0 12px;font-size:0.85em;color:#ffaa44;background:rgba(255,150,50,0.08);padding:8px 10px;border-radius:6px;border:1px solid rgba(255,150,50,0.25);';
+                warn.textContent = '⚠️ You are editing an existing character. All text fields (description, lore, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.';
+                modal.appendChild(warn);
+            }
+
+            const descLabel = document.createElement('label');
+            descLabel.textContent = 'Character concept (optional):';
+            descLabel.style.cssText = 'display:block;margin:0 0 5px;font-size:0.85em;color:#bbb;';
+            modal.appendChild(descLabel);
+
+            const descInput = document.createElement('textarea');
+            descInput.placeholder = 'e.g. A sarcastic tsundere vampire knight from medieval Japan who loves poetry.\n\nYou can be as detailed as you like — include personality traits, appearance, backstory, speech style, relationships, etc.';
+            descInput.rows = 4;
+            descInput.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:14px;box-sizing:border-box;resize:vertical;font-family:inherit;';
+            modal.appendChild(descInput);
+
+            const modelLabel = document.createElement('label');
+            modelLabel.textContent = 'AI Model:';
+            modelLabel.style.cssText = 'display:block;margin:0 0 5px;font-size:0.85em;color:#bbb;';
+            modal.appendChild(modelLabel);
+
+            const modelDropdown = document.createElement('select');
+            modelDropdown.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:14px;box-sizing:border-box;';
+            const models = appSettings.availableModels || [];
+            const currentModelId = modelSelect?.value || defaultSettings.model;
+            if (models.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'No models configured';
+                modelDropdown.appendChild(opt);
+            } else {
+                models.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.name || m.id;
+                    if (m.id === currentModelId) opt.selected = true;
+                    modelDropdown.appendChild(opt);
+                });
+            }
+            modal.appendChild(modelDropdown);
+
+            const btns = document.createElement('div');
+            btns.className = 'custom-dialog-buttons';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'secondary-btn';
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = 'Generate';
+            confirmBtn.className = 'action-btn';
+            if (models.length === 0) confirmBtn.disabled = true;
+            btns.appendChild(cancelBtn);
+            btns.appendChild(confirmBtn);
+            modal.appendChild(btns);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            descInput.focus();
+
+            confirmBtn.addEventListener('click', () => {
+                overlay.remove();
+                resolve({ desc: descInput.value.trim(), modelId: modelDropdown.value || null });
+            });
+            cancelBtn.addEventListener('click', () => { overlay.remove(); resolve(null); });
+        });
+    }
+
     // Feature 4: AI-assisted character creation
     document.getElementById('ai-generate-char-btn')?.addEventListener('click', async () => {
         const isEditing = !!editingCharField.value;
-        const desc = await showCustomLargePrompt(
-            'Describe the character you want to create:',
-            'e.g. A sarcastic tsundere vampire knight from medieval Japan who loves poetry.\n\nYou can be as detailed as you like — include personality traits, appearance, backstory, speech style, relationships, etc.'
-        );
-        if (!desc || !desc.trim()) return;
-        const currentModelId = modelSelect?.value || defaultSettings.model;
-        const selectedModelId = await showModelPickerAndConfirm({
-            title: '✨ AI Generate Character',
-            infoText: 'The selected AI model will generate a complete character card — name, description, lore, tags, and AI instructions — based on your concept. For well-known characters from series, games, or manga, it will try to research accurate information online.',
-            warningText: isEditing ? '⚠️ You are editing an existing character. All text fields (description, lore, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.' : null,
-            confirmLabel: 'Generate',
-            defaultModelId: currentModelId
-        });
-        if (!selectedModelId) return;
+        const result = await showCharacterGeneratorModal(isEditing);
+        if (!result || !result.modelId) return;
+        const { desc, modelId: selectedModelId } = result;
         const btn = document.getElementById('ai-generate-char-btn');
         const originalText = btn.textContent;
         btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
@@ -5701,7 +5775,8 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 - instructions: 1-2 sentences of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
 If the character is from a known series, game, manga, anime, or other media, search the internet first to find accurate, up-to-date information about them before writing anything.
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
-            const result = await callAISimple(systemPrompt, `Create a character based on this concept: ${desc.trim()}`, selectedModelId);
+            const userMessage = desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
+            const result = await callAISimple(systemPrompt, userMessage, selectedModelId);
             let parsed;
             try {
                 const jsonMatch = result.match(/\{[\s\S]*\}/);
