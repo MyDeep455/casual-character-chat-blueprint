@@ -356,6 +356,7 @@ No one else, including the developer, can access your characters or conversation
     <h3>The Editor Header</h3>
     <ul>
         <li><strong>Estimated Tokens Counter:</strong> In the top-right corner, a counter gives you a live estimate of the "tokens" your character definition uses. Tokens are pieces of words that the AI processes. A higher token count means a more detailed character but also a larger context for the AI to handle in every message, which can affect API costs and response times.</li>
+        <li><strong>✨ AI Generate Character:</strong> A button at the top of the editor that lets you generate a complete character card using AI. Click it and a large text box opens where you can describe the character concept in as much detail as you like (e.g., "a stern samurai from feudal Japan" or "Rem from Re:Zero — include personality, appearance, speech style…"). Then choose which of your saved AI models should do the generation. The AI will research known characters from series, games, or manga if applicable, and fill in all fields — name, description, lore, tags, and instructions — for you automatically. If the AI provider is unavailable or returns an error, a clear message will tell you what went wrong. <em>Note: If you are editing an existing character, the generator will overwrite their current data. A warning is shown before the AI runs.</em></li>
     </ul>
 
     <h3>The Input Fields in Detail</h3>
@@ -438,6 +439,7 @@ No one else, including the developer, can access your characters or conversation
     </blockquote>
     <ul>
         <li>Click the <code>+ Add Scenario</code> button to add a new, empty scenario block.</li>
+        <li>Click the <code>✨ AI Generate Scenario</code> button to have an AI write an opening scenario for you. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. If the AI provider fails, an informative error message is displayed.</li>
         <li>Click the <code>🗑️</code> button next to a scenario to delete that scenario.</li>
     </ul>
 
@@ -451,7 +453,7 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
         <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
         <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history.</li>
-        <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, or reminders the AI tends to forget over long conversations.</li>
+        <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, or reminders the AI tends to forget over long conversations. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
         <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
@@ -477,6 +479,8 @@ No one else, including the developer, can access your characters or conversation
     </ul>
 </li>        <li><strong>Notification Sound:</strong> A toggle switch to enable or disable the brief sound effect that plays when an AI message is fully received.</li>
         <li><strong>Show Think Blocks:</strong> A toggle to show or hide the collapsible "thoughts" box that reasoning AI models produce. When enabled, you can click "Show Thoughts" on any AI message to read the model's internal reasoning. When disabled, the think block is stripped away and only the final response is shown.</li>
+        <li><strong>Reply Suggestions:</strong> A toggle that enables or disables AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response, giving you quick ideas for what your character could say next. While the suggestions are being generated, animated loading indicators appear in the suggestion fields — and if something goes wrong (e.g. the AI provider is unreachable), a short error message is shown there instead. Suggestions are also automatically regenerated after you delete messages, based on the latest remaining AI message in the chat.</li>
+        <li><strong>Suggestions Model:</strong> A dropdown that appears below the Reply Suggestions toggle. It lets you choose a dedicated AI model just for generating reply suggestions — independently from the model you use for chatting. <strong>Tip:</strong> Set a free or low-cost model here so that suggestions don't consume API quota from your main (paid) chat model. Leave it on "(same as chat model)" if you don't need to separate them.</li>
         <li><strong>Reset to Default Values:</strong> This button resets all settings on this panel to their original values.</li>
     </ul>
 
@@ -484,7 +488,7 @@ No one else, including the developer, can access your characters or conversation
     <p>This is the main area where your conversation is displayed.</p>
     <ul>
         <li><strong>Editing Messages:</strong> You can edit any message in the chat history by simply <strong>double-clicking</strong> on it. This will open an editor window. You can edit your message as you wish. When you're done, simply click the save button with the checkmark. Optionally, you can simply press <code>ENTER</code> or double-click outside the editor window. All your changes are saved automatically.</li>
-        <li><strong>Deleting Messages:</strong> When you hover over a message, a small trashcan icon (🗑️) appears. Clicking it will delete that message <strong>and all messages that came after it</strong>. This is useful for pruning the chat history to go back to an earlier point in the conversation and to try a new plot line from that point onward.</li>
+        <li><strong>Deleting Messages:</strong> When you hover over a message, a small trashcan icon (🗑️) appears. Clicking it will delete that message <strong>and all messages that came after it</strong>. This is useful for pruning the chat history to go back to an earlier point in the conversation and to try a new plot line from that point onward. After a deletion, an <strong>↩ Undo Delete</strong> button appears directly in the chat window — right where the deleted content was — so you can instantly restore all deleted messages with one click. If Reply Suggestions are enabled, new suggestions are automatically regenerated based on the latest remaining AI message.</li>
         <li><strong>Response Variations:</strong> For every AI response, you can generate multiple versions.
             <ul>
                 <li><strong>Browse:</strong> If multiple versions exist, <code><</code> and <code>></code> buttons appear below the message. Use these buttons, or the <code>Left</code> and <code>Right Arrow Keys</code> on your keyboard, to cycle through the different responses.</li>

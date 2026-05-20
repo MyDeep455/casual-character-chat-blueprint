@@ -115,6 +115,10 @@ This is where you bring your characters to life. All changes you make here take 
 * **AI Instructions:** General, system-level commands for the AI's behavior (e.g., "Write short and creative sentences."). If possible, keep your instructions concise. It will be easier then for the AI to follow your prompts. Less is more!
 * **Character & Narrator Reminders:** Short, critical instructions attached to every message to prevent the AI from forgetting key details. Use the dynamic placeholder `{{char}}` to automatically insert the character's name for the AI. If the AI ignores some of your AI Instructions, you can put them here. Reminders have very high priority for the AI. But here too: keep it concise.
 
+### AI-Assisted Character Generation
+
+* **✨ AI Generate Character:** A button at the top of the editor. Describe the character you want (e.g., "a stern samurai from feudal Japan" or "Rem from Re:Zero"), then choose an AI model to do the generation. The AI will research known characters from series, games, or manga if applicable and fill in all fields — name, description, lore, tags, and instructions — automatically. *Note: If you are editing an existing character, their current data will be overwritten — a warning is shown before the AI runs.*
+
 ### Dynamic Scenario Management
 
 Scenarios are pre-written starting points for a chat. Each scenario consists of a **Title** and a **Description** (the opening message). You can add, edit, and delete as many scenarios as you like for each character.
@@ -132,7 +136,7 @@ The top bar provides context and quick access to important features:
 * **← Back Arrow:** Returns you to the character's chat dashboard.
 * **Participant Icons:** In a group chat, icons of all participants appear here. Click an icon to remove that character.
 * **Token Info (ℹ️):** Hover to see an estimate of the tokens being used in the current context.
-* **Chat Memories (🧠):** Opens a text field for persistent, high-priority notes for this chat session. Notes are sent with every AI request — ideal for facts or constraints the AI tends to forget.
+* **Chat Memories (🧠):** Opens a text field for persistent, high-priority notes for this chat session. Notes are sent with every AI request — ideal for facts or constraints the AI tends to forget. Inside this panel, the **✨ Auto-summarize Chat** button generates a summary of the current conversation using an AI model of your choice, and appends it to your notes automatically.
 * **Add Participant (👥):** Opens a menu to add another character to the conversation.
 * **Select Persona (🎭):** Allows you to choose one of your user profiles for the chat. You can unselect it at any time by clicking the button again.
 * **Settings (⚙️):** Toggles the settings panel for live customization.
@@ -151,7 +155,7 @@ This panel lets you customize the chat's appearance and the AI's behavior on the
 ### Message Interaction
 
 * **Editing:** **Double-click** any message bubble to open the message editor. Press `ENTER` or double-click outside the editor to save.
-* **Deleting:** Hover over a message to reveal a trashcan icon (🗑️). Clicking it deletes that message **and all subsequent messages**, allowing you to rewind the story.
+* **Deleting:** Hover over a message to reveal a trashcan icon (🗑️). Clicking it deletes that message **and all subsequent messages**, allowing you to rewind the story. A floating **↩ Undo Delete** button then appears in the center of the screen — click it to restore the deleted messages. It disappears when you send a new message or after using undo.
 * **Response Variations:**
     * **Browse:** Use the `<` and `>` buttons (or Left/Right Arrow keys) to cycle through different AI-generated responses for the same prompt.
     * **Regenerate (⟳):** Generates a new response variation.

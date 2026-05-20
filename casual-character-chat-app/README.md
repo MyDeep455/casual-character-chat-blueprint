@@ -111,9 +111,15 @@ Each model entry in **⚙️ Global App Settings** has two optional numeric fiel
 
 * **Top-P:** A secondary randomness parameter (nucleus sampling). **Recommended: leave blank.** When empty, the field is not sent to the API at all and the model uses its own built-in default. Only set a value (e.g., `0.9`) if a specific model produces incoherent output despite correct Temperature settings. Avoid adjusting both Temperature and Top-P at the same time.
 
+### AI-Assisted Character Generation
+
+* **✨ AI Generate Character:** A button at the top of the editor. A large text box opens where you can describe the character concept in as much detail as you like (e.g., "a stern samurai from feudal Japan" or "Rem from Re:Zero — include personality, appearance, speech style…"), then choose an AI model to do the generation. The AI will research known characters from series, games, or manga if applicable and fill in all fields — name, description, lore, tags, and instructions — automatically. If the AI provider is unavailable or returns an error, a clear message will tell you what went wrong. *Note: If you are editing an existing character, their current data will be overwritten — a warning is shown before the AI runs.*
+
 ### Dynamic Scenario Management
 
 Scenarios are pre-written starting points for a chat. Each scenario consists of a **Title** and a **Description** (the opening message). You can add, edit, and delete as many scenarios as you like for each character.
+
+* **✨ AI Generate Scenario:** Click this button to have an AI write an opening scenario for you. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. Informative error messages are shown if the AI provider fails.
 
 ---
 
@@ -128,7 +134,7 @@ The top bar provides context and quick access to important features:
 * **← Back Arrow:** Returns you to the character's chat dashboard.
 * **Participant Icons:** In a group chat, icons of all participants appear here. Click an icon to remove that character.
 * **Token Info (ℹ️):** Hover to see an estimate of the tokens being used in the current context.
-* **Chat Memories (🧠):** Opens a text field for persistent, high-priority notes for this chat session. Notes are sent with every AI request — ideal for facts or constraints the AI tends to forget.
+* **Chat Memories (🧠):** Opens a text field for persistent, high-priority notes for this chat session. Notes are sent with every AI request — ideal for facts or constraints the AI tends to forget. Inside this panel, the **✨ Auto-summarize Chat** button generates a summary of the current conversation using an AI model of your choice, and appends it to your notes automatically.
 * **Add Participant (👥):** Opens a menu to add another character to the conversation.
 * **Select Persona (🎭):** Allows you to choose one of your user profiles for the chat. You can unselect it at any time by clicking the button again.
 * **Settings (⚙️):** Toggles the settings panel for live customization.
@@ -143,11 +149,13 @@ This panel lets you customize the chat's appearance and the AI's behavior on the
     * **Temperature:** The most important slider for creativity. Range is 0.1–1.0. Lower values (e.g., 0.7) are more focused; higher values (e.g., 1.0) lead to more creative and varied responses.
 * **Notification Sound:** A toggle for the sound effect when a message is received.
 * **Show Think Blocks:** A toggle to show or hide the collapsible reasoning block that some AI models produce. When disabled, only the final response is shown.
+* **Reply Suggestions:** A toggle for AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response. Loading indicators are shown while they generate; error messages appear directly in the suggestion fields if something goes wrong. Suggestions are automatically regenerated after deleting messages.
+* **Suggestions Model:** A dropdown to choose a dedicated AI model just for reply suggestions (independent of your main chat model). **Tip:** use a free or cheap model here to avoid unnecessary API costs.
 
 ### Message Interaction
 
 * **Editing:** **Double-click** any message bubble to open the message editor. Press `ENTER` or double-click outside the editor to save.
-* **Deleting:** Hover over a message to reveal a trashcan icon (🗑️). Clicking it deletes that message **and all subsequent messages**, allowing you to rewind the story.
+* **Deleting:** Hover over a message to reveal a trashcan icon (🗑️). Clicking it deletes that message **and all subsequent messages**, allowing you to rewind the story. An **↩ Undo Delete** button appears directly in the chat window at the deletion point — click it to restore all deleted messages instantly. If Reply Suggestions are enabled, new suggestions are automatically regenerated based on the latest remaining AI message.
 * **Response Variations:**
     * **Browse:** Use the `<` and `>` buttons (or Left/Right Arrow keys) to cycle through different AI-generated responses for the same prompt.
     * **Regenerate (⟳):** Generates a new response variation.

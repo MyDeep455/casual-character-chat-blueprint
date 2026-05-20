@@ -198,6 +198,22 @@
                         </label>
                     </div>
 
+                    <div class="setting">
+                        <label for="reply-options-toggle">
+                            <span>Reply Suggestions:</span>
+                            <input type="checkbox" id="reply-options-toggle" class="toggle-switch">
+                        </label>
+                    </div>
+
+                    <div class="setting" id="suggestion-model-setting">
+                        <label for="suggestion-model-select">
+                            <span>Suggestions Model: <span class="setting-info-icon" title="Choose a dedicated AI model just for generating reply suggestions. Tip: use a free model here to avoid unnecessary API costs when your main chat model is a paid one!">ℹ️</span></span>
+                        </label>
+                        <select id="suggestion-model-select">
+                            <option value="">(same as chat model)</option>
+                        </select>
+                    </div>
+
                     <button id="reset-settings-btn" class="settings-action-btn">Reset to Default Values</button>
                 </div>
             </div>
@@ -205,6 +221,11 @@
         <div id="chat-window">
         </div>
     
+        <div id="reply-options-dropdown" class="reply-options-dropdown hidden">
+            <span class="reply-options-label">Reply Suggestions</span>
+            <button type="button" class="reply-option-btn" id="reply-opt-1"></button>
+            <button type="button" class="reply-option-btn" id="reply-opt-2"></button>
+        </div>
         <form id="chat-form">
     <div class="textarea-wrapper">
         <div id="group-char-dropdown" class="hidden"></div>
@@ -226,6 +247,7 @@
         <div class="chat-memories-content">
             <h2>Chat Memories</h2>
             <p class="chat-memories-hint">High-priority notes for this chat. They are sent with every request.</p>
+            <button type="button" id="summarize-memories-btn" class="settings-action-btn summarize-btn">✨ Auto-summarize Chat</button>
             <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and story beats to remember..."></textarea>
             <div class="editor-action-row">
                 <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
@@ -258,7 +280,9 @@
             <form id="character-form">
                 <input type="file" id="image-uploader" class="visually-hidden" accept="image/*">
                 <input type="hidden" id="editing-char-id">
-                
+
+                <button type="button" id="ai-generate-char-btn" class="settings-action-btn ai-generate-btn">✨ AI Generate Character</button>
+
                 <div class="form-row">
     <div class="form-group">
         <label for="card-name">Card Name:</label>
@@ -308,7 +332,10 @@
                 <label>Scenarios:</label>
 <div id="scenario-editor-list" class="scenario-list-container">
     </div>
-<button type="button" id="add-scenario-btn" class="add-scenario-button">+ Add Scenario</button>
+<div class="scenario-action-row">
+    <button type="button" id="add-scenario-btn" class="add-scenario-button">+ Add Scenario</button>
+    <button type="button" id="ai-scenario-btn" class="add-scenario-button ai-generate-btn">✨ AI Generate Scenario</button>
+</div>
        
                <div class="form-buttons">
     <button type="submit" id="save-edit-btn-bottom">Save Character</button>
