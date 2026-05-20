@@ -73,6 +73,7 @@ const defaultSettings = {
     let replyOptionsLoading = false;
     let pendingReplyOptions = null;
     let replyOptionsReqId = 0;
+    let messageInputFocused = false;
     let suggestionModelId = null;
     let characters = {};
     let currentCharacterId = null;
@@ -5406,7 +5407,7 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = ''; btn1.className = 'reply-option-btn reply-option-loading'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn reply-option-loading'; btn2.style.display = ''; }
-        dropdown.classList.remove('hidden');
+        if (messageInputFocused) dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownOptions(opt1, opt2) {
@@ -5415,7 +5416,7 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = opt1; btn1.className = 'reply-option-btn'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = opt2; btn2.className = 'reply-option-btn'; btn2.style.display = ''; }
-        dropdown.classList.remove('hidden');
+        if (messageInputFocused) dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownError(msg) {
@@ -5425,7 +5426,7 @@ personaEditorAvatarImg.onerror = () => {
         const shortMsg = msg.length > 90 ? msg.substring(0, 87) + '…' : msg;
         if (btn1) { btn1.textContent = `⚠ ${shortMsg}`; btn1.className = 'reply-option-btn reply-option-error'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn'; btn2.style.display = 'none'; }
-        dropdown.classList.remove('hidden');
+        if (messageInputFocused) dropdown.classList.remove('hidden');
     }
 
     async function generateReplyOptionsInBackground() {
@@ -6089,18 +6090,21 @@ participantSelectionList.addEventListener('click', (event) => {
 });
 
 messageInput.addEventListener('focus', () => {
+    messageInputFocused = true;
     showGroupCharDropdown();
     showReplyOptionsDropdown();
 });
 
 messageInput.addEventListener('click', () => {
+    messageInputFocused = true;
     showGroupCharDropdown();
     showReplyOptionsDropdown();
 });
 
 messageInput.addEventListener('blur', () => {
+    messageInputFocused = false;
     setTimeout(hideGroupCharDropdown, 200);
-    setTimeout(hideReplyOptionsDropdown, 200);
+    hideReplyOptionsDropdown();
 });
 
 groupCharDropdown.addEventListener('mousedown', (event) => {
