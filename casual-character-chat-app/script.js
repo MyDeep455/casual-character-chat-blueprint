@@ -5617,8 +5617,8 @@ personaEditorAvatarImg.onerror = () => {
 - Describe the relationship and dynamic between ${charName} and "you" (the user) — how you know each other, your history, etc.
 - Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user)
 - Weave in two or three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
-- Be written in vivid second-person narration (e.g. "You are...", "You find yourself…", "You notice…")
-- Be written in a direct and objective style without unnecessary flowery prose.
+- Be written in vivid second-person narration (e.g. "You are...", "You notice…" etc.)
+- Be written in a direct and objective style without any long nestled sentences — no flowery language or purple prose.
 - Be entirely specific to the character's world, personality, and lore — no generic or placeholder content
 - End on an open note that naturally invites "you" (the user) to respond
 
