@@ -5613,10 +5613,10 @@ personaEditorAvatarImg.onerror = () => {
                 ? `\n\nUser-specified scenario requirements: ${hints}`
                 : '\n\nCreate a surprising, vivid scenario that fits this character\'s world and leaves the user eager to respond.';
 
-            const systemPrompt = `You are a creative writer for a character roleplay app. Write a short to medium-length opening scenario paragraph (5-10 sentences) for a chat with ${charName}. The paragraph must:
+            const systemPrompt = `You are a creative writer for a character roleplay app. Write a medium-length opening scenario paragraph (10-15 sentences) for a chat with ${charName}. The paragraph must:
 - Describe the relationship and dynamic between ${charName} and "you" (the user) — how you know each other, your history, etc.
 - Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user)
-- Weave in two or three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
+- Weave in three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
 - Be written in vivid second-person narration (e.g. "You are...", "You notice…" etc.)
 - Be written in a direct and objective style without any long nestled sentences — no flowery language or purple prose.
 - Be entirely specific to the character's world, personality, and lore — no generic or placeholder content
