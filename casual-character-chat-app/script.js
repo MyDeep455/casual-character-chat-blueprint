@@ -4183,10 +4183,13 @@ function updateSingleMessageView(messageId) {
 
 
     function closeEditor() {
+    if (charGenAbortController) { charGenAbortController.abort(); charGenAbortController = null; }
+    const genBtn = document.getElementById('ai-generate-char-btn');
+    if (genBtn) { genBtn.textContent = 'Generate'; genBtn.disabled = false; }
     document.getElementById('card-name').style.height = 'auto';
     tempUploadedImages = {};
-    characterEditorModalContent.scrollTop = 0; 
-    characterEditorModal.classList.add('hidden'); 
+    characterEditorModalContent.scrollTop = 0;
+    characterEditorModal.classList.add('hidden');
 }
 
 
@@ -5314,7 +5317,7 @@ personaEditorAvatarImg.onerror = () => {
         });
     }
 
-    async function callAISimple(systemPrompt, userMessage, selectedModelId) {
+    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null) {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
         const lookupId = modelId.replace(/:online$/, '');
         const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
@@ -5332,7 +5335,8 @@ personaEditorAvatarImg.onerror = () => {
                 'HTTP-Referer': window.location.href,
                 'X-Title': 'Casual Character Chat'
             },
-            body: JSON.stringify({ model: modelId, messages, temperature: 0.7, top_p: 0.95, stream: true })
+            body: JSON.stringify({ model: modelId, messages, temperature: 0.7, top_p: 0.95, stream: true }),
+            ...(signal ? { signal } : {})
         });
         if (!response.ok) throw new Error(await response.text());
         const reader = response.body.getReader();
@@ -5700,13 +5704,13 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 
             const p = document.createElement('p');
             p.style.cssText = 'margin:0 0 12px;font-size:0.9em;color:#ccc;line-height:1.5;';
-            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, lore, tags, and AI instructions.';
+            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, tags, and AI instructions.';
             modal.appendChild(p);
 
             if (isEditing) {
                 const warn = document.createElement('p');
                 warn.style.cssText = 'margin:0 0 12px;font-size:0.85em;color:#ffaa44;background:rgba(255,150,50,0.08);padding:8px 10px;border-radius:6px;border:1px solid rgba(255,150,50,0.25);';
-                warn.textContent = '⚠️ You are editing an existing character. All text fields (description, lore, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.';
+                warn.textContent = '⚠️ You are editing an existing character. All text fields (description, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.';
                 modal.appendChild(warn);
             }
 
@@ -5716,7 +5720,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
             modal.appendChild(descLabel);
 
             const descInput = document.createElement('textarea');
-            descInput.placeholder = 'e.g. A sarcastic tsundere vampire knight from medieval Japan who loves poetry.\n\nYou can be as detailed as you like — include personality traits, appearance, backstory, speech style, relationships, etc.';
+            descInput.placeholder = 'e.g. "A sarcastic tsundere vampire knight from medieval Japan who loves poetry."\n\nor: "Makima, your possessive mother." (with fandom wiki url)';
             descInput.rows = 4;
             descInput.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:14px;box-sizing:border-box;resize:vertical;font-family:inherit;';
             modal.appendChild(descInput);
@@ -5787,6 +5791,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
     }
 
     // Feature 4: AI-assisted character creation
+    let charGenAbortController = null;
     document.getElementById('ai-generate-char-btn')?.addEventListener('click', async () => {
         const isEditing = !!editingCharField.value;
         const result = await showCharacterGeneratorModal(isEditing);
@@ -5796,6 +5801,8 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         const originalText = btn.textContent;
         btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
         btn.disabled = true;
+        charGenAbortController = new AbortController();
+        const { signal } = charGenAbortController;
         try {
             let refContent = '';
             let refFailed = false;
@@ -5807,7 +5814,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                         // Fandom wiki: use MediaWiki API directly — has native CORS support, never bot-blocked
                         const articleTitle = decodeURIComponent(fandomMatch[2].replace(/_/g, ' '));
                         const apiUrl = `https://${fandomMatch[1]}/api.php?action=parse&page=${encodeURIComponent(articleTitle)}&prop=wikitext&format=json&origin=*`;
-                        const res = await fetch(apiUrl);
+                        const res = await fetch(apiUrl, { signal });
                         if (res.ok) {
                             const data = await res.json();
                             const wikitext = data?.parse?.wikitext?.['*'];
@@ -5816,13 +5823,13 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                         } else { refFailed = true; }
                     } else {
                         // Non-Fandom URL: use Jina Reader
-                        const jinaRes = await fetch(`https://r.jina.ai/${referenceUrl}`, { headers: { Accept: 'text/plain' } });
+                        const jinaRes = await fetch(`https://r.jina.ai/${referenceUrl}`, { headers: { Accept: 'text/plain' }, signal });
                         if (jinaRes.ok) {
                             refContent = (await jinaRes.text()).slice(0, 8000);
                             if (refContent.length < 200) { refContent = ''; refFailed = true; }
                         } else { refFailed = true; }
                     }
-                } catch (_) { refFailed = true; }
+                } catch (e) { if (e?.name === 'AbortError') throw e; refFailed = true; }
                 btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
             }
             const systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
@@ -5845,7 +5852,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 : desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
             // Escape bare newlines/tabs inside JSON string values (common AI output issue)
             const normalizeJson = s => s.replace(/"(?:[^"\\]|\\.)*"/gs, m => m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'));
-            const result = normalizeJson(await callAISimple(systemPrompt, userMessage, selectedModelId));
+            const result = normalizeJson(await callAISimple(systemPrompt, userMessage, selectedModelId, signal));
             let parsed;
             try {
                 // Bracket-counting extraction: handles preamble {braces} before the JSON
@@ -5899,8 +5906,10 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
             updateEditorTokenCount();
             if (refFailed) showCustomAlert('⚠️ The reference URL could not be read (the page may block bots or require login). The character was generated without it — you can edit the fields manually.');
         } catch (err) {
+            if (err?.name === 'AbortError') return;
             showCustomAlert(_formatAIError(err, 'Character generation'));
         } finally {
+            charGenAbortController = null;
             btn.textContent = originalText;
             btn.disabled = false;
         }
