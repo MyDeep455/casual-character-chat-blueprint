@@ -5316,7 +5316,8 @@ personaEditorAvatarImg.onerror = () => {
 
     async function callAISimple(systemPrompt, userMessage, selectedModelId) {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
-        const modelSettings = (appSettings.availableModels || []).find(m => m.id === modelId);
+        const lookupId = modelId.replace(/:online$/, '');
+        const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
         const apiKeyToSend = (modelSettings?.apiKey) || appSettings.apiKey;
         const targetApiUrlToSend = (modelSettings?.targetApiUrl) || DEFAULT_API_URL;
         const messages = [
@@ -5608,14 +5609,14 @@ personaEditorAvatarImg.onerror = () => {
                 ? `\n\nUser-specified scenario requirements: ${hints}`
                 : '\n\nCreate a surprising, vivid scenario that fits this character\'s world and leaves the user eager to respond.';
 
-            const systemPrompt = `You are a creative writer for a character roleplay app. Write a short to medium-length opening scenario paragraph (4–7 sentences) for a chat with ${charName}. The paragraph must:
-- Address the user directly as "you" in second person — the user is the protagonist of the scene
-- Describe the relationship and dynamic between ${charName} and you (how you know each other, your history, the tension or warmth between you)
-- Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward you
-- Weave in exactly TWO lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
-- Be written in vivid second-person narration (e.g. "You find yourself…", "You notice…")
+            const systemPrompt = `You are a creative writer for a character roleplay app. Write a short to medium-length opening scenario paragraph (5-10 sentences) for a chat with ${charName}. The paragraph must:
+- Describe the relationship and dynamic between ${charName} and "you" (the user) — how you know each other, your history, etc.
+- Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user)
+- Weave in two or three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
+- Be written in vivid second-person narration (e.g. "You are...", "You find yourself…", "You notice…")
+- Be written in a direct and objective style without unnecessary flowery prose.
 - Be entirely specific to the character's world, personality, and lore — no generic or placeholder content
-- End on an open note that naturally invites you (the user) to respond
+- End on an open note that naturally invites "you" (the user) to respond
 
 Character details:
 Name: ${charName}
@@ -5668,7 +5669,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 const charName = characters[msg.speakerId || currentCharacterId]?.chatName || 'Character';
                 return `${charName}: ${text}`;
             }).join('\n\n');
-            const systemPrompt = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 3-7 bullet points. No intro, no outro, no markdown headers.`;
+            const systemPrompt = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 5-10 bullet points. No intro, no outro, no markdown headers.`;
             const userMessage = `Summarize the key events and facts from this roleplay conversation:\n\n${historyText}`;
             const summary = await callAISimple(systemPrompt, userMessage, selectedModelId);
             const existing = chatMemoriesTextarea.value.trim();
@@ -5699,7 +5700,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 
             const p = document.createElement('p');
             p.style.cssText = 'margin:0 0 12px;font-size:0.9em;color:#ccc;line-height:1.5;';
-            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, lore, tags, and AI instructions. For well-known characters from series, games, or manga, it will try to research accurate information online.';
+            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, lore, tags, and AI instructions.';
             modal.appendChild(p);
 
             if (isEditing) {
@@ -5745,6 +5746,22 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
             }
             modal.appendChild(modelDropdown);
 
+            const urlLabel = document.createElement('label');
+            urlLabel.textContent = 'Reference URL (optional):';
+            urlLabel.style.cssText = 'display:block;margin:0 0 5px;font-size:0.85em;color:#bbb;';
+            modal.appendChild(urlLabel);
+
+            const urlInput = document.createElement('input');
+            urlInput.type = 'url';
+            urlInput.placeholder = 'https://onepiece.fandom.com/wiki/Roronoa_Zoro';
+            urlInput.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:4px;box-sizing:border-box;';
+            modal.appendChild(urlInput);
+
+            const urlNote = document.createElement('p');
+            urlNote.style.cssText = 'margin:0 0 14px;font-size:0.78em;color:#777;line-height:1.4;';
+            urlNote.textContent = 'Paste a character wiki or profile page. The AI will read its content and use it as reference for the character card.';
+            modal.appendChild(urlNote);
+
             const btns = document.createElement('div');
             btns.className = 'custom-dialog-buttons';
             const cancelBtn = document.createElement('button');
@@ -5763,7 +5780,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 
             confirmBtn.addEventListener('click', () => {
                 overlay.remove();
-                resolve({ desc: descInput.value.trim(), modelId: modelDropdown.value || null });
+                resolve({ desc: descInput.value.trim(), modelId: modelDropdown.value || null, referenceUrl: urlInput.value.trim() });
             });
             cancelBtn.addEventListener('click', () => { overlay.remove(); resolve(null); });
         });
@@ -5774,29 +5791,93 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         const isEditing = !!editingCharField.value;
         const result = await showCharacterGeneratorModal(isEditing);
         if (!result || !result.modelId) return;
-        const { desc, modelId: selectedModelId } = result;
+        const { desc, modelId: selectedModelId, referenceUrl } = result;
         const btn = document.getElementById('ai-generate-char-btn');
         const originalText = btn.textContent;
         btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
         btn.disabled = true;
         try {
+            let refContent = '';
+            let refFailed = false;
+            if (referenceUrl) {
+                btn.innerHTML = '<span class="btn-spinner"></span> Reading reference…';
+                try {
+                    const fandomMatch = referenceUrl.match(/^https?:\/\/([a-z0-9-]+\.fandom\.com)\/wiki\/([^#?]+)/i);
+                    if (fandomMatch) {
+                        // Fandom wiki: use MediaWiki API directly — has native CORS support, never bot-blocked
+                        const articleTitle = decodeURIComponent(fandomMatch[2].replace(/_/g, ' '));
+                        const apiUrl = `https://${fandomMatch[1]}/api.php?action=parse&page=${encodeURIComponent(articleTitle)}&prop=wikitext&format=json&origin=*`;
+                        const res = await fetch(apiUrl);
+                        if (res.ok) {
+                            const data = await res.json();
+                            const wikitext = data?.parse?.wikitext?.['*'];
+                            if (wikitext && wikitext.length >= 200) refContent = wikitext.slice(0, 8000);
+                            else refFailed = true;
+                        } else { refFailed = true; }
+                    } else {
+                        // Non-Fandom URL: use Jina Reader
+                        const jinaRes = await fetch(`https://r.jina.ai/${referenceUrl}`, { headers: { Accept: 'text/plain' } });
+                        if (jinaRes.ok) {
+                            refContent = (await jinaRes.text()).slice(0, 8000);
+                            if (refContent.length < 200) { refContent = ''; refFailed = true; }
+                        } else { refFailed = true; }
+                    }
+                } catch (_) { refFailed = true; }
+                btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
+            }
             const systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
 - cardName: full display name for the card (e.g. "Yuki Tanaka - Vampire Knight")
 - chatName: short in-chat first name (e.g. "Yuki")
-- description: rich character description covering appearance, personality, speech style, and example mannerisms (300-500 words)
-- lore: background story, world context, history, and relationships (150-300 words)
-- tags: 5-8 comma-separated tags (genre, personality type, etc.)
-- instructions: 1-2 sentences of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
-If the character is from a known series, game, manga, anime, or other media, search the internet first to find accurate, up-to-date information about them before writing anything.
+- description: a single plain string — detailed character profile in Steckbrief style, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Keep each section to a few short phrases or sentences. Total description under 500 words:
+  1. Identity/Role — name, gender, age, species, role, work
+  2. Personality — core traits and temperament
+  3. Speech Style — how they talk, tone, verbal quirks
+  4. Abilities — skills, powers, or areas of expertise
+  5. Appearance — physical look, clothing, notable features
+  6. Likes/Dislikes — what they love and what they hate
+  7. Past — brief background and world context in a few sentences
+  8. Example Dialog — 5 short lines they might actually say in different contexts
+- tags: 10-20 comma-separated tags (genre, personality type, hair color etc.)
+- instructions: A few bullet points of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
-            const userMessage = desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
-            const result = await callAISimple(systemPrompt, userMessage, selectedModelId);
+            const userMessage = refContent
+                ? `Create a character based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
+                : desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
+            // Escape bare newlines/tabs inside JSON string values (common AI output issue)
+            const normalizeJson = s => s.replace(/"(?:[^"\\]|\\.)*"/gs, m => m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'));
+            const result = normalizeJson(await callAISimple(systemPrompt, userMessage, selectedModelId));
             let parsed;
             try {
-                const jsonMatch = result.match(/\{[\s\S]*\}/);
-                parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result);
+                // Bracket-counting extraction: handles preamble {braces} before the JSON
+                let depth = 0, jsonStart = -1;
+                for (let i = 0; i < result.length; i++) {
+                    if (result[i] === '{') { if (depth++ === 0) jsonStart = i; }
+                    else if (result[i] === '}' && depth > 0 && --depth === 0) {
+                        const candidate = result.slice(jsonStart, i + 1);
+                        try { parsed = JSON.parse(candidate); break; } catch (_) {}
+                        jsonStart = -1;
+                    }
+                }
+                // Repair truncated JSON (response cut off mid-generation)
+                if (!parsed && jsonStart !== -1) {
+                    try {
+                        let frag = result.slice(jsonStart);
+                        let inStr = false, esc = false, openD = 0;
+                        for (const ch of frag) {
+                            if (esc) { esc = false; continue; }
+                            if (ch === '\\' && inStr) { esc = true; continue; }
+                            if (ch === '"') { inStr = !inStr; continue; }
+                            if (!inStr) { if (ch === '{') openD++; else if (ch === '}') openD--; }
+                        }
+                        let repaired = frag;
+                        if (inStr) repaired += '"';
+                        while (openD-- > 0) repaired += '}';
+                        parsed = JSON.parse(normalizeJson(repaired));
+                    } catch (_) {}
+                }
+                if (!parsed) throw new Error();
             } catch (e) {
-                throw new Error('Could not parse AI response. Please try again.');
+                throw new Error(`Could not parse AI response. Got: "${result.slice(0, 120)}"`);
             }
             if (parsed.cardName) {
                 document.getElementById('card-name').value = parsed.cardName;
@@ -5804,12 +5885,11 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
             }
             if (parsed.chatName) document.getElementById('chat-name').value = parsed.chatName;
             if (parsed.description) {
-                charDescriptionInput.value = parsed.description;
+                const descRaw = parsed.description;
+                charDescriptionInput.value = typeof descRaw === 'object'
+                    ? Object.entries(descRaw).map(([k, v]) => `${k}\n${v}`).join('\n\n')
+                    : String(descRaw);
                 autoResizeTextarea({ target: charDescriptionInput });
-            }
-            if (parsed.lore) {
-                charLoreInput.value = parsed.lore;
-                autoResizeTextarea({ target: charLoreInput });
             }
             if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
             if (parsed.instructions) {
@@ -5817,6 +5897,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 autoResizeTextarea({ target: charInstructionsInput });
             }
             updateEditorTokenCount();
+            if (refFailed) showCustomAlert('⚠️ The reference URL could not be read (the page may block bots or require login). The character was generated without it — you can edit the fields manually.');
         } catch (err) {
             showCustomAlert(_formatAIError(err, 'Character generation'));
         } finally {
