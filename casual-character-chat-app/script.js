@@ -2908,9 +2908,9 @@ const startTime = Date.now();
         const worldName = worldChar.name || 'This World';
         if (worldChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldChar.description.trim()}\n\n`;
         if (worldChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldChar.lore.trim()}\n\n`;
+        if (worldChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldChar.reminder.trim()}\n\n`;
         if (targetCharId === currentCharacterId || type === 'story') {
             fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
-            if (worldChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldChar.instructions, worldChar.chatName || worldName), persona).trim()}\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -3410,9 +3410,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const worldName = worldRegenChar.name || 'This World';
         if (worldRegenChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldRegenChar.description.trim()}\n\n`;
         if (worldRegenChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldRegenChar.lore.trim()}\n\n`;
+        if (worldRegenChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldRegenChar.reminder.trim()}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
             fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
-            if (worldRegenChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldRegenChar.instructions, worldRegenChar.chatName || worldName), persona).trim()}\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -3940,9 +3940,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const worldName = worldContChar.name || 'This World';
         if (worldContChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldContChar.description.trim()}\n\n`;
         if (worldContChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldContChar.lore.trim()}\n\n`;
+        if (worldContChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldContChar.reminder.trim()}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
             fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
-            if (worldContChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldContChar.instructions, worldContChar.chatName || worldName), persona).trim()}\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -4406,9 +4406,9 @@ function updateSingleMessageView(messageId) {
     document.getElementById('char-lore').placeholder = isWorld
         ? 'Historical events, myths, creation stories, notable conflicts, secrets of this world etc.'
         : 'Deeper Background Story, World & Relationships of the Character, Fun Facts etc.';
-    document.getElementById('char-instructions').placeholder = isWorld
-        ? "Narrator AI instructions... (e.g., 'Narrate in a grim, literary tone.')"
-        : "General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')";
+    const instrContainer = document.getElementById('char-instructions-container');
+    if (instrContainer) instrContainer.style.display = isWorld ? 'none' : '';
+    document.getElementById('char-instructions').placeholder = "General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')";
     document.getElementById('char-reminder').placeholder = isWorld
         ? "World rules the AI must always follow... (e.g., 'Magic is forbidden by law.')"
         : "Character Reminder for this character... (e.g., 'Reply only as {{char}} now.')";
@@ -4418,7 +4418,7 @@ function updateSingleMessageView(messageId) {
     const loreLabelEl = document.querySelector('label[for="char-lore"]');
     if (loreLabelEl) loreLabelEl.textContent = isWorld ? 'World Lore:' : 'Lorebook:';
     const instrLabelEl = document.querySelector('label[for="char-instructions"]');
-    if (instrLabelEl) instrLabelEl.textContent = isWorld ? 'Narrator AI Instructions:' : 'AI Instructions:';
+    if (instrLabelEl) instrLabelEl.textContent = 'AI Instructions:';
     const narrReminderLabelEl = document.querySelector('label[for="char-narrator-reminder"]');
     if (narrReminderLabelEl) narrReminderLabelEl.textContent = isWorld ? 'World Narrator Reminder:' : 'Narrator Reminder:';
     if (isWorld) {
@@ -6895,8 +6895,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 - chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
 - description: a single plain string — a rich setting overview covering geography/environment, atmosphere/tone, society/factions, and daily life. 300-500 words. Plain text, no nested JSON.
 - lore: a single plain string — key historical events, myths, creation stories, notable conflicts, and secrets of this world. 200-400 words. Plain text.
-- instructions: a few bullet points of AI narrator behavior guidance (e.g. "Narrate in a grim, literary tone.\\nDescribe environments vividly before introducing characters.\\nNPCs have distinct dialects.")
-- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nTech level is equivalent to 1880s Earth.")
+- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nTech level is equivalent to 1880s Earth."). These are critical rules that may never be broken.
 - tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 userMessage = refContent
@@ -6971,10 +6970,6 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 if (parsed.lore) {
                     charLoreInput.value = String(parsed.lore);
                     autoResizeTextarea({ target: charLoreInput });
-                }
-                if (parsed.instructions) {
-                    charInstructionsInput.value = String(parsed.instructions);
-                    autoResizeTextarea({ target: charInstructionsInput });
                 }
                 if (parsed.worldRules) {
                     const reminderEl = document.getElementById('char-reminder');
