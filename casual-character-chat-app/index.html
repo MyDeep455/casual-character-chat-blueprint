@@ -121,6 +121,7 @@
     <div id="chat-avatar-placeholder" class="hidden">👤</div>
     <div id="participant-icon-list"></div>
     <h2 id="chat-character-name"></h2>
+    <span id="chat-world-badge" class="hidden">WORLD</span>
     <div id="token-info-container">
     <span id="token-info-icon">ℹ️</span>
     <div id="token-tooltip"></div>
@@ -357,19 +358,30 @@
 
                 <button type="button" id="ai-generate-char-btn" class="settings-action-btn ai-generate-btn">✨ AI Generate Character</button>
 
+                <div class="card-type-toggle">
+    <label class="card-type-option is-active" id="type-option-character">
+        <input type="radio" name="card-type" id="type-character" value="character" checked>
+        👤 Character
+    </label>
+    <label class="card-type-option" id="type-option-world">
+        <input type="radio" name="card-type" id="type-world" value="world">
+        🌍 World
+    </label>
+</div>
+
                 <div class="form-row">
     <div class="form-group">
-        <label for="card-name">Card Name:</label>
+        <label for="card-name" id="card-name-label">Card Name:</label>
         <textarea id="card-name" rows="1" placeholder="e.g., 'Natsuki Subaru - Re:Zero'" required></textarea>
     </div>
     <div class="form-group">
-        <label for="chat-name">In-Chat Name:</label>
+        <label for="chat-name" id="chat-name-label">In-Chat Name:</label>
         <input type="text" id="chat-name" placeholder="e.g., 'Subaru'" required>
     </div>
 </div>
 
                 <div class="form-row">
-  <div class="form-group">
+  <div class="form-group" id="editor-avatar-url-group">
     <label for="char-avatar">Character Img URL:</label>
     <div class="input-with-button">
       <input type="url" id="char-avatar" placeholder="https://... or upload local file">
@@ -377,17 +389,23 @@
     </div>
   </div>
   <div class="form-group">
-    <label for="char-background">Background Img URL:</label>
+    <label for="char-background" id="char-background-label">Background Img URL:</label>
     <div class="input-with-button">
-      <input type="url" id="char-background" placeholder="https://... or upload local file"> 
+      <input type="url" id="char-background" placeholder="https://... or upload local file">
       <button type="button" id="upload-bg-btn" class="upload-btn" title="Upload local image">📁</button>
     </div>
   </div>
 </div>
 
-                <label for="char-description">Character Description:</label>
+                <div id="world-char-picker-section" class="hidden">
+    <label>Characters in this World:</label>
+    <input type="search" id="world-char-search" class="modal-search-input world-char-search" placeholder="🔎 Search Character...">
+    <div id="world-char-picker-list" class="world-char-picker-list"></div>
+</div>
+
+                <label for="char-description" id="char-description-label">Character Description:</label>
                 <textarea id="char-description" rows="1" placeholder="Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc."></textarea>
-                
+
                 <label for="char-lore">Lorebook:</label>
                 <textarea id="char-lore" rows="1" placeholder="Deeper Background Story, World & Relationships of the Character, Fun Facts etc."></textarea>
 
@@ -397,7 +415,7 @@
          <label for="char-instructions">AI Instructions:</label>
                 <textarea id="char-instructions" rows="1" placeholder="General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')"></textarea>
 
-<label for="char-reminder">Character Reminder:</label>
+<label for="char-reminder" id="char-reminder-label">Character Reminder:</label>
 <textarea id="char-reminder" rows="1" placeholder="Character Reminder for this character... (e.g., 'Reply only as {{char}} now.')"></textarea>
 
 <label for="char-narrator-reminder">Narrator Reminder:</label>

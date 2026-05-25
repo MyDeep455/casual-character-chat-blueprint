@@ -91,6 +91,7 @@ const defaultSettings = {
   personaAvatarOriginal: null 
 };
     let currentChatId = null;
+    let worldCharSelectedIds = new Set();
     let activeGroupParticipantId = null;
     let personas = {};
     let appSettings = {};
@@ -233,6 +234,15 @@ const defaultSettings = {
     const charInstructionsInput = document.getElementById('char-instructions');
     const charDescriptionInput = document.getElementById('char-description');
     const charLoreInput = document.getElementById('char-lore');
+    // World editor elements
+    const cardTypeCharacterRadio = document.getElementById('type-character');
+    const cardTypeWorldRadio = document.getElementById('type-world');
+    const typeOptionCharacter = document.getElementById('type-option-character');
+    const typeOptionWorld = document.getElementById('type-option-world');
+    const editorAvatarUrlGroup = document.getElementById('editor-avatar-url-group');
+    const worldCharPickerSection = document.getElementById('world-char-picker-section');
+    const worldCharPickerList = document.getElementById('world-char-picker-list');
+    const chatWorldBadge = document.getElementById('chat-world-badge');
     // Group Chat and search elements
     const addParticipantBtn = document.getElementById('add-participant-btn');
     const participantIconList = document.getElementById('participant-icon-list');
@@ -1562,7 +1572,9 @@ const filteredCharacters = allSortedCharacters.filter(char => {
     for (const character of filteredCharacters) {
         const charId = character.id;
         const charElement = document.createElement('div');
+        const isWorldCard = character.type === 'world';
         charElement.classList.add('character-card');
+        if (isWorldCard) charElement.classList.add('card--world');
         charElement.dataset.charId = charId;
 
         const isFavorite = character.isFavorite === true;
@@ -1571,20 +1583,27 @@ const filteredCharacters = allSortedCharacters.filter(char => {
             : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
         const archiveButtonTitle = character.isArchived ? 'Retrieve from the archive' : 'Archive Character';
 
-        const imageUrl = getImageUrl(character.avatar);
+        const cardImageSource = isWorldCard ? character.background : character.avatar;
+        const imageUrl = getImageUrl(cardImageSource);
+        const placeholderContent = isWorldCard ? '<div class="world-card-placeholder">🌍</div>' : '<div class="placeholder-icon">👤</div>';
+        const worldBadgeHtml = isWorldCard ? `<span class="world-badge">World</span>` : '';
+        const worldCharCountHtml = isWorldCard && (character.characterIds || []).length > 0
+            ? `<span class="world-char-count">${character.characterIds.length} character${character.characterIds.length !== 1 ? 's' : ''}</span>` : '';
         const starSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
         charElement.innerHTML = `
             ${!character.isArchived ? `<button class="favorite-btn ${isFavorite ? 'is-favorite' : ''}" title="Mark as Favorite">${starSvg}</button>` : ''}
             <button class="archive-btn" title="${archiveButtonTitle}">${archiveButtonIcon}</button>
             <div class="card-image-container effect-container">
-    <img src="${imageUrl}" alt="Avatar" class="${character.avatar ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
-    <div class="placeholder-icon ${character.avatar ? 'hidden' : ''}">👤</div>
+    ${worldBadgeHtml}
+    <img src="${imageUrl}" alt="Avatar" class="${cardImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+    ${cardImageSource ? '' : placeholderContent}
+    ${worldCharCountHtml}
 </div>
             <div class="card-name-container">
                 <span>${character.name}</span>
             </div>`;
 
-            if (character.avatar) {
+            if (cardImageSource) {
   const imageContainer = charElement.querySelector('.card-image-container');
   imageContainer.style.backgroundImage = `url('${imageUrl}')`;
 }
@@ -1646,17 +1665,19 @@ document.fonts.ready.then(() => {
 
   const avatarImg = document.getElementById('chat-list-avatar');
   const nameH2 = document.getElementById('chat-list-character-name');
-  
-  const dashboardAvatarUrl = getImageUrl(character.avatar);
+
+  const isWorldChatList = character.type === 'world';
+  const dashboardAvatarUrl = getImageUrl(isWorldChatList ? character.background : character.avatar);
 const avatarContainer = document.getElementById('chat-list-avatar-container');
 
 avatarImg.onerror = () => {
     avatarContainer.classList.add('hidden');
     chatListAvatarPlaceholder.classList.remove('hidden');
+    chatListAvatarPlaceholder.textContent = isWorldChatList ? '🌍' : '👤';
 };
 
 if (dashboardAvatarUrl) {
-    avatarImg.src = dashboardAvatarUrl; 
+    avatarImg.src = dashboardAvatarUrl;
     smartObjectFit(avatarImg);
     avatarContainer.style.backgroundImage = `url('${dashboardAvatarUrl}')`;
     avatarContainer.classList.remove('hidden');
@@ -1664,6 +1685,7 @@ if (dashboardAvatarUrl) {
 } else {
     avatarContainer.classList.add('hidden');
     chatListAvatarPlaceholder.classList.remove('hidden');
+    chatListAvatarPlaceholder.textContent = isWorldChatList ? '🌍' : '👤';
     avatarContainer.style.backgroundImage = 'none';
 }
   nameH2.textContent = character.name;
@@ -2195,11 +2217,14 @@ chatScreen.style.pointerEvents = 'auto';
 
     chatCharacterName.textContent = chat.name;
 
-    const headerAvatarUrl = character.avatar;
+    const isWorldChat = character.type === 'world';
+    if (chatWorldBadge) chatWorldBadge.classList.toggle('hidden', !isWorldChat);
+    const headerAvatarUrl = isWorldChat ? character.background : character.avatar;
 
 chatAvatar.onerror = () => {
     chatAvatar.classList.add('hidden');
     chatAvatarPlaceholder.classList.remove('hidden');
+    chatAvatarPlaceholder.textContent = isWorldChat ? '🌍' : '👤';
 };
 
 if (headerAvatarUrl) {
@@ -2210,6 +2235,7 @@ if (headerAvatarUrl) {
 } else {
     chatAvatar.classList.add('hidden');
     chatAvatarPlaceholder.classList.remove('hidden');
+    chatAvatarPlaceholder.textContent = isWorldChat ? '🌍' : '👤';
 }
 
     const chatScreenDiv = document.getElementById('chat-screen');
@@ -2269,6 +2295,7 @@ async function createNewChat(initialMessage = null, scenarioName = null) {
     if (!character.chats) {
         character.chats = {};
     }
+    const isWorldCard = character.type === 'world';
     const newChatId = 'chat-' + Date.now();
     let newName;
     if (scenarioName) {
@@ -2283,18 +2310,21 @@ async function createNewChat(initialMessage = null, scenarioName = null) {
         const messageObject = {
             id: 'msg-' + Date.now(),
             sender: 'ai',
-            type: 'dialog',
+            type: isWorldCard ? 'story' : 'dialog',
             variations: [{ main: initialMessage, think: null }],
             activeVariant: 0
         };
         history.push(messageObject);
     }
+    const worldParticipants = isWorldCard
+        ? [currentCharacterId, ...(character.characterIds || []).filter(id => characters[id])]
+        : [currentCharacterId];
     character.chats[newChatId] = {
         id: newChatId,
         name: newName,
         history: history,
         memories: '',
-        participants: [currentCharacterId],
+        participants: worldParticipants,
         activePersonaId: null,
         mood: null
     };
@@ -2542,14 +2572,14 @@ messageWrapper.appendChild(avatarContainer);
             thinkText = null;
         }
         
-        if (message.type !== 'story') { 
+        if (message.type !== 'story') {
             const speakerId = message.speakerId || currentCharacterId;
             const speakerCharacter = characters[speakerId];
-            
-            if (speakerCharacter) {
+
+            if (speakerCharacter && speakerCharacter.type !== 'world') {
                 const avatarUrl = speakerCharacter.avatar;
                 const avatarContainer = document.createElement('div');
-avatarContainer.className = 'message-avatar'; 
+avatarContainer.className = 'message-avatar';
 
 const placeholderDiv = document.createElement('div');
 placeholderDiv.className = 'message-avatar placeholder-icon';
@@ -2871,7 +2901,32 @@ const startTime = Date.now();
     if (persona) {
         fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
-    if (type === 'story') {
+    const isWorldChat = characters[currentCharacterId]?.type === 'world';
+    const worldChar = isWorldChat ? characters[currentCharacterId] : null;
+
+    if (isWorldChat) {
+        const worldName = worldChar.name || 'This World';
+        if (worldChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldChar.description.trim()}\n\n`;
+        if (worldChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldChar.lore.trim()}\n\n`;
+        if (targetCharId === currentCharacterId || type === 'story') {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            if (worldChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldChar.instructions, worldChar.chatName || worldName), persona).trim()}\n\n`;
+            const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
+            if (worldChars.length > 0) {
+                fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
+                worldChars.forEach(pid => {
+                    const pChar = characters[pid];
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                });
+                fullSystemPrompt += `\n`;
+            }
+        } else {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
+            if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
+            if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
+            if (targetCharacter.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${targetCharacter.lore.trim()}\n\n`;
+        }
+    } else if (type === 'story') {
         fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any character and narrate the scene objectively.]\n\n`;
         fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
         chat.participants.forEach(pid => {
@@ -3338,6 +3393,8 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
 
     const characterForAPI = { ...speakerCharacter };
     let fullSystemPrompt = '';
+    const isWorldRegenChat = characters[currentCharacterId]?.type === 'world';
+    const worldRegenChar = isWorldRegenChat ? characters[currentCharacterId] : null;
 
     if (modelSettings && modelSettings.instructions && modelSettings.instructions.trim() !== '') {
   fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${
@@ -3345,16 +3402,41 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
   }\n\n`;
 }
 
-    const hasCustomNarratorReminder = speakerCharacter.narratorReminder && speakerCharacter.narratorReminder.trim() !== '';
-    if (messageType === 'story' && !hasCustomNarratorReminder) {
-        fullSystemPrompt += `[SYSTEM INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any main character and narrate the scene objectively.]\n\n`;
-    }
     if (persona) {
         fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
-    if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-    if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-    if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+
+    if (isWorldRegenChat) {
+        const worldName = worldRegenChar.name || 'This World';
+        if (worldRegenChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldRegenChar.description.trim()}\n\n`;
+        if (worldRegenChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldRegenChar.lore.trim()}\n\n`;
+        if (speakerId === currentCharacterId || messageType === 'story') {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            if (worldRegenChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldRegenChar.instructions, worldRegenChar.chatName || worldName), persona).trim()}\n\n`;
+            const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
+            if (worldChars.length > 0) {
+                fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
+                worldChars.forEach(pid => {
+                    const pChar = characters[pid];
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                });
+                fullSystemPrompt += `\n`;
+            }
+        } else {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
+            if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
+            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
+            if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
+        }
+    } else {
+        const hasCustomNarratorReminder = speakerCharacter.narratorReminder && speakerCharacter.narratorReminder.trim() !== '';
+        if (messageType === 'story' && !hasCustomNarratorReminder) {
+            fullSystemPrompt += `[SYSTEM INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any main character and narrate the scene objectively.]\n\n`;
+        }
+        if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
+        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
+        if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+    }
     if (chat.mood) {
         fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
     }
@@ -3379,7 +3461,7 @@ const coldStartTimer = setTimeout(() => {
         messageToUpdate.variations[message.activeVariant].main = "Connecting to AI Model - Please wait or regenerate the message.";
         updateSingleMessageView(messageId);
     }
-}, 20000); 
+}, 20000);
 
 const serverHungTimer = setTimeout(() => {
     const messageToUpdate = chat.history.find(m => m.id === messageId);
@@ -3845,15 +3927,42 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
 
     const characterForAPI = { ...speakerCharacter };
     let fullSystemPrompt = '';
+    const isWorldContChat = characters[currentCharacterId]?.type === 'world';
+    const worldContChar = isWorldContChat ? characters[currentCharacterId] : null;
+
     if (modelSettings && modelSettings.instructions && modelSettings.instructions.trim() !== '') {
         fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(modelSettings.instructions.trim(), charNameForAI), persona)}\n\n`;
     }
     if (persona) {
         fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
-    if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-    if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-    if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+    if (isWorldContChat) {
+        const worldName = worldContChar.name || 'This World';
+        if (worldContChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldContChar.description.trim()}\n\n`;
+        if (worldContChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldContChar.lore.trim()}\n\n`;
+        if (speakerId === currentCharacterId || messageType === 'story') {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            if (worldContChar.instructions) fullSystemPrompt += `--- NARRATOR AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(worldContChar.instructions, worldContChar.chatName || worldName), persona).trim()}\n\n`;
+            const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
+            if (worldChars.length > 0) {
+                fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
+                worldChars.forEach(pid => {
+                    const pChar = characters[pid];
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                });
+                fullSystemPrompt += `\n`;
+            }
+        } else {
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
+            if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
+            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
+            if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
+        }
+    } else {
+        if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
+        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
+        if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+    }
     if (chat.mood) {
         fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
     }
@@ -4265,7 +4374,7 @@ function updateSingleMessageView(messageId) {
     function closeEditor() {
     if (charGenAbortController) { charGenAbortController.abort(); charGenAbortController = null; }
     const genBtn = document.getElementById('ai-generate-char-btn');
-    if (genBtn) { genBtn.textContent = 'Generate'; genBtn.disabled = false; }
+    if (genBtn) { genBtn.textContent = cardTypeWorldRadio.checked ? '✨ AI Generate World' : '✨ AI Generate Character'; genBtn.disabled = false; }
     document.getElementById('card-name').style.height = 'auto';
     tempUploadedImages = {};
     characterEditorModalContent.scrollTop = 0;
@@ -4274,9 +4383,106 @@ function updateSingleMessageView(messageId) {
 
 
 
+    function updateEditorForType(type) {
+    const isWorld = type === 'world';
+    editorAvatarUrlGroup.classList.toggle('hidden', isWorld);
+    worldCharPickerSection.classList.toggle('hidden', !isWorld);
+    typeOptionCharacter.classList.toggle('is-active', !isWorld);
+    typeOptionWorld.classList.toggle('is-active', isWorld);
+    document.querySelector('.editor-header h2').textContent = isWorld ? 'World Editor' : 'Character Editor';
+    document.getElementById('save-edit-btn-top').textContent = isWorld ? 'Save World' : 'Save Character';
+    document.getElementById('save-edit-btn-bottom').textContent = isWorld ? 'Save World' : 'Save Character';
+    document.getElementById('char-reminder-label').textContent = isWorld ? 'World Rules:' : 'Character Reminder:';
+    document.getElementById('char-description-label').textContent = isWorld ? 'World Description:' : 'Character Description:';
+    const genBtn = document.getElementById('ai-generate-char-btn');
+    if (genBtn) genBtn.textContent = isWorld ? '✨ AI Generate World' : '✨ AI Generate Character';
+    document.getElementById('card-name').placeholder = isWorld
+        ? "e.g., 'The Iron Reaches - Steampunk Empire'"
+        : "e.g., 'Natsuki Subaru - Re:Zero'";
+    document.getElementById('chat-name').placeholder = isWorld ? "e.g., 'Narrator'" : "e.g., 'Subaru'";
+    document.getElementById('char-description').placeholder = isWorld
+        ? 'Setting overview, geography, atmosphere, society, factions, tone etc.'
+        : 'Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc.';
+    document.getElementById('char-lore').placeholder = isWorld
+        ? 'Historical events, myths, creation stories, notable conflicts, secrets of this world etc.'
+        : 'Deeper Background Story, World & Relationships of the Character, Fun Facts etc.';
+    document.getElementById('char-instructions').placeholder = isWorld
+        ? "Narrator AI instructions... (e.g., 'Narrate in a grim, literary tone.')"
+        : "General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')";
+    document.getElementById('char-reminder').placeholder = isWorld
+        ? "World rules the AI must always follow... (e.g., 'Magic is forbidden by law.')"
+        : "Character Reminder for this character... (e.g., 'Reply only as {{char}} now.')";
+    document.getElementById('char-narrator-reminder').placeholder = isWorld
+        ? "Narrator Reminder... (e.g., 'Switch to third-person narrator voice now.')"
+        : "Narrator Reminder for this character... (e.g., 'Reply only as an omniscient narrator now.')";
+    const loreLabelEl = document.querySelector('label[for="char-lore"]');
+    if (loreLabelEl) loreLabelEl.textContent = isWorld ? 'World Lore:' : 'Lorebook:';
+    const instrLabelEl = document.querySelector('label[for="char-instructions"]');
+    if (instrLabelEl) instrLabelEl.textContent = isWorld ? 'Narrator AI Instructions:' : 'AI Instructions:';
+    const narrReminderLabelEl = document.querySelector('label[for="char-narrator-reminder"]');
+    if (narrReminderLabelEl) narrReminderLabelEl.textContent = isWorld ? 'World Narrator Reminder:' : 'Narrator Reminder:';
+    if (isWorld) {
+        const worldCharSearch = document.getElementById('world-char-search');
+        if (worldCharSearch) {
+            worldCharSearch.value = '';
+            worldCharSearch.oninput = () => populateWorldCharPicker();
+        }
+        populateWorldCharPicker();
+    }
+}
+
+function populateWorldCharPicker() {
+    worldCharPickerList.innerHTML = '';
+    const searchTerm = (document.getElementById('world-char-search')?.value || '').toLowerCase().trim();
+    const editingId = editingCharField.value;
+    const chars = Object.values(characters)
+        .filter(c => c.type !== 'world' && c.id !== editingId && (searchTerm === '' || (c.name || '').toLowerCase().includes(searchTerm)))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    if (chars.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'world-char-picker-empty';
+        empty.textContent = 'No characters yet. Create some characters first.';
+        worldCharPickerList.appendChild(empty);
+        return;
+    }
+    chars.forEach(char => {
+        const avatarUrl = getImageUrl(char.avatar);
+        const avatarHtml = avatarUrl
+            ? `<img src="${avatarUrl}" alt="Avatar" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon hidden">👤</div>`
+            : `<div class="placeholder-icon">👤</div>`;
+
+        const row = document.createElement('label');
+        row.className = 'participant-option-btn';
+        row.style.justifyContent = 'space-between';
+        row.style.boxSizing = 'border-box';
+
+        const left = document.createElement('div');
+        left.style.cssText = 'display:flex;align-items:center;gap:10px;';
+        left.innerHTML = `${avatarHtml}<span>${char.name}</span>`;
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = char.id;
+        cb.checked = worldCharSelectedIds.has(char.id);
+        cb.addEventListener('change', () => {
+            if (cb.checked) worldCharSelectedIds.add(char.id);
+            else worldCharSelectedIds.delete(char.id);
+        });
+
+        row.appendChild(left);
+        row.appendChild(cb);
+        worldCharPickerList.appendChild(row);
+    });
+}
+
+cardTypeCharacterRadio.addEventListener('change', () => updateEditorForType('character'));
+cardTypeWorldRadio.addEventListener('change', () => { worldCharSelectedIds = new Set(); updateEditorForType('world'); });
+
     function openEditorForNew() {
     tempUploadedImages = {};
     characterForm.reset();
+    cardTypeCharacterRadio.checked = true;
+    updateEditorForType('character');
     const textareas = characterForm.querySelectorAll('textarea');
     textareas.forEach(ta => {
         ta.style.height = 'auto';
@@ -4304,7 +4510,7 @@ function updateSingleMessageView(messageId) {
   function openEditorForEdit() {
   if (!currentCharacterId) return;
   const character = characters[currentCharacterId];
-  if (!character) return; 
+  if (!character) return;
   const textareas = characterForm.querySelectorAll('textarea');
     textareas.forEach(ta => {
     ta.style.height = 'auto';
@@ -4313,17 +4519,28 @@ function updateSingleMessageView(messageId) {
 
   characterForm.reset();
 
+  const charType = character.type || 'character';
+  const isWorld = charType === 'world';
+  if (isWorld) {
+      cardTypeWorldRadio.checked = true;
+  } else {
+      cardTypeCharacterRadio.checked = true;
+  }
+  worldCharSelectedIds = new Set(character.characterIds || []);
+  updateEditorForType(charType);
+
   const avatarUrl = getImageUrl(character.avatar);
   const backgroundUrl = getImageUrl(character.background);
-  const editorAvatarContainer = editorAvatarImg.parentElement; 
+  const editorAvatarContainer = editorAvatarImg.parentElement;
 
-if (avatarUrl) {
-    editorAvatarImg.src = avatarUrl;
+  const editorDisplayUrl = isWorld ? backgroundUrl : avatarUrl;
+if (editorDisplayUrl) {
+    editorAvatarImg.src = editorDisplayUrl;
     smartObjectFit(editorAvatarImg);
     editorAvatarImg.classList.remove('hidden');
     editorAvatarPlaceholder.classList.add('hidden');
     editorAvatarContainer.classList.add('effect-container');
-    editorAvatarContainer.style.backgroundImage = `url('${avatarUrl}')`;
+    editorAvatarContainer.style.backgroundImage = `url('${editorDisplayUrl}')`;
 } else {
     editorAvatarImg.src = '';
     editorAvatarImg.classList.add('hidden');
@@ -4539,8 +4756,8 @@ function openParticipantModal(searchTerm = '') {
   });
 
   const lowerCaseSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredCharacters = sortedCharacters.filter(char => 
-    char.name.toLowerCase().includes(lowerCaseSearchTerm)
+  const filteredCharacters = sortedCharacters.filter(char =>
+    char.type !== 'world' && char.name.toLowerCase().includes(lowerCaseSearchTerm)
   );
 
   filteredCharacters.forEach(char => {
@@ -4875,6 +5092,8 @@ async function setActivePersonaForChat(personaId) {
   const reminder = document.getElementById('char-reminder').value;
   const narratorReminder = document.getElementById('char-narrator-reminder').value;
   const musicUrl = document.getElementById('char-music-url').value.trim();
+  const cardType = cardTypeWorldRadio.checked ? 'world' : 'character';
+  const characterIds = cardType === 'world' ? Array.from(worldCharSelectedIds) : [];
   const scenarioEntries = document.querySelectorAll('.scenario-entry');
   const scenarios = [];
   scenarioEntries.forEach(entry => {
@@ -4893,7 +5112,7 @@ async function setActivePersonaForChat(personaId) {
     const character = characters[charIdToEdit];
     character.name = cardName;
     character.chatName = chatName;
-    character.avatar = finalAvatar;
+    character.avatar = cardType === 'world' ? '' : finalAvatar;
     character.background = finalBackground;
     character.instructions = instructions;
     character.description = description;
@@ -4903,13 +5122,15 @@ async function setActivePersonaForChat(personaId) {
     character.narratorReminder = narratorReminder;
     character.musicUrl = musicUrl;
     character.scenarios = scenarios;
+    character.type = cardType;
+    character.characterIds = characterIds;
     await saveSingleCharacterToDB(character);
   } else {
     const newCharacter = {
       id: 'char-' + Date.now(),
       name: cardName,
       chatName: chatName,
-      avatar: finalAvatar,
+      avatar: cardType === 'world' ? '' : finalAvatar,
       background: finalBackground,
       instructions: instructions,
       description: description,
@@ -4919,6 +5140,8 @@ async function setActivePersonaForChat(personaId) {
       narratorReminder: narratorReminder,
       musicUrl: musicUrl,
       scenarios: scenarios,
+      type: cardType,
+      characterIds: characterIds,
       chats: {}
     };
     characters[newCharacter.id] = newCharacter;
@@ -5310,7 +5533,7 @@ personaEditorAvatarImg.onerror = () => {
         quickSwapCharacterList.innerHTML = '';
         const lc = (filter || '').toLowerCase();
         const items = Object.values(characters).filter(c =>
-            c.id !== currentCharacterId && c.name.toLowerCase().includes(lc)
+            c.id !== currentCharacterId && c.type !== 'world' && c.name.toLowerCase().includes(lc)
         ).sort((a, b) => a.name.localeCompare(b.name));
         if (!items.length) {
             quickSwapCharacterList.innerHTML = '<p style="text-align:center;opacity:0.6;padding:16px">No characters found.</p>';
@@ -6513,7 +6736,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         }
     });
 
-    function showCharacterGeneratorModal(isEditing) {
+    function showCharacterGeneratorModal(isEditing, isWorld = false) {
         return new Promise(resolve => {
             const overlay = document.createElement('div');
             overlay.className = 'custom-alert-overlay';
@@ -6523,28 +6746,34 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 
             const h3 = document.createElement('h3');
             h3.style.cssText = 'margin:0 0 10px;font-size:1.05em;';
-            h3.textContent = '✨ AI Generate Character';
+            h3.textContent = isWorld ? '✨ AI Generate World' : '✨ AI Generate Character';
             modal.appendChild(h3);
 
             const p = document.createElement('p');
             p.style.cssText = 'margin:0 0 12px;font-size:0.9em;color:#ccc;line-height:1.5;';
-            p.textContent = 'Describe the character you want to create. The AI will generate a complete character card — name, description, tags, and AI instructions.';
+            p.textContent = isWorld
+                ? 'Describe the world you want to create. The AI will generate a complete world card — name, setting description, lore, narrator instructions, and tags.'
+                : 'Describe the character you want to create. The AI will generate a complete character card — name, description, tags, and AI instructions.';
             modal.appendChild(p);
 
             if (isEditing) {
                 const warn = document.createElement('p');
                 warn.style.cssText = 'margin:0 0 12px;font-size:0.85em;color:#ffaa44;background:rgba(255,150,50,0.08);padding:8px 10px;border-radius:6px;border:1px solid rgba(255,150,50,0.25);';
-                warn.textContent = '⚠️ You are editing an existing character. All text fields (description, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.';
+                warn.textContent = isWorld
+                    ? '⚠️ You are editing an existing world. All text fields (description, lore, tags, instructions) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.'
+                    : '⚠️ You are editing an existing character. All text fields (description, tags, instructions, names) will be OVERWRITTEN with newly generated content. Images are kept. This cannot be undone automatically.';
                 modal.appendChild(warn);
             }
 
             const descLabel = document.createElement('label');
-            descLabel.textContent = 'Character concept (optional):';
+            descLabel.textContent = isWorld ? 'World concept (optional):' : 'Character concept (optional):';
             descLabel.style.cssText = 'display:block;margin:0 0 5px;font-size:0.85em;color:#bbb;';
             modal.appendChild(descLabel);
 
             const descInput = document.createElement('textarea');
-            descInput.placeholder = 'e.g. "A sarcastic tsundere vampire knight from medieval Japan who loves poetry."\n\nor: "Makima, your possessive mother." (with fandom wiki url)';
+            descInput.placeholder = isWorld
+                ? 'e.g. "A grimdark post-apocalyptic steampunk empire run by immortal machine-gods."\n\nor paste a lore wiki URL below.'
+                : 'e.g. "A sarcastic tsundere vampire knight from medieval Japan who loves poetry."\n\nor: "Makima, your possessive mother." (with fandom wiki url)';
             descInput.rows = 4;
             descInput.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:14px;box-sizing:border-box;resize:vertical;font-family:inherit;';
             modal.appendChild(descInput);
@@ -6587,7 +6816,9 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 
             const urlNote = document.createElement('p');
             urlNote.style.cssText = 'margin:0 0 14px;font-size:0.78em;color:#777;line-height:1.4;';
-            urlNote.textContent = 'Paste a character wiki or profile page. The AI will read its content and use it as reference for the character card.';
+            urlNote.textContent = isWorld
+                ? 'Paste a world wiki or lore page. The AI will read its content and use it as reference for the world card.'
+                : 'Paste a character wiki or profile page. The AI will read its content and use it as reference for the character card.';
             modal.appendChild(urlNote);
 
             const btns = document.createElement('div');
@@ -6614,11 +6845,12 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         });
     }
 
-    // Feature 4: AI-assisted character creation
+    // Feature 4: AI-assisted character/world creation
     let charGenAbortController = null;
     document.getElementById('ai-generate-char-btn')?.addEventListener('click', async () => {
         const isEditing = !!editingCharField.value;
-        const result = await showCharacterGeneratorModal(isEditing);
+        const isWorld = cardTypeWorldRadio.checked;
+        const result = await showCharacterGeneratorModal(isEditing, isWorld);
         if (!result || !result.modelId) return;
         const { desc, modelId: selectedModelId, referenceUrl } = result;
         const btn = document.getElementById('ai-generate-char-btn');
@@ -6656,7 +6888,22 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 } catch (e) { if (e?.name === 'AbortError') throw e; refFailed = true; }
                 btn.innerHTML = '<span class="btn-spinner"></span> Generating…';
             }
-            const systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
+            let systemPrompt, userMessage;
+            if (isWorld) {
+                systemPrompt = `You are a creative world designer for an AI roleplay app. Given a world concept, output a JSON object with exactly these keys:
+- worldName: full display name for the world card (e.g. "The Iron Reaches - Steampunk Empire")
+- chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
+- description: a single plain string — a rich setting overview covering geography/environment, atmosphere/tone, society/factions, and daily life. 300-500 words. Plain text, no nested JSON.
+- lore: a single plain string — key historical events, myths, creation stories, notable conflicts, and secrets of this world. 200-400 words. Plain text.
+- instructions: a few bullet points of AI narrator behavior guidance (e.g. "Narrate in a grim, literary tone.\\nDescribe environments vividly before introducing characters.\\nNPCs have distinct dialects.")
+- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nTech level is equivalent to 1880s Earth.")
+- tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
+Output ONLY the raw JSON object. No markdown fences, no commentary.`;
+                userMessage = refContent
+                    ? `Create a world based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
+                    : desc ? `Create a world based on this concept: ${desc}` : 'Create a random interesting world.';
+            } else {
+                systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
 - cardName: full display name for the card (e.g. "Yuki Tanaka - Vampire Knight")
 - chatName: short in-chat first name (e.g. "Yuki")
 - description: a single plain string — detailed character profile in Steckbrief style, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Keep each section to a few short phrases or sentences. Total description under 500 words:
@@ -6671,9 +6918,10 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 - tags: 10-20 comma-separated tags (genre, personality type, hair color etc.)
 - instructions: A few bullet points of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
-            const userMessage = refContent
-                ? `Create a character based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
-                : desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
+                userMessage = refContent
+                    ? `Create a character based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
+                    : desc ? `Create a character based on this concept: ${desc}` : 'Create a random interesting character.';
+            }
             // Escape bare newlines/tabs inside JSON string values (common AI output issue)
             const normalizeJson = s => s.replace(/"(?:[^"\\]|\\.)*"/gs, m => m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'));
             const result = normalizeJson(await callAISimple(systemPrompt, userMessage, selectedModelId, signal));
@@ -6710,28 +6958,54 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
             } catch (e) {
                 throw new Error(`Could not parse AI response. Got: "${result.slice(0, 120)}"`);
             }
-            if (parsed.cardName) {
-                document.getElementById('card-name').value = parsed.cardName;
-                autoResizeTextarea({ target: document.getElementById('card-name') });
-            }
-            if (parsed.chatName) document.getElementById('chat-name').value = parsed.chatName;
-            if (parsed.description) {
-                const descRaw = parsed.description;
-                charDescriptionInput.value = typeof descRaw === 'object'
-                    ? Object.entries(descRaw).map(([k, v]) => `${k}\n${v}`).join('\n\n')
-                    : String(descRaw);
-                autoResizeTextarea({ target: charDescriptionInput });
-            }
-            if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
-            if (parsed.instructions) {
-                charInstructionsInput.value = parsed.instructions;
-                autoResizeTextarea({ target: charInstructionsInput });
+            if (isWorld) {
+                if (parsed.worldName) {
+                    document.getElementById('card-name').value = parsed.worldName;
+                    autoResizeTextarea({ target: document.getElementById('card-name') });
+                }
+                if (parsed.chatName) document.getElementById('chat-name').value = parsed.chatName;
+                if (parsed.description) {
+                    charDescriptionInput.value = String(parsed.description);
+                    autoResizeTextarea({ target: charDescriptionInput });
+                }
+                if (parsed.lore) {
+                    charLoreInput.value = String(parsed.lore);
+                    autoResizeTextarea({ target: charLoreInput });
+                }
+                if (parsed.instructions) {
+                    charInstructionsInput.value = String(parsed.instructions);
+                    autoResizeTextarea({ target: charInstructionsInput });
+                }
+                if (parsed.worldRules) {
+                    const reminderEl = document.getElementById('char-reminder');
+                    reminderEl.value = String(parsed.worldRules);
+                    autoResizeTextarea({ target: reminderEl });
+                }
+                if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
+            } else {
+                if (parsed.cardName) {
+                    document.getElementById('card-name').value = parsed.cardName;
+                    autoResizeTextarea({ target: document.getElementById('card-name') });
+                }
+                if (parsed.chatName) document.getElementById('chat-name').value = parsed.chatName;
+                if (parsed.description) {
+                    const descRaw = parsed.description;
+                    charDescriptionInput.value = typeof descRaw === 'object'
+                        ? Object.entries(descRaw).map(([k, v]) => `${k}\n${v}`).join('\n\n')
+                        : String(descRaw);
+                    autoResizeTextarea({ target: charDescriptionInput });
+                }
+                if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
+                if (parsed.instructions) {
+                    charInstructionsInput.value = parsed.instructions;
+                    autoResizeTextarea({ target: charInstructionsInput });
+                }
             }
             updateEditorTokenCount();
-            if (refFailed) showCustomAlert('⚠️ The reference URL could not be read (the page may block bots or require login). The character was generated without it — you can edit the fields manually.');
+            if (refFailed) showCustomAlert(`⚠️ The reference URL could not be read (the page may block bots or require login). The ${isWorld ? 'world' : 'character'} was generated without it — you can edit the fields manually.`);
         } catch (err) {
             if (err?.name === 'AbortError') return;
-            showCustomAlert(_formatAIError(err, 'Character generation'));
+            showCustomAlert(_formatAIError(err, isWorld ? 'World generation' : 'Character generation'));
         } finally {
             charGenAbortController = null;
             btn.textContent = originalText;
