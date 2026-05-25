@@ -58,18 +58,24 @@ const defaultSettings = {
         userBubbleOpacity: '0.7',
         aiBubbleColor: '#141414',
         aiBubbleOpacity: '0.7',
-        messageSpacing: '50', 
+        messageSpacing: '50',
         soundEnabled: 'true',
         thinkEnabled: 'true',
         replyOptionsEnabled: 'true',
         blur: '5',
         avatarSize: '200',
+        ttsEnabled: 'false',
+        ttsVoiceURI: '',
+        replyLength: 'default',
     };
 
     let audioCtx;
     let soundEnabled = true;
     let thinkEnabled = true;
     let replyOptionsEnabled = true;
+    let ttsEnabled = false;
+    let ttsCurrentVoiceURI = '';
+    let replyLength = 'default';
     let replyOptionsLoading = false;
     let pendingReplyOptions = null;
     let replyOptionsReqId = 0;
@@ -960,14 +966,29 @@ async function resetAppSettings() {
                 root.style.setProperty('--message-blur', `${value}px`);
                 break;
                 case 'avatarSize':
-                
+
                 avatarSizeValue.textContent = `${value}px`;
-             
+
                 root.style.setProperty('--ai-avatar-size', `${value}px`);
-          
+
                 const placeholderIconSize = Math.round(value * 0.6);
-        
+
                 root.style.setProperty('--ai-placeholder-icon-size', `${placeholderIconSize}px`);
+                break;
+            case 'ttsEnabled':
+                ttsEnabled = (value === 'true' || value === true);
+                const ttsToggleEl = document.getElementById('tts-toggle');
+                if (ttsToggleEl) ttsToggleEl.checked = ttsEnabled;
+                break;
+            case 'ttsVoiceURI':
+                ttsCurrentVoiceURI = value || '';
+                const ttsVoiceSelectEl = document.getElementById('tts-voice-select');
+                if (ttsVoiceSelectEl) ttsVoiceSelectEl.value = ttsCurrentVoiceURI;
+                break;
+            case 'replyLength':
+                replyLength = value || 'default';
+                const replyLengthSelectEl = document.getElementById('reply-length-select');
+                if (replyLengthSelectEl) replyLengthSelectEl.value = replyLength;
                 break;
         }
     }
@@ -1020,6 +1041,9 @@ async function resetAppSettings() {
         blur: blurSlider,
         avatarSize: avatarSizeSlider,
         model: modelSelect,
+        ttsEnabled: document.getElementById('tts-toggle'),
+        ttsVoiceURI: document.getElementById('tts-voice-select'),
+        replyLength: document.getElementById('reply-length-select'),
     };
 
     for (const key in defaultSettings) {
@@ -1860,14 +1884,17 @@ chatScreen.style.pointerEvents = 'none';
 
 
     function showCharacterSelection() {
+        stopParticles();
+        if (window._musicFeatureReady) stopMusic();
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
         chatWindow.style.display = 'none';
-    void chatWindow.offsetHeight; 
+    void chatWindow.offsetHeight;
     chatWindow.style.display = 'flex';
     chatScreen.classList.add('is-inactive');
     characterSelectionScreen.style.pointerEvents = 'auto';
 chatListScreen.style.pointerEvents = 'none';
 chatScreen.style.pointerEvents = 'none';
-    settingsPanel.classList.add('hidden'); 
+    settingsPanel.classList.add('hidden');
     const lastCharId = localStorage.getItem('activeCharacterId');
     if (lastCharId && characters[lastCharId]) {
         showChatList(lastCharId);
@@ -2204,6 +2231,18 @@ if (headerAvatarUrl) {
     renderParticipantIcons();
     updateChatMemoriesButtonState();
     updateTokenCount();
+    updateMoodButton();
+    updateParticleButton();
+    startParticles(character.particleEffect || 'none', character.particleIntensityLevel);
+    const musicUrlInputEl = document.getElementById('music-url-input');
+    if (musicUrlInputEl) {
+        const savedUserUrl = localStorage.getItem(`userMusicUrl:${currentCharacterId}`);
+        const effectiveUrl = (savedUserUrl !== null) ? savedUserUrl : (character.musicUrl || '');
+        musicUrlInputEl.value = effectiveUrl;
+        if (window._musicFeatureReady) {
+            if (effectiveUrl) playMusic(effectiveUrl); else stopMusic();
+        }
+    }
     await saveSingleCharacterToDB(character);
 if (window.__scrollToBottomNextStartChat) {
     setTimeout(() => {
@@ -2256,7 +2295,8 @@ async function createNewChat(initialMessage = null, scenarioName = null) {
         history: history,
         memories: '',
         participants: [currentCharacterId],
-        activePersonaId: null
+        activePersonaId: null,
+        mood: null
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -2574,6 +2614,21 @@ messageWrapper.appendChild(avatarContainer);
     editBtn.title = 'Edit message';
     editBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`;
     actionGroup.appendChild(editBtn);
+    if (message.sender === 'ai' && 'speechSynthesis' in window) {
+        const ttsBtn = document.createElement('button');
+        ttsBtn.className = 'tts-btn message-action-btn';
+        ttsBtn.title = 'Read aloud';
+        ttsBtn.textContent = '🔊';
+        ttsBtn.addEventListener('click', () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                ttsBtn.textContent = '🔊';
+            } else {
+                speakText(mainText, message.id);
+            }
+        });
+        actionGroup.appendChild(ttsBtn);
+    }
     messageElement.appendChild(actionGroup);
 
     if (message.sender === 'ai') {
@@ -2669,6 +2724,7 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
 async function handleChatSubmit(type) {
     hideUndoDeleteFab();
+    pendingReplyOptions = null;
     hideReplyOptionsDropdown();
     const userMessageRaw = messageInput.value.trim();
     messageInput.value = '';
@@ -2842,10 +2898,17 @@ const startTime = Date.now();
         if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
         if (targetCharacter.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetCharacter.lore.trim()}\n\n`;
     }
+    if (chat.mood) {
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+    }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
     const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
@@ -3093,6 +3156,9 @@ if (elapsedTime > 20000) {
                 await saveSingleCharacterToDB(mainCharacter);
                 playNotificationSound();
                 updateTokenCount();
+                if (!streamAbortedByUser && ttsEnabled && finalMainText) {
+                    speakText(finalMainText, newMessageId);
+                }
                 break;
             } else {
                 console.log(`Attempt ${attempt} resulted in an empty response. Retry...`);
@@ -3289,10 +3355,17 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
     if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
     if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+    if (chat.mood) {
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+    }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
@@ -3781,10 +3854,17 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
     if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
     if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+    if (chat.mood) {
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+    }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
@@ -4263,7 +4343,8 @@ if (avatarUrl) {
   document.getElementById('char-tags').value = character.tags || '';
   document.getElementById('char-reminder').value = character.reminder || '';
   document.getElementById('char-narrator-reminder').value = character.narratorReminder || '';
-  
+  document.getElementById('char-music-url').value = character.musicUrl || '';
+
   const scenarioListDiv = document.getElementById('scenario-editor-list');
   scenarioListDiv.innerHTML = '';
   if (character.scenarios && character.scenarios.length > 0 && typeof character.scenarios[0] === 'string') {
@@ -4793,6 +4874,7 @@ async function setActivePersonaForChat(personaId) {
   const tags = document.getElementById('char-tags').value;
   const reminder = document.getElementById('char-reminder').value;
   const narratorReminder = document.getElementById('char-narrator-reminder').value;
+  const musicUrl = document.getElementById('char-music-url').value.trim();
   const scenarioEntries = document.querySelectorAll('.scenario-entry');
   const scenarios = [];
   scenarioEntries.forEach(entry => {
@@ -4809,7 +4891,7 @@ async function setActivePersonaForChat(personaId) {
 
   if (charIdToEdit) {
     const character = characters[charIdToEdit];
-    character.name = cardName; 
+    character.name = cardName;
     character.chatName = chatName;
     character.avatar = finalAvatar;
     character.background = finalBackground;
@@ -4819,6 +4901,7 @@ async function setActivePersonaForChat(personaId) {
     character.tags = tags;
     character.reminder = reminder;
     character.narratorReminder = narratorReminder;
+    character.musicUrl = musicUrl;
     character.scenarios = scenarios;
     await saveSingleCharacterToDB(character);
   } else {
@@ -4834,13 +4917,14 @@ async function setActivePersonaForChat(personaId) {
       tags: tags,
       reminder: reminder,
       narratorReminder: narratorReminder,
+      musicUrl: musicUrl,
       scenarios: scenarios,
       chats: {}
     };
     characters[newCharacter.id] = newCharacter;
     await saveSingleCharacterToDB(newCharacter);
   }
-  
+
   renderCharacterList();
   if (currentCharacterId) {
     showChatList(currentCharacterId);
@@ -5214,6 +5298,747 @@ personaEditorAvatarImg.onerror = () => {
 
     // --- NEW FEATURES ---
 
+    // ── Feature F: Quick-Swap ──
+    const quickSwapBtn = document.getElementById('quick-swap-btn');
+    const quickSwapModal = document.getElementById('quick-swap-modal');
+    const quickSwapCharacterList = document.getElementById('quick-swap-character-list');
+    const quickSwapSearchInput = document.getElementById('quick-swap-search-input');
+    const cancelQuickSwapBtn = document.getElementById('cancel-quick-swap-btn');
+
+    function renderQuickSwapList(filter) {
+        if (!quickSwapCharacterList) return;
+        quickSwapCharacterList.innerHTML = '';
+        const lc = (filter || '').toLowerCase();
+        const items = Object.values(characters).filter(c =>
+            c.id !== currentCharacterId && c.name.toLowerCase().includes(lc)
+        ).sort((a, b) => a.name.localeCompare(b.name));
+        if (!items.length) {
+            quickSwapCharacterList.innerHTML = '<p style="text-align:center;opacity:0.6;padding:16px">No characters found.</p>';
+            return;
+        }
+        items.forEach(c => {
+            const item = document.createElement('button');
+            item.className = 'participant-option-btn';
+            const imageUrl = getImageUrl(c.avatar);
+            const avatarHtml = `
+    <img src="${imageUrl}" class="${c.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <div class="placeholder-icon ${c.avatar ? 'hidden' : ''}">👤</div>`;
+            item.innerHTML = avatarHtml;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = c.name;
+            item.appendChild(nameSpan);
+            item.addEventListener('click', () => performQuickSwap(c.id));
+            quickSwapCharacterList.appendChild(item);
+        });
+        smartObjectFitAll('.participant-option-btn img');
+    }
+
+    async function performQuickSwap(newCharId) {
+        if (!currentCharacterId || !currentChatId) return;
+        const oldChar = characters[currentCharacterId];
+        const newChar = characters[newCharId];
+        if (!oldChar || !newChar || !oldChar.chats || !oldChar.chats[currentChatId]) return;
+        const chatToMove = oldChar.chats[currentChatId];
+        if (!newChar.chats) newChar.chats = {};
+        newChar.chats[currentChatId] = chatToMove;
+        delete oldChar.chats[currentChatId];
+        if (quickSwapModal) quickSwapModal.classList.add('hidden');
+        await saveSingleCharacterToDB(oldChar);
+        await saveSingleCharacterToDB(newChar);
+        await startChat(newCharId, currentChatId);
+    }
+
+    if (quickSwapBtn) {
+        quickSwapBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (quickSwapSearchInput) quickSwapSearchInput.value = '';
+            renderQuickSwapList('');
+            if (quickSwapModal) quickSwapModal.classList.remove('hidden');
+        });
+    }
+    if (cancelQuickSwapBtn) cancelQuickSwapBtn.addEventListener('click', () => { if (quickSwapModal) quickSwapModal.classList.add('hidden'); });
+    if (quickSwapModal) quickSwapModal.addEventListener('click', (e) => { if (e.target === quickSwapModal) quickSwapModal.classList.add('hidden'); });
+    if (quickSwapSearchInput) quickSwapSearchInput.addEventListener('input', () => renderQuickSwapList(quickSwapSearchInput.value.trim()));
+
+    // ── Feature A: Mood System ──
+    const moodBtn = document.getElementById('mood-btn');
+    const moodPickerEl = document.getElementById('mood-picker');
+
+    const MOOD_EMOJIS = {
+        Happy: '😊', Sad: '😢', Angry: '😠', Excited: '🤩',
+        Nervous: '😰', Flirty: '😏', Tired: '😴', Curious: '🧐', Scared: '😨', Bored: '😑'
+    };
+
+    function updateMoodButton() {
+        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+        if (!moodBtn) return;
+        const mood = chat?.mood || null;
+        moodBtn.textContent = mood ? (MOOD_EMOJIS[mood] || '😊') : '😊';
+        moodBtn.title = mood ? `Mood: ${mood}` : 'Set Character Mood';
+        moodBtn.classList.toggle('mood-active', !!mood);
+    }
+
+    if (moodBtn) {
+        moodBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (moodPickerEl) moodPickerEl.classList.toggle('hidden');
+        });
+    }
+    document.addEventListener('click', (e) => {
+        if (moodPickerEl && !moodPickerEl.classList.contains('hidden') &&
+            !moodBtn?.contains(e.target) && !moodPickerEl.contains(e.target)) {
+            moodPickerEl.classList.add('hidden');
+        }
+    });
+    if (moodPickerEl) {
+        moodPickerEl.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.mood-option');
+            if (!btn) return;
+            const mood = btn.dataset.mood || null;
+            const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+            if (!chat) return;
+            chat.mood = mood || null;
+            moodPickerEl.classList.add('hidden');
+            updateMoodButton();
+            await saveSingleCharacterToDB(characters[currentCharacterId]);
+        });
+    }
+
+    // ── Feature E: Ambient Particle Effects ──
+    const particleCanvas = document.getElementById('particle-canvas');
+    const particleCtx = particleCanvas ? particleCanvas.getContext('2d') : null;
+    let particleAnimId = null;
+    let particlesList = [];
+    let currentParticleEffect = 'none';
+    const particleBtn = document.getElementById('particle-btn');
+    const particlePickerModal = document.getElementById('particle-picker-modal');
+    const closeParticlePickerBtn = document.getElementById('close-particle-picker-btn');
+    let particleIntensityLevel = 50;
+    let intensityFactor = 1.0;
+    const particleIntensitySlider = document.getElementById('particle-intensity-slider');
+    const particleIntensityValue = document.getElementById('particle-intensity-value');
+    const particleIntensityRow = document.getElementById('particle-intensity-row');
+
+    const PARTICLE_EMOJIS = { none:'✨', snow:'❄️', rain:'🌧️', sparks:'🔥', fireflies:'🟢', sakura:'🌸', fog:'🌫️', steam:'♨️', aurora:'🌌', leaves:'🍂', darkness:'🌑' };
+    function updateParticleButton() {
+        if (!particleBtn) return;
+        const effect = characters[currentCharacterId]?.particleEffect || 'none';
+        particleBtn.textContent = PARTICLE_EMOJIS[effect] || '✨';
+        particleBtn.title = effect !== 'none' ? `Effect: ${effect.charAt(0).toUpperCase()+effect.slice(1)}` : 'Ambient Effects';
+        particleBtn.classList.toggle('particle-active', effect !== 'none');
+    }
+
+    let W = window.innerWidth, H = window.innerHeight;
+    function resizeParticleCanvas() {
+        if (!particleCanvas) return;
+        W = window.innerWidth;
+        H = window.innerHeight;
+        particleCanvas.width = W;
+        particleCanvas.height = H;
+    }
+    resizeParticleCanvas();
+    window.addEventListener('resize', resizeParticleCanvas);
+
+    function stopParticles() {
+        if (particleAnimId) { cancelAnimationFrame(particleAnimId); particleAnimId = null; }
+        if (particleCtx && particleCanvas) particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+        particlesList = [];
+        currentParticleEffect = 'none';
+    }
+
+    function startParticles(effect, savedIntensity) {
+        stopParticles();
+        if (effect === 'none' || !particleCtx || !particleCanvas) return;
+        if (savedIntensity !== undefined) {
+            particleIntensityLevel = savedIntensity;
+            intensityFactor = particleIntensityLevel / 50;
+            if (particleIntensitySlider) particleIntensitySlider.value = particleIntensityLevel;
+            if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
+        }
+        currentParticleEffect = effect;
+        resizeParticleCanvas();
+
+        if (effect === 'snow') {
+            const BASE = 120;
+            const spawnSnow = () => ({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*4+1.5, s: Math.random()*1.2+0.4, drift: (Math.random()-0.5)*0.5, opacity: Math.random()*0.3+0.7 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnSnow());
+            (function drawSnow() {
+                if (currentParticleEffect !== 'snow') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnSnow());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    particleCtx.shadowBlur=8; particleCtx.shadowColor='rgba(200,230,255,0.7)';
+                    particleCtx.fillStyle=`rgba(255,255,255,${Math.min(p.opacity*intensityFactor,1)})`;
+                    particleCtx.strokeStyle='rgba(120,170,220,0.45)'; particleCtx.lineWidth=0.8;
+                    particleCtx.beginPath(); particleCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+                    particleCtx.fill(); particleCtx.stroke(); particleCtx.shadowBlur=0;
+                    p.y+=p.s; p.x+=p.drift;
+                    if (p.y>H) { p.y=-5; p.x=Math.random()*W; }
+                    if (p.x<0||p.x>W) p.x=Math.random()*W;
+                });
+                particleAnimId = requestAnimationFrame(drawSnow);
+            })();
+
+        } else if (effect === 'rain') {
+            const BASE = 150;
+            const spawnRain = () => ({ x: Math.random()*W, y: Math.random()*H, len: Math.random()*25+15, s: Math.random()*6+10, opacity: Math.random()*0.35+0.55 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnRain());
+            (function drawRain() {
+                if (currentParticleEffect !== 'rain') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnRain());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    particleCtx.shadowBlur=3; particleCtx.shadowColor='rgba(0,0,0,0.25)';
+                    particleCtx.strokeStyle=`rgba(180,220,255,${Math.min(p.opacity*intensityFactor,1)})`; particleCtx.lineWidth=1.5;
+                    particleCtx.beginPath(); particleCtx.moveTo(p.x,p.y); particleCtx.lineTo(p.x-p.len*0.2,p.y+p.len); particleCtx.stroke();
+                    particleCtx.shadowBlur=0;
+                    p.y+=p.s; p.x-=p.s*0.2;
+                    if (p.y>H) { p.y=-p.len; p.x=Math.random()*(W+50); }
+                });
+                particleAnimId = requestAnimationFrame(drawRain);
+            })();
+
+        } else if (effect === 'sparks') {
+            const BASE = 140;
+            const spawnSpark = () => ({ x: Math.random()*W, y: H+Math.random()*60, vx: (Math.random()-0.5)*6, vy: -(Math.random()*6+3), life: Math.random(), maxLife: Math.random()*0.75+0.5, r: Math.random()*4+1.5 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnSpark());
+            (function drawSparks() {
+                if (currentParticleEffect !== 'sparks') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnSpark());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                const baseGrad=particleCtx.createLinearGradient(0,H,0,H-200);
+                baseGrad.addColorStop(0,`rgba(255,55,0,${Math.min(0.25*intensityFactor,0.55)})`);
+                baseGrad.addColorStop(0.45,`rgba(255,110,0,${Math.min(0.10*intensityFactor,0.22)})`);
+                baseGrad.addColorStop(1,'rgba(255,60,0,0)');
+                particleCtx.fillStyle=baseGrad; particleCtx.fillRect(0,H-200,W,200);
+                particleCtx.globalCompositeOperation='lighter';
+                particlesList.forEach(p => {
+                    const t=p.life/p.maxLife;
+                    let rv,gv,bv;
+                    if (t>0.72){rv=255;gv=255;bv=Math.floor(220*(t-0.72)/0.28);}
+                    else if (t>0.38){rv=255;gv=Math.floor(100+155*(t-0.38)/0.34);bv=0;}
+                    else{rv=255;gv=Math.floor(70*t/0.38);bv=0;}
+                    const alpha=Math.min(Math.min(1,t*2.2)*0.75*intensityFactor,1);
+                    const gr=p.r*4.5;
+                    const grad=particleCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,gr);
+                    grad.addColorStop(0,`rgba(255,255,220,${alpha})`);
+                    grad.addColorStop(0.2,`rgba(${rv},${gv},${bv},${alpha*0.9})`);
+                    grad.addColorStop(0.55,`rgba(${rv},${Math.floor(gv*0.4)},0,${alpha*0.35})`);
+                    grad.addColorStop(1,'rgba(180,15,0,0)');
+                    particleCtx.fillStyle=grad;
+                    particleCtx.beginPath(); particleCtx.arc(p.x,p.y,gr,0,Math.PI*2); particleCtx.fill();
+                    p.x+=p.vx; p.y+=p.vy; p.vy+=0.038; p.vx*=0.992; p.life-=0.007;
+                    if (p.life<=0){p.x=Math.random()*W;p.y=H+Math.random()*20;p.vx=(Math.random()-0.5)*6;p.vy=-(Math.random()*6+3);p.life=p.maxLife;p.r=Math.random()*4+1.5;}
+                });
+                particleCtx.globalCompositeOperation='source-over';
+                particleAnimId = requestAnimationFrame(drawSparks);
+            })();
+
+        } else if (effect === 'fireflies') {
+            const BASE = 55;
+            const spawnFirefly = () => ({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*4+2.5, phase: Math.random()*Math.PI*2, vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5, hue: 55+Math.random()*30 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnFirefly());
+            let ff = 0;
+            (function drawFireflies() {
+                if (currentParticleEffect !== 'fireflies') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnFirefly());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H); ff+=0.025;
+                // Pass 1: additive soft outer halo, elongated along travel direction
+                particleCtx.globalCompositeOperation='lighter';
+                particlesList.forEach(p => {
+                    const glow=(Math.sin(ff+p.phase)+1)/2;
+                    if (glow<0.15) return;
+                    const angle=Math.atan2(p.vy,p.vx);
+                    const haloR=p.r*(2+glow*2);
+                    particleCtx.save();
+                    particleCtx.translate(p.x,p.y); particleCtx.rotate(angle); particleCtx.scale(1.4,0.65);
+                    const hg=particleCtx.createRadialGradient(0,0,0,0,0,haloR);
+                    hg.addColorStop(0,`hsla(${p.hue},100%,80%,${Math.min(glow*0.18*intensityFactor,1)})`);
+                    hg.addColorStop(1,`hsla(${p.hue},100%,60%,0)`);
+                    particleCtx.fillStyle=hg;
+                    particleCtx.beginPath(); particleCtx.arc(0,0,haloR,0,Math.PI*2); particleCtx.fill();
+                    particleCtx.restore();
+                });
+                particleCtx.globalCompositeOperation='source-over';
+                // Pass 2: elongated body with shadowBlur shine + physics
+                particlesList.forEach(p => {
+                    const glow=(Math.sin(ff+p.phase)+1)/2;
+                    const angle=Math.atan2(p.vy,p.vx);
+                    const bodyR=p.r*Math.max(glow,0.2);
+                    particleCtx.save();
+                    particleCtx.translate(p.x,p.y); particleCtx.rotate(angle);
+                    particleCtx.shadowBlur=14*glow+4; particleCtx.shadowColor=`hsla(${p.hue},100%,72%,${glow*0.6})`;
+                    particleCtx.fillStyle=`hsla(${p.hue},100%,75%,${Math.min(0.2+glow*0.8*intensityFactor,1)})`;
+                    particleCtx.beginPath(); particleCtx.ellipse(0,0,bodyR*1.5,bodyR*0.75,0,0,Math.PI*2); particleCtx.fill();
+                    if (glow>0.35){
+                        particleCtx.shadowBlur=4; particleCtx.shadowColor=`rgba(255,255,230,${glow*0.5})`;
+                        particleCtx.fillStyle=`rgba(255,255,230,${Math.min(glow*0.85*intensityFactor,1)})`;
+                        particleCtx.beginPath(); particleCtx.ellipse(0,0,bodyR*0.55,bodyR*0.32,0,0,Math.PI*2); particleCtx.fill();
+                    }
+                    particleCtx.shadowBlur=0;
+                    particleCtx.restore();
+                    p.x+=p.vx; p.y+=p.vy;
+                    if (p.x<0||p.x>W) p.vx*=-1; if (p.y<0||p.y>H) p.vy*=-1;
+                });
+                particleCtx.shadowBlur=0;
+                particleAnimId = requestAnimationFrame(drawFireflies);
+            })();
+
+        } else if (effect === 'sakura') {
+            const BASE = 35;
+            const spawnSakura = () => ({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*10+7, s: Math.random()*0.7+0.25, drift: (Math.random()-0.5)*1.5, wobble: Math.random()*Math.PI*2, wobbleSpeed: Math.random()*0.03+0.01, rotation: Math.random()*Math.PI*2, rotSpeed: (Math.random()-0.5)*0.04, opacity: Math.random()*0.2+0.78 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnSakura());
+            (function drawSakura() {
+                if (currentParticleEffect !== 'sakura') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnSakura());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    p.wobble+=p.wobbleSpeed; p.rotation+=p.rotSpeed;
+                    particleCtx.save();
+                    particleCtx.translate(p.x,p.y); particleCtx.rotate(p.rotation);
+                    const baseOpacity = Math.min(p.opacity * (0.5 + intensityFactor * 0.5), 1);
+                    for (let k=0;k<5;k++){
+                        particleCtx.save();
+                        particleCtx.rotate(k*Math.PI*2/5);
+                        const pg = particleCtx.createRadialGradient(0,-p.r*0.4,0,0,-p.r*0.4,p.r*0.85);
+                        pg.addColorStop(0,`rgba(255,235,245,${baseOpacity})`);
+                        pg.addColorStop(0.55,`rgba(255,185,215,${baseOpacity})`);
+                        pg.addColorStop(1,`rgba(230,140,180,${baseOpacity*0.5})`);
+                        particleCtx.fillStyle=pg;
+                        particleCtx.strokeStyle=`rgba(210,120,155,${baseOpacity*0.55})`;
+                        particleCtx.lineWidth=0.8;
+                        particleCtx.beginPath();
+                        const pr=p.r;
+                        particleCtx.moveTo(0,0);
+                        particleCtx.bezierCurveTo(-pr*0.5,-pr*0.15,-pr*0.48,-pr*0.65,-pr*0.18,-pr);
+                        particleCtx.quadraticCurveTo(0,-pr*0.68,pr*0.18,-pr);
+                        particleCtx.bezierCurveTo(pr*0.48,-pr*0.65,pr*0.5,-pr*0.15,0,0);
+                        particleCtx.closePath();
+                        particleCtx.fill();
+                        particleCtx.stroke();
+                        particleCtx.restore();
+                    }
+                    particleCtx.fillStyle=`rgba(255,150,180,${baseOpacity})`;
+                    particleCtx.beginPath(); particleCtx.arc(0,0,p.r*0.15,0,Math.PI*2); particleCtx.fill();
+                    particleCtx.restore();
+                    p.y+=p.s; p.x+=Math.sin(p.wobble)*p.drift;
+                    if (p.y>H+15){p.y=-15;p.x=Math.random()*W;}
+                });
+                particleAnimId = requestAnimationFrame(drawSakura);
+            })();
+
+        } else if (effect === 'fog') {
+            const BASE = 30;
+            const spawnFog = () => ({ x: Math.random()*W, y: H*0.15+Math.random()*H*0.9, rx: Math.random()*320+200, ry: Math.random()*110+65, opacity: Math.random()*0.18+0.13, vx: (Math.random()*0.5+0.1)*(Math.random()<0.5?1:-1), phase: Math.random()*Math.PI*2, layer: Math.floor(Math.random()*3) });
+            for (let i = 0; i < Math.round(BASE * Math.max(intensityFactor, 0.3)); i++) particlesList.push(spawnFog());
+            let fogT=0;
+            (function drawFog() {
+                if (currentParticleEffect !== 'fog') return;
+                const target = Math.round(BASE * Math.max(intensityFactor, 0.3));
+                while (particlesList.length < target) particlesList.push(spawnFog());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H); fogT+=0.003;
+                [...particlesList].sort((a,b)=>a.layer-b.layer).forEach(p => {
+                    const yOff=Math.sin(fogT+p.phase)*24;
+                    particleCtx.save();
+                    particleCtx.translate(p.x,p.y+yOff);
+                    particleCtx.scale(1,p.ry/p.rx);
+                    const scaledOpacity=Math.min(p.opacity*intensityFactor*2.5,0.85);
+                    const grad=particleCtx.createRadialGradient(0,0,0,0,0,p.rx);
+                    grad.addColorStop(0,`rgba(200,215,232,${scaledOpacity})`);
+                    grad.addColorStop(0.42,`rgba(190,208,228,${scaledOpacity*0.62})`);
+                    grad.addColorStop(1,`rgba(185,205,225,0)`);
+                    particleCtx.fillStyle=grad;
+                    particleCtx.beginPath(); particleCtx.arc(0,0,p.rx,0,Math.PI*2); particleCtx.fill();
+                    particleCtx.restore();
+                    p.x+=p.vx;
+                    if (p.x<-p.rx*1.5) p.x=W+p.rx;
+                    if (p.x>W+p.rx*1.5) p.x=-p.rx;
+                });
+                particleAnimId=requestAnimationFrame(drawFog);
+            })();
+
+        } else if (effect === 'steam') {
+            const BASE = 55;
+            const spawnSteam = () => ({ x: Math.random()*W, y: H*0.1+Math.random()*H, r: Math.random()*32+16, vy: -(Math.random()*0.95+0.3), vx: (Math.random()-0.5)*0.55, life: Math.random(), maxLife: Math.random()*0.75+0.45, opacity: Math.random()*0.17+0.1 });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnSteam());
+            (function drawSteam() {
+                if (currentParticleEffect !== 'steam') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnSteam());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    const t=p.life/p.maxLife;
+                    const cr=p.r+t*140;
+                    const alpha=Math.min(p.opacity*intensityFactor*2.5*(1-t*t*0.82),0.7);
+                    const grad=particleCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,cr);
+                    grad.addColorStop(0,`rgba(245,249,255,${alpha})`);
+                    grad.addColorStop(0.38,`rgba(230,243,255,${alpha*0.58})`);
+                    grad.addColorStop(1,`rgba(220,240,255,0)`);
+                    particleCtx.fillStyle=grad;
+                    particleCtx.beginPath(); particleCtx.arc(p.x,p.y,cr,0,Math.PI*2); particleCtx.fill();
+                    p.y+=p.vy; p.x+=p.vx+Math.sin(p.life*7)*0.55; p.life+=0.0024;
+                    if (p.life>=p.maxLife){p.x=Math.random()*W;p.y=H*0.45+Math.random()*H*0.65;p.life=0;p.r=Math.random()*32+16;p.maxLife=Math.random()*0.75+0.45;}
+                });
+                particleAnimId=requestAnimationFrame(drawSteam);
+            })();
+
+        } else if (effect === 'aurora') {
+            const BASE = 5;
+            const AURORA_HUES = [125, 155, 175, 195, 270, 300];
+            const spawnBand = (i) => ({
+                hue: AURORA_HUES[i % AURORA_HUES.length]+Math.random()*14-7,
+                phase: Math.random()*Math.PI*2,
+                phaseSpeed: (Math.random()*0.003+0.0008)*(Math.random()<0.5?1:-1),
+                flickerPhase: Math.random()*Math.PI*2,
+                flickerSpeed: Math.random()*0.018+0.006,
+                ampFrac: Math.random()*0.055+0.025,
+                freq: Math.random()*1.2+0.5,
+                yFrac: 0.08+(i/Math.max(BASE,5))*0.28+Math.random()*0.04,
+                thickFrac: Math.random()*0.075+0.045
+            });
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnBand(i));
+            (function drawAurora() {
+                if (currentParticleEffect !== 'aurora') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnBand(particlesList.length));
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particleCtx.globalCompositeOperation='lighter';
+                particlesList.forEach(b => {
+                    b.phase+=b.phaseSpeed; b.flickerPhase+=b.flickerSpeed;
+                    const flicker=(Math.sin(b.flickerPhase)+1)/2;
+                    const opacity=Math.min((0.05+flicker*0.09)*intensityFactor,0.9);
+                    const yBase=b.yFrac*H, amp=b.ampFrac*H, thick=b.thickFrac*H;
+                    const STEPS=90;
+                    particleCtx.save();
+                    particleCtx.beginPath();
+                    for (let i=0;i<=STEPS;i++){const x=(i/STEPS)*W,y=yBase+Math.sin(x/W*Math.PI*2*b.freq+b.phase)*amp-thick*0.3;i===0?particleCtx.moveTo(x,y):particleCtx.lineTo(x,y);}
+                    for (let i=STEPS;i>=0;i--){const x=(i/STEPS)*W,y=yBase+Math.sin(x/W*Math.PI*2*b.freq+b.phase)*amp+thick*1.5;particleCtx.lineTo(x,y);}
+                    particleCtx.closePath();
+                    const grad=particleCtx.createLinearGradient(0,yBase-thick*0.5,0,yBase+thick*1.8);
+                    grad.addColorStop(0,`hsla(${b.hue},100%,80%,0)`);
+                    grad.addColorStop(0.2,`hsla(${b.hue},100%,75%,${opacity})`);
+                    grad.addColorStop(0.6,`hsla(${b.hue},100%,60%,${opacity*0.45})`);
+                    grad.addColorStop(1,`hsla(${b.hue},100%,50%,0)`);
+                    particleCtx.fillStyle=grad; particleCtx.fill(); particleCtx.restore();
+                });
+                particleCtx.globalCompositeOperation='source-over';
+                particleAnimId=requestAnimationFrame(drawAurora);
+            })();
+
+        } else if (effect === 'leaves') {
+            const BASE = 40;
+            const LEAF_PALETTE = [{h:88,s:52,l:36},{h:102,s:57,l:38},{h:118,s:48,l:34},{h:92,s:62,l:42},{h:108,s:55,l:40},{h:74,s:62,l:44},{h:79,s:58,l:46},{h:50,s:72,l:54},{h:54,s:68,l:50},{h:26,s:78,l:52},{h:28,s:80,l:48},{h:22,s:76,l:50},{h:30,s:72,l:48},{h:9,s:66,l:46},{h:13,s:70,l:44},{h:27,s:42,l:38}];
+            const spawnLeaf = () => { const c=LEAF_PALETTE[Math.floor(Math.random()*LEAF_PALETTE.length)]; return {x:Math.random()*W,y:Math.random()*H,r:Math.random()*15+10,aspect:Math.random()*0.2+0.45,vy:Math.random()*0.9+0.35,drift:(Math.random()-0.5)*0.5,wobble:Math.random()*Math.PI*2,wobbleSpeed:Math.random()*0.022+0.008,rotation:Math.random()*Math.PI*2,rotSpeed:(Math.random()-0.5)*0.04,h:c.h,sat:c.s,l:c.l,opacity:Math.random()*0.2+0.75}; };
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnLeaf());
+            (function drawLeaves() {
+                if (currentParticleEffect !== 'leaves') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnLeaf());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    p.wobble+=p.wobbleSpeed; p.rotation+=p.rotSpeed;
+                    p.x+=p.drift+Math.sin(p.wobble)*0.35; p.y+=p.vy;
+                    if (p.y>H+p.r*2){p.y=-p.r*2;p.x=Math.random()*W;}
+                    if (p.x<-p.r*2) p.x=W+p.r*2; if (p.x>W+p.r*2) p.x=-p.r*2;
+                    const baseOp=Math.min(p.opacity*(0.5+intensityFactor*0.5),1);
+                    particleCtx.save();
+                    particleCtx.translate(p.x,p.y); particleCtx.rotate(p.rotation);
+                    const lg=particleCtx.createLinearGradient(0,-p.r,0,p.r);
+                    lg.addColorStop(0,`hsla(${p.h},${p.sat}%,${Math.min(p.l+10,65)}%,${baseOp})`);
+                    lg.addColorStop(1,`hsla(${p.h},${p.sat}%,${Math.max(p.l-8,20)}%,${baseOp})`);
+                    particleCtx.fillStyle=lg;
+                    particleCtx.strokeStyle=`hsla(${p.h},${p.sat-10}%,${p.l-18}%,${baseOp*0.45})`;
+                    particleCtx.lineWidth=0.5;
+                    particleCtx.beginPath();
+                    particleCtx.moveTo(0,-p.r);
+                    particleCtx.bezierCurveTo(p.r*p.aspect,-p.r*0.25,p.r*p.aspect,p.r*0.25,0,p.r);
+                    particleCtx.bezierCurveTo(-p.r*p.aspect,p.r*0.25,-p.r*p.aspect,-p.r*0.25,0,-p.r);
+                    particleCtx.closePath(); particleCtx.fill(); particleCtx.stroke();
+                    particleCtx.strokeStyle=`hsla(${p.h},${p.sat-15}%,${p.l-22}%,${baseOp*0.3})`;
+                    particleCtx.lineWidth=0.55;
+                    particleCtx.beginPath(); particleCtx.moveTo(0,-p.r*0.8); particleCtx.lineTo(0,p.r*0.8); particleCtx.stroke();
+                    particleCtx.restore();
+                });
+                particleAnimId=requestAnimationFrame(drawLeaves);
+            })();
+
+        } else if (effect === 'darkness') {
+            const BASE = 18;
+            const spawnWisp = () => ({x:Math.random()*W,y:Math.random()*H,r:Math.random()*220+100,vx:(Math.random()-0.5)*0.22,vy:(Math.random()-0.5)*0.14,pulsePhase:Math.random()*Math.PI*2,pulseSpeed:Math.random()*0.007+0.003,baseOp:Math.random()*0.18+0.12,purple:Math.random()<0.28});
+            for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnWisp());
+            (function drawDarkness() {
+                if (currentParticleEffect !== 'darkness') return;
+                const target = Math.round(BASE * intensityFactor);
+                while (particlesList.length < target) particlesList.push(spawnWisp());
+                if (particlesList.length > target) particlesList.length = target;
+                particleCtx.clearRect(0,0,W,H);
+                particleCtx.fillStyle=`rgba(0,0,0,${Math.min(0.25*intensityFactor,0.6)})`; particleCtx.fillRect(0,0,W,H);
+                particlesList.forEach(p => {
+                    p.pulsePhase+=p.pulseSpeed;
+                    const pulse=(Math.sin(p.pulsePhase)+1)/2;
+                    const op=Math.min((p.baseOp+pulse*0.1)*intensityFactor,0.75);
+                    const r=p.r*(0.82+pulse*0.28);
+                    const grad=particleCtx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+                    if (p.purple){grad.addColorStop(0,`rgba(12,0,22,${op})`);grad.addColorStop(0.55,`rgba(6,0,12,${op*0.5})`);}
+                    else{grad.addColorStop(0,`rgba(0,0,0,${op})`);grad.addColorStop(0.55,`rgba(0,0,2,${op*0.45})`);}
+                    grad.addColorStop(1,'rgba(0,0,0,0)');
+                    particleCtx.fillStyle=grad; particleCtx.beginPath(); particleCtx.arc(p.x,p.y,r,0,Math.PI*2); particleCtx.fill();
+                    p.x+=p.vx; p.y+=p.vy;
+                    if (p.x<-p.r) p.x=W+p.r; if (p.x>W+p.r) p.x=-p.r;
+                    if (p.y<-p.r) p.y=H+p.r; if (p.y>H+p.r) p.y=-p.r;
+                });
+                const vig=particleCtx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,Math.max(W,H)*0.8);
+                vig.addColorStop(0,'rgba(0,0,0,0)');
+                vig.addColorStop(1,`rgba(0,0,0,${Math.min(0.4*intensityFactor,0.7)})`);
+                particleCtx.fillStyle=vig; particleCtx.fillRect(0,0,W,H);
+                particleAnimId=requestAnimationFrame(drawDarkness);
+            })();
+        }
+    }
+
+    if (particleBtn) {
+        particleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const character = characters[currentCharacterId];
+            if (particlePickerModal) {
+                const currentEffect = character?.particleEffect || 'none';
+                particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.effect === currentEffect);
+                });
+                const savedLevel = character?.particleIntensityLevel ?? 50;
+                particleIntensityLevel = savedLevel;
+                intensityFactor = particleIntensityLevel / 50;
+                if (particleIntensitySlider) particleIntensitySlider.value = particleIntensityLevel;
+                if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
+                if (particleIntensityRow) particleIntensityRow.classList.toggle('hidden', currentEffect === 'none');
+                particlePickerModal.classList.remove('hidden');
+            }
+        });
+    }
+    if (closeParticlePickerBtn) closeParticlePickerBtn.addEventListener('click', () => { if (particlePickerModal) particlePickerModal.classList.add('hidden'); });
+    if (particleIntensitySlider) {
+        particleIntensitySlider.addEventListener('input', async () => {
+            particleIntensityLevel = parseInt(particleIntensitySlider.value, 10);
+            intensityFactor = particleIntensityLevel / 50;
+            if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
+            const character = characters[currentCharacterId];
+            if (character) {
+                character.particleIntensityLevel = particleIntensityLevel;
+                await saveSingleCharacterToDB(character);
+            }
+        });
+    }
+    if (particlePickerModal) {
+        particlePickerModal.addEventListener('click', async (e) => {
+            if (e.target === particlePickerModal) { particlePickerModal.classList.add('hidden'); return; }
+            const btn = e.target.closest('.particle-option-btn');
+            if (!btn) return;
+            const effect = btn.dataset.effect;
+            const character = characters[currentCharacterId];
+            if (!character) return;
+            character.particleEffect = effect;
+            particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
+            if (particleIntensityRow) particleIntensityRow.classList.toggle('hidden', effect === 'none');
+            await saveSingleCharacterToDB(character);
+            startParticles(effect);
+            updateParticleButton();
+        });
+    }
+
+    // ── Feature B: Background Music ──
+    const musicBtn = document.getElementById('music-btn');
+    const musicPanel = document.getElementById('music-panel');
+    const musicUrlInput = document.getElementById('music-url-input');
+    const musicPlayBtn = document.getElementById('music-play-btn');
+    const musicStopBtn = document.getElementById('music-stop-btn');
+    let musicAudioEl = null;
+    let musicIframeEl = null;
+    let musicIsPlaying = false;
+
+    function extractYouTubeId(url) {
+        const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/);
+        return m ? m[1] : null;
+    }
+
+    function stopMusic() {
+        if (musicAudioEl) {
+            musicAudioEl.pause();
+            musicAudioEl.currentTime = 0;
+            musicAudioEl.src = '';
+            musicAudioEl.remove();
+            musicAudioEl = null;
+        }
+        if (musicIframeEl) {
+            musicIframeEl.src = '';
+            musicIframeEl.remove();
+            musicIframeEl = null;
+        }
+        musicIsPlaying = false;
+        if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
+    }
+
+    function pauseMusic() {
+        if (musicAudioEl) musicAudioEl.pause();
+        if (musicIframeEl) musicIframeEl.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+        musicIsPlaying = false;
+        if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
+    }
+
+    function resumeMusic() {
+        if (musicAudioEl) musicAudioEl.play().catch(() => {});
+        if (musicIframeEl) musicIframeEl.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+        musicIsPlaying = true;
+        if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
+    }
+
+    function playMusic(url) {
+        stopMusic();
+        if (!url) return;
+        const ytId = extractYouTubeId(url);
+        if (ytId) {
+            musicIframeEl = document.createElement('iframe');
+            musicIframeEl.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&loop=1&playlist=${ytId}&enablejsapi=1`;
+            musicIframeEl.allow = 'autoplay';
+            musicIframeEl.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
+            document.body.appendChild(musicIframeEl);
+            musicIsPlaying = true;
+            if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
+        } else {
+            const audio = document.createElement('audio');
+            audio.src = url;
+            audio.loop = true;
+            document.body.appendChild(audio);
+            musicAudioEl = audio;
+            audio.play().catch(() => {
+                musicIsPlaying = false;
+                if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
+            });
+            musicIsPlaying = true;
+            if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
+        }
+    }
+
+    if (musicBtn) {
+        musicBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (musicPanel) musicPanel.classList.toggle('hidden');
+        });
+    }
+    document.addEventListener('click', (e) => {
+        if (musicPanel && !musicPanel.classList.contains('hidden') &&
+            !musicBtn?.contains(e.target) && !musicPanel.contains(e.target)) {
+            musicPanel.classList.add('hidden');
+        }
+    });
+    if (musicPlayBtn) {
+        musicPlayBtn.addEventListener('click', () => {
+            if (musicIsPlaying) {
+                pauseMusic();
+            } else {
+                if (musicAudioEl || musicIframeEl) {
+                    resumeMusic();
+                } else if (musicUrlInput) {
+                    playMusic(musicUrlInput.value.trim());
+                }
+            }
+        });
+    }
+    if (musicStopBtn) musicStopBtn.addEventListener('click', stopMusic);
+    if (musicUrlInput) {
+        musicUrlInput.addEventListener('input', () => {
+            const val = musicUrlInput.value.trim();
+            const charId = currentCharacterId;
+            if (!charId) return;
+            if (val) {
+                localStorage.setItem(`userMusicUrl:${charId}`, val);
+            } else {
+                localStorage.removeItem(`userMusicUrl:${charId}`);
+            }
+        });
+    }
+    // Mark Feature B as ready; auto-play if a URL was already populated during startChat
+    window._musicFeatureReady = true;
+    const _initMusicUrl = musicUrlInput ? musicUrlInput.value.trim() : '';
+    if (_initMusicUrl && currentCharacterId) playMusic(_initMusicUrl);
+
+    // ── Feature C: TTS ──
+    function populateTTSVoices() {
+        if (!('speechSynthesis' in window)) return;
+        const sel = document.getElementById('tts-voice-select');
+        if (!sel) return;
+        const voices = speechSynthesis.getVoices();
+        sel.innerHTML = '<option value="">(Default voice)</option>';
+        const groups = [
+            { prefix: 'en', label: 'English', voices: [] },
+            { prefix: 'de', label: 'German', voices: [] },
+            { prefix: 'ja', label: 'Japanese', voices: [] },
+        ];
+        voices.forEach(v => {
+            const lang = v.lang.toLowerCase();
+            const g = groups.find(gr => lang.startsWith(gr.prefix));
+            if (g) g.voices.push(v);
+        });
+        groups.forEach(g => {
+            if (!g.voices.length) return;
+            const og = document.createElement('optgroup');
+            og.label = g.label;
+            g.voices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.voiceURI;
+                opt.textContent = `${v.name} (${v.lang})`;
+                og.appendChild(opt);
+            });
+            sel.appendChild(og);
+        });
+        if (ttsCurrentVoiceURI) sel.value = ttsCurrentVoiceURI;
+    }
+    if ('speechSynthesis' in window) {
+        speechSynthesis.onvoiceschanged = populateTTSVoices;
+        populateTTSVoices();
+    }
+
+    function speakText(text, messageId) {
+        if (!('speechSynthesis' in window)) return;
+        speechSynthesis.cancel();
+        if (!text) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        const sel = document.getElementById('tts-voice-select');
+        const voiceURI = sel?.value || ttsCurrentVoiceURI;
+        if (voiceURI) {
+            const voice = speechSynthesis.getVoices().find(v => v.voiceURI === voiceURI);
+            if (voice) utter.voice = voice;
+        }
+        const btn = messageId ? document.querySelector(`[data-message-id="${messageId}"] .tts-btn`) : null;
+        if (btn) btn.textContent = '⏹';
+        utter.onend = () => { if (btn) btn.textContent = '🔊'; };
+        speechSynthesis.speak(utter);
+    }
+
+    const ttsToggleEl2 = document.getElementById('tts-toggle');
+    const ttsVoiceSelectEl2 = document.getElementById('tts-voice-select');
+    if (ttsToggleEl2) addSettingListener(ttsToggleEl2, 'ttsEnabled', 'change');
+    if (ttsVoiceSelectEl2) addSettingListener(ttsVoiceSelectEl2, 'ttsVoiceURI', 'change');
+
+
+
+    // ── Feature E: Reply Length ──
+    const replyLengthSelectEl2 = document.getElementById('reply-length-select');
+    if (replyLengthSelectEl2) addSettingListener(replyLengthSelectEl2, 'replyLength', 'change');
+
     let lastDeletedSnapshot = null;
 
     function showUndoDeleteFab() {
@@ -5367,7 +6192,7 @@ personaEditorAvatarImg.onerror = () => {
     function _formatAIError(err, context) {
         const msg = (err && err.message) ? err.message : String(err || '');
         if (msg.includes('fetch') || msg.includes('network') || msg.toLowerCase().includes('failed to fetch')) {
-            return `${context} failed: Could not reach the AI provider. Check your internet connection and API settings.`;
+            return `${context} failed: Could not reach the AI provider. Check internet connection and API settings.`;
         }
         if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('forbidden')) {
             return `${context} failed: API key invalid or access denied. Check your API key in App Settings.`;
@@ -5412,7 +6237,6 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = ''; btn1.className = 'reply-option-btn reply-option-loading'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn reply-option-loading'; btn2.style.display = ''; }
-        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownOptions(opt1, opt2) {
@@ -5421,7 +6245,7 @@ personaEditorAvatarImg.onerror = () => {
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
         if (btn1) { btn1.textContent = opt1; btn1.className = 'reply-option-btn'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = opt2; btn2.className = 'reply-option-btn'; btn2.style.display = ''; }
-        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
+        dropdown.classList.remove('hidden');
     }
 
     function _setReplyDropdownError(msg) {
@@ -5431,7 +6255,7 @@ personaEditorAvatarImg.onerror = () => {
         const shortMsg = msg.length > 90 ? msg.substring(0, 87) + '…' : msg;
         if (btn1) { btn1.textContent = `⚠ ${shortMsg}`; btn1.className = 'reply-option-btn reply-option-error'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn'; btn2.style.display = 'none'; }
-        if (document.activeElement === messageInput) dropdown.classList.remove('hidden');
+        dropdown.classList.remove('hidden');
     }
 
     async function generateReplyOptionsInBackground() {
@@ -6211,7 +7035,6 @@ messageInput.addEventListener('click', () => {
 
 messageInput.addEventListener('blur', () => {
     setTimeout(hideGroupCharDropdown, 200);
-    hideReplyOptionsDropdown();
 });
 
 groupCharDropdown.addEventListener('mousedown', (event) => {
@@ -6345,13 +7168,21 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     messageInput.addEventListener('input', autoResizeTextarea);
     messageInput.addEventListener('keydown', handleTextareaEnter);
     settingsBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
+        e.stopPropagation();
         settingsPanel.classList.toggle('hidden');
     });
     document.addEventListener('click', (e) => {
         if (!settingsPanel.classList.contains('hidden') && !settingsContainer.contains(e.target)) {
             settingsPanel.classList.add('hidden');
         }
+    });
+    settingsPanel.querySelectorAll('.accordion-header').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const section = btn.closest('.accordion-section');
+            const isOpen = section.classList.contains('open');
+            settingsPanel.querySelectorAll('.accordion-section').forEach(s => s.classList.remove('open'));
+            if (!isOpen) section.classList.add('open');
+        });
     });
 
     addSettingListener(fontSizeSlider, 'fontSize');
@@ -6754,6 +7585,7 @@ document.addEventListener('fullscreenchange', () => {
     } else {
         document.body.classList.remove('fullscreen-active');
     }
+    window.dispatchEvent(new Event('resize'));
 });
 
 document.addEventListener('keydown', (event) => {
@@ -7140,5 +7972,31 @@ window.addEventListener('resize', () => {
 // END TUTORIAL TOUR MODULE
 // =============================================================
 
+// ── Setting info icon tooltip (position:fixed to escape overflow clipping) ──
+{
+    const gtt = document.getElementById('global-setting-tooltip');
+    if (gtt) {
+        document.addEventListener('mouseover', e => {
+            const icon = e.target.closest('.setting-info-icon[data-tooltip]');
+            if (!icon) return;
+            gtt.textContent = icon.dataset.tooltip;
+            gtt.style.display = 'block';
+            const rect = icon.getBoundingClientRect();
+            const w = 220, gap = 7;
+            let left = rect.right - w;
+            if (left < 8) left = 8;
+            if (left + w > window.innerWidth - 8) left = window.innerWidth - w - 8;
+            gtt.style.left = left + 'px';
+            gtt.style.top = '0px';
+            const h = gtt.offsetHeight;
+            gtt.style.top = (rect.top - h - gap) + 'px';
+            gtt.classList.add('visible');
+        });
+        document.addEventListener('mouseout', e => {
+            if (!e.target.closest('.setting-info-icon[data-tooltip]')) return;
+            gtt.classList.remove('visible');
+        });
+    }
+}
 
 });

@@ -114,6 +114,7 @@
 </div>
 
     <div id="chat-screen" class="is-inactive">
+        <canvas id="particle-canvas"></canvas>
         <div id="chat-header">
     <button id="back-to-selection-btn" title="Back to Chat List"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
     <img id="chat-avatar" src="" alt="Avatar">
@@ -125,97 +126,170 @@
     <div id="token-tooltip"></div>
 </div>
     <div id="settings-container">
+        <button id="quick-swap-btn" title="Quick-Swap Character">↔</button>
+        <button id="mood-btn" title="Set Character Mood">😊</button>
+        <div id="mood-picker" class="hidden">
+            <button class="mood-option" data-mood="Happy">😊 Happy</button>
+            <button class="mood-option" data-mood="Sad">😢 Sad</button>
+            <button class="mood-option" data-mood="Angry">😠 Angry</button>
+            <button class="mood-option" data-mood="Excited">🤩 Excited</button>
+            <button class="mood-option" data-mood="Nervous">😰 Nervous</button>
+            <button class="mood-option" data-mood="Flirty">😏 Flirty</button>
+            <button class="mood-option" data-mood="Tired">😴 Tired</button>
+            <button class="mood-option" data-mood="Curious">🧐 Curious</button>
+            <button class="mood-option" data-mood="Scared">😨 Scared</button>
+            <button class="mood-option" data-mood="Bored">😑 Bored</button>
+            <button class="mood-option mood-option-clear" data-mood="">✕ No Mood</button>
+        </div>
+        <button id="particle-btn" title="Ambient Effects">🌸</button>
+        <button id="music-btn" title="Background Music">🎵</button>
+        <div id="music-panel" class="hidden">
+            <div class="music-panel-row">
+                <label>Music / Ambience URL:</label>
+                <input type="text" id="music-url-input" placeholder="YouTube or direct audio URL...">
+            </div>
+            <div class="music-panel-row music-panel-btns">
+                <button type="button" id="music-play-btn">▶ Play</button>
+                <button type="button" id="music-stop-btn">⏹ Stop</button>
+            </div>
+        </div>
         <button id="chat-memories-btn" title="Chat Memories">🧠</button>
         <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
         <button id="select-persona-btn" title="Select Persona">🎭</button>
         <button id="settings-btn" title="Chat Settings">⚙️</button>
         <div id="settings-panel" class="hidden">
-                    <div class="setting">
-                        <label for="font-size-slider">Font Size: <span id="font-size-value">16px</span></label>
-                        <input type="range" id="font-size-slider" min="14" max="36" value="16" step="1">
-                    </div>
-                    <div class="setting">
-                        <label for="spacing-slider">Message Spacing: <span id="spacing-value">10px</span></label>
-                        <input type="range" id="spacing-slider" min="5" max="100" value="10" step="1">
-                    </div>
-                    <div class="setting-grid">
-                    <div class="setting">
-                        <label for="main-text-color-picker"><span>Main Text Colour</span></label>
-                        <input type="color" id="main-text-color-picker" value="#FFFFFF" style="width: 120px;">
-                    </div>
-                    <div class="setting">
-                        <label for="dialogue-color-picker"><span>Dialog Colour</span></label>
-                        <input type="color" id="dialogue-color-picker" value="#CCEEFF" style="width: 120px;">
-                    </div>
-                    <div class="setting">
-                        <label for="user-bubble-color-picker"><span>User Bubble Colour</span></label>
-                        <input type="color" id="user-bubble-color-picker" value="#007BFF" style="width: 120px;">
-                    </div>
-                    <div class="setting">
-                        <label for="ai-bubble-color-picker"><span>AI Bubble Colour</span></label>
-                        <input type="color" id="ai-bubble-color-picker" value="#323232" style="width: 120px;">
-                    </div>
-                    </div>
-                    <div class="setting">
-                        <label for="user-bubble-opacity-slider">Opacity User Bubble: <span id="user-bubble-opacity-value">70%</span></label>
-                        <input type="range" id="user-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
-                    </div>
-                    <div class="setting">
-                        <label for="ai-bubble-opacity-slider">Opacity AI Bubble: <span id="ai-bubble-opacity-value">70%</span></label>
-                        <input type="range" id="ai-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
-                    </div>
-                    <div class="setting">
-                        <label for="blur-slider">Blur Filter: <span id="blur-value">0px</span></label>
-                        <input type="range" id="blur-slider" min="0" max="20" value="0" step="1">
-                    </div>
-                    <div class="setting">
-                        <label for="avatar-size-slider">Character Avatar Size: <span id="avatar-size-value">50px</span></label>
-                        <input type="range" id="avatar-size-slider" min="30" max="1000" value="200" step="5">
-                    </div>
 
-<div class="setting">
-  <label for="model-select">AI Model:</label>
-  <select id="model-select"></select>
-</div>
-
-                    <div class="setting">
-                        <label for="temperature-slider">Temperature (AI Creativity): <span id="temperature-value">0.7</span></label>
-                        <input type="range" id="temperature-slider" min="0.1" max="1.0" value="0.7" step="0.05">
+            <div class="accordion-section open" id="section-design">
+                <button class="accordion-header" type="button">
+                    <span>Design</span>
+                    <svg class="accordion-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="setting">
+                            <label for="avatar-size-slider">Character Avatar Size: <span id="avatar-size-value">50px</span></label>
+                            <input type="range" id="avatar-size-slider" min="30" max="1000" value="200" step="5">
+                        </div>
+                        <div class="setting">
+                            <label for="font-size-slider">Font Size: <span id="font-size-value">16px</span></label>
+                            <input type="range" id="font-size-slider" min="14" max="36" value="16" step="1">
+                        </div>
+                        <div class="setting">
+                            <label for="spacing-slider">Message Spacing: <span id="spacing-value">10px</span></label>
+                            <input type="range" id="spacing-slider" min="5" max="100" value="10" step="1">
+                        </div>
+                        <div class="setting-grid">
+                            <div class="setting">
+                                <label for="main-text-color-picker"><span>Main Text Colour</span></label>
+                                <input type="color" id="main-text-color-picker" value="#FFFFFF" style="width: 120px;">
+                            </div>
+                            <div class="setting">
+                                <label for="dialogue-color-picker"><span>Dialog Colour</span></label>
+                                <input type="color" id="dialogue-color-picker" value="#CCEEFF" style="width: 120px;">
+                            </div>
+                            <div class="setting">
+                                <label for="user-bubble-color-picker"><span>User Bubble Colour</span></label>
+                                <input type="color" id="user-bubble-color-picker" value="#007BFF" style="width: 120px;">
+                            </div>
+                            <div class="setting">
+                                <label for="ai-bubble-color-picker"><span>AI Bubble Colour</span></label>
+                                <input type="color" id="ai-bubble-color-picker" value="#323232" style="width: 120px;">
+                            </div>
+                        </div>
+                        <div class="setting">
+                            <label for="user-bubble-opacity-slider">Opacity User Bubble: <span id="user-bubble-opacity-value">70%</span></label>
+                            <input type="range" id="user-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
+                        </div>
+                        <div class="setting">
+                            <label for="ai-bubble-opacity-slider">Opacity AI Bubble: <span id="ai-bubble-opacity-value">70%</span></label>
+                            <input type="range" id="ai-bubble-opacity-slider" min="0" max="1" value="0.7" step="0.05">
+                        </div>
+                        <div class="setting">
+                            <label for="blur-slider">Blur Filter: <span id="blur-value">0px</span></label>
+                            <input type="range" id="blur-slider" min="0" max="20" value="0" step="1">
+                        </div>
                     </div>
-
-
-                    <div class="setting">
-                        <label for="sound-toggle">
-                            <span>Notification Sound:</span>
-                            <input type="checkbox" id="sound-toggle" class="toggle-switch">
-                        </label>
-                    </div>
-
-                    <div class="setting">
-                        <label for="think-toggle">
-                            <span>Show Think Blocks:</span>
-                            <input type="checkbox" id="think-toggle" class="toggle-switch">
-                        </label>
-                    </div>
-
-                    <div class="setting">
-                        <label for="reply-options-toggle">
-                            <span>Reply Suggestions:</span>
-                            <input type="checkbox" id="reply-options-toggle" class="toggle-switch">
-                        </label>
-                    </div>
-
-                    <div class="setting" id="suggestion-model-setting">
-                        <label for="suggestion-model-select">
-                            <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose a dedicated AI model just for generating reply suggestions. Tip: use a free model here to avoid unnecessary API costs when your main chat model is a paid one!">ℹ️</span></span>
-                        </label>
-                        <select id="suggestion-model-select">
-                            <option value="">(same as chat model)</option>
-                        </select>
-                    </div>
-
-                    <button id="reset-settings-btn" class="settings-action-btn">Reset to Default Values</button>
                 </div>
+            </div>
+
+            <div class="accordion-section" id="section-ai">
+                <button class="accordion-header" type="button">
+                    <span>AI</span>
+                    <svg class="accordion-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="setting">
+                            <label for="model-select">AI Model:</label>
+                            <select id="model-select"></select>
+                        </div>
+                        <div class="setting">
+                            <label for="temperature-slider">Temperature (AI Creativity): <span id="temperature-value">0.7</span></label>
+                            <input type="range" id="temperature-slider" min="0.1" max="1.0" value="0.7" step="0.05">
+                        </div>
+                        <div class="setting">
+                            <label for="reply-length-select">Reply Length:</label>
+                            <select id="reply-length-select">
+                                <option value="default">Default</option>
+                                <option value="short">Short</option>
+                                <option value="medium">Medium</option>
+                                <option value="long">Long</option>
+                                <option value="verylong">Very Long</option>
+                            </select>
+                        </div>
+                        <div class="setting">
+                            <label for="reply-options-toggle">
+                                <span>Reply Suggestions:</span>
+                                <input type="checkbox" id="reply-options-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                        <div class="setting" id="suggestion-model-setting">
+                            <label for="suggestion-model-select">
+                                <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose a dedicated AI model just for generating reply suggestions. Tip: use a free model here to avoid unnecessary API costs when your main chat model is a paid one!">ℹ️</span></span>
+                            </label>
+                            <select id="suggestion-model-select">
+                                <option value="">(same as chat model)</option>
+                            </select>
+                        </div>
+                        <div class="setting">
+                            <label for="think-toggle">
+                                <span>Show Think Blocks:</span>
+                                <input type="checkbox" id="think-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section" id="section-features">
+                <button class="accordion-header" type="button">
+                    <span>Features</span>
+                    <svg class="accordion-arrow" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="setting">
+                            <label for="tts-voice-select">TTS Voice (EN / DE / JA):</label>
+                            <select id="tts-voice-select"><option value="">(Default voice)</option></select>
+                        </div>
+                        <div class="setting">
+                            <label for="tts-toggle">
+                                <span>Auto-read AI Responses (TTS):</span>
+                                <input type="checkbox" id="tts-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                        <div class="setting">
+                            <label for="sound-toggle">
+                                <span>Notification Sound:</span>
+                                <input type="checkbox" id="sound-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="reset-settings-btn" class="settings-action-btn">Reset to Default Values</button>
+        </div>
             </div>
         </div>
         <div id="chat-window">
@@ -329,6 +403,9 @@
 <label for="char-narrator-reminder">Narrator Reminder:</label>
 <textarea id="char-narrator-reminder" rows="1" placeholder="Narrator Reminder for this character... (e.g., 'Reply only as an omniscient narrator now.')"></textarea>
 
+<label for="char-music-url">Music / Ambience URL:</label>
+<input type="text" id="char-music-url" placeholder="YouTube or direct audio URL (auto-plays when chat opens)...">
+
                 <label>Scenarios:</label>
 <div id="scenario-editor-list" class="scenario-list-container">
     </div>
@@ -404,6 +481,47 @@
     </div>
 </div>
 
+<div id="quick-swap-modal" class="hidden">
+    <div class="modal-content" id="quick-swap-modal-content">
+        <h2>↔ Quick-Swap Character</h2>
+        <p>Move this chat to another character — history, memories, and settings are preserved.</p>
+        <div class="modal-search-container">
+            <input type="search" id="quick-swap-search-input" class="modal-search-input" placeholder="🔎 Search Character...">
+        </div>
+        <div id="quick-swap-character-list"></div>
+        <div class="form-buttons">
+            <button type="button" id="cancel-quick-swap-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="particle-picker-modal" class="hidden">
+    <div class="modal-content" id="particle-picker-content">
+        <h2>✨ Ambient Particle Effects</h2>
+        <p>Choose an ambient effect for this character's chat background:</p>
+        <div class="particle-option-grid">
+            <button class="particle-option-btn" data-effect="none">❌ None</button>
+            <button class="particle-option-btn" data-effect="snow">❄️ Snow</button>
+            <button class="particle-option-btn" data-effect="rain">🌧️ Rain</button>
+            <button class="particle-option-btn" data-effect="fog">🌫️ Fog</button>
+            <button class="particle-option-btn" data-effect="steam">♨️ Steam</button>
+            <button class="particle-option-btn" data-effect="darkness">🌑 Darkness</button>
+            <button class="particle-option-btn" data-effect="aurora">🌌 Aurora</button>
+            <button class="particle-option-btn" data-effect="sparks">🔥 Sparks</button>
+            <button class="particle-option-btn" data-effect="fireflies">🟢 Fireflies</button>
+            <button class="particle-option-btn" data-effect="leaves">🍂 Leaves</button>
+            <button class="particle-option-btn" data-effect="sakura">🌸 Sakura</button>
+        </div>
+        <div id="particle-intensity-row" class="hidden" style="margin:10px 0 4px;">
+            <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span>Effect Intensity</span><span id="particle-intensity-value">50</span></label>
+            <input type="range" id="particle-intensity-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);">
+        </div>
+        <div class="form-buttons">
+            <button type="button" id="close-particle-picker-btn">Close</button>
+        </div>
+    </div>
+</div>
+
 <div id="persona-list-modal" class="hidden">
     <div class="modal-content">
         <h2>Your Personas</h2>
@@ -468,6 +586,7 @@
     <input type="password" id="api-key-input" class="settings-input" placeholder="sk-or-...">
 </div>
 
+
             <hr class="settings-separator">
 
             <label>List of your AI Models:</label>
@@ -507,6 +626,8 @@
         </div>
     </div>
     <!-- =================== END TUTORIAL TOUR =================== -->
+
+    <div id="global-setting-tooltip"></div>
 
 </body>
 </html>
