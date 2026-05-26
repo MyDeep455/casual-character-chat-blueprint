@@ -4228,6 +4228,12 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 	}
 }
 
+@media (max-width: 768px) and (orientation: portrait) {
+	#token-info-container {
+		display: none;
+	}
+}
+
 /* === Character Editor Mobile Buttons === */
 @media (max-width: 1024px) {
   #character-editor-modal .editor-header-buttons {
