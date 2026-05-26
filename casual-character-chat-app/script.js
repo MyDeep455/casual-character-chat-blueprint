@@ -6893,10 +6893,11 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 systemPrompt = `You are a creative world designer for an AI roleplay app. Given a world concept, output a JSON object with exactly these keys:
 - worldName: full display name for the world card (e.g. "The Iron Reaches - Steampunk Empire")
 - chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
-- description: a single plain string — a rich setting overview covering geography/environment, atmosphere/tone, society/factions, and daily life. 300-500 words. Plain text, no nested JSON.
-- lore: a single plain string — key historical events, myths, creation stories, notable conflicts, and secrets of this world. 200-400 words. Plain text.
-- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nTech level is equivalent to 1880s Earth."). These are critical rules that may never be broken.
+- description: a single plain string — a rich and detailed setting overview covering geography/environment, atmosphere/tone, society/factions, and daily life. Plain text, no nested JSON.
+- lore: a single plain string — key historical events, myths, creation stories, notable conflicts, and secrets of this world. Plain text.
+- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nWomen must not feel pain."). These are critical rules that may never be broken.
 - tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
+Be detailed and write up to 1000 words.
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 userMessage = refContent
                     ? `Create a world based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
@@ -6905,7 +6906,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
 - cardName: full display name for the card (e.g. "Yuki Tanaka - Vampire Knight")
 - chatName: short in-chat first name (e.g. "Yuki")
-- description: a single plain string — detailed character profile in Steckbrief style, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Keep each section to a few short phrases or sentences. Total description under 500 words:
+- description: a single plain string — detailed character profile in Steckbrief style, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Write each section as short phrases, separated by semicolons. Total description up to 500 words:
   1. Identity/Role — name, gender, age, species, role, work
   2. Personality — core traits and temperament
   3. Speech Style — how they talk, tone, verbal quirks
@@ -6913,7 +6914,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
   5. Appearance — physical look, clothing, notable features
   6. Likes/Dislikes — what they love and what they hate
   7. Past — brief background and world context in a few sentences
-  8. Example Dialog — 5 short lines they might actually say in different contexts
+  8. Dialog Examples — 5 lines they might actually say in different contexts
 - tags: 10-20 comma-separated tags (genre, personality type, hair color etc.)
 - instructions: A few bullet points of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
