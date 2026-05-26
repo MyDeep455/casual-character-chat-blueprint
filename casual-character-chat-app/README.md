@@ -111,9 +111,21 @@ Each model entry in **⚙️ Global App Settings** has two optional numeric fiel
 
 * **Top-P:** A secondary randomness parameter (nucleus sampling). **Recommended: leave blank.** When empty, the field is not sent to the API at all and the model uses its own built-in default. Only set a value (e.g., `0.9`) if a specific model produces incoherent output despite correct Temperature settings. Avoid adjusting both Temperature and Top-P at the same time.
 
-### AI-Assisted Character Generation
+### Card Type: Character vs. World
+
+At the top of the editor you can choose between two card types:
+
+* A **Character** card is the default — a single AI persona with a profile picture, personality description, and all the standard fields.
+* A **World** card acts as a shared stage for multiple characters. It uses a background image instead of a profile picture, and shows a character picker where you can assign existing characters to the world. Starting a chat from a World card automatically adds all assigned characters as participants, with the World itself acting as the narrator/story manager. World cards display a "World" badge and a character count on the main screen.
+
+### Music URL
+
+A field in the character/world editor where you can paste a direct link to an audio file (e.g., an `.mp3`) that plays automatically as looping background music whenever you open a chat with that character. Can be overridden per session from the chat settings panel.
+
+### AI-Assisted Generation
 
 * **✨ AI Generate Character:** A button at the top of the editor. A large text box opens where you can describe the character concept in as much detail as you like (e.g., "a stern samurai from feudal Japan" or "Rem from Re:Zero — include personality, appearance, speech style…"), then choose an AI model to do the generation. The AI will research known characters from series, games, or manga if applicable and fill in all fields — name, description, lore, tags, and instructions — automatically. If the AI provider is unavailable or returns an error, a clear message will tell you what went wrong. *Note: If you are editing an existing character, their current data will be overwritten — a warning is shown before the AI runs.*
+* **✨ AI Generate World:** When the card type is set to **World**, the generate button becomes "AI Generate World." Describe the world concept (genre, setting, tone, lore), and the AI fills in the name, description, and background lore for a complete world card.
 
 ### Dynamic Scenario Management
 
@@ -138,6 +150,9 @@ The top bar provides context and quick access to important features:
 * **Add Participant (👥):** Opens a menu to add another character to the conversation.
 * **Select Persona (🎭):** Allows you to choose one of your user profiles for the chat. You can unselect it at any time by clicking the button again.
 * **Settings (⚙️):** Toggles the settings panel for live customization.
+* **Mood (😊):** Set a mood for the character in the current chat session. A picker opens with presets — *Happy, Sad, Angry, Nervous, Flirty, Tired, Curious, Scared, Bored* — plus a "None / Clear" option. The mood is injected into every AI request, subtly shaping how the character speaks and reacts. The button icon shows the currently active mood emoji.
+* **Ambient Effects (✨):** Opens the particle effects picker. Choose from *Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,* or *Darkness*, and control intensity with a slider. The effect is saved on the character card and activates automatically on every chat open. Select "None" to disable.
+* **Quick Swap Character (↔️):** Opens a searchable list of your other characters. Clicking one instantly moves the entire current chat session (including all message history) to that character and opens it. Useful for re-assigning an ongoing story to a different character without returning to the main screen.
 
 ### The Settings Panel
 
@@ -151,6 +166,8 @@ This panel lets you customize the chat's appearance and the AI's behavior on the
 * **Show Think Blocks:** A toggle to show or hide the collapsible reasoning block that some AI models produce. When disabled, only the final response is shown.
 * **Reply Suggestions:** A toggle for AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response. Loading indicators are shown while they generate; error messages appear directly in the suggestion fields if something goes wrong. Suggestions are automatically regenerated after deleting messages.
 * **Suggestions Model:** A dropdown to choose a dedicated AI model just for reply suggestions (independent of your main chat model). **Tip:** use a free or cheap model here to avoid unnecessary API costs.
+* **Text-to-Speech (TTS):** A toggle that enables the browser's built-in text-to-speech for AI responses. When active, each new message is automatically read aloud once it finishes generating. A **Voice** dropdown lets you pick from all voices installed on your device. Uses the Web Speech API — no external service or API key needed.
+* **Background Music:** A text field to paste a direct link to an audio file (e.g., an `.mp3`) for looping background music. This is a per-session override of the Music URL set in the character editor, stored in local storage. Clear the field to stop the music.
 
 ### Message Interaction
 
