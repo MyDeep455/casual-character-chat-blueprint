@@ -1341,6 +1341,12 @@ h1 {
   text-shadow: 0 1px 0 rgba(0,0,0,.35);
 }
 
+#char-instructions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 #character-form input[type="text"],
 #character-form input[type="url"],
 #character-form textarea {
