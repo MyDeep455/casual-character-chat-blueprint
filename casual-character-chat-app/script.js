@@ -6661,13 +6661,13 @@ personaEditorAvatarImg.onerror = () => {
                 : '\n\nCreate a surprising, vivid scenario that fits this character\'s world and leaves the user eager to respond.';
 
             const systemPrompt = `You are a creative writer for a character roleplay app. Write a medium-length opening scenario paragraph (10-15 sentences) for a chat with ${charName}. The paragraph must:
+- Address the user directly as "you" in second person — the user is the protagonist of the scene.
 - Describe the relationship and dynamic between ${charName} and "you" (the user) — how you know each other, your history, etc.
-- Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user)
-- Weave in three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration
-- Be written in vivid second-person narration (e.g. "You are...", "You notice…" etc.)
-- Be written in a direct and objective style without any long nestled sentences — no flowery language or purple prose.
-- Be entirely specific to the character's world, personality, and lore — no generic or placeholder content
-- End on an open note that naturally invites "you" (the user) to respond
+- Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user).
+- Weave in three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
+- Be written in a direct and objective style with concise sentences — no long nested sentences, no flowery language, no purple prose.
+- Be entirely specific to the character's world, personality, and lore — no generic or placeholder content.
+- End on an open note that naturally invites "you" (the user) to respond.
 
 Character details:
 Name: ${charName}
@@ -6893,11 +6893,14 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 systemPrompt = `You are a creative world designer for an AI roleplay app. Given a world concept, output a JSON object with exactly these keys:
 - worldName: full display name for the world card (e.g. "The Iron Reaches - Steampunk Empire")
 - chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
-- description: a single plain string — a rich and detailed setting overview covering geography/environment, atmosphere/tone, society/factions, and daily life. Plain text, no nested JSON.
-- lore: a single plain string — key historical events, myths, creation stories, notable conflicts, and secrets of this world. Plain text.
-- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nWomen must not feel pain."). These are critical rules that may never be broken.
+- description: a single plain string — a rich and detailed setting overview covering geography/environment, atmosphere/tone, society/factions, key locations/social places. Plain text, no nested JSON.
+- lore: a single plain string — a bunch of relationships between relevant characters, key historical events, notable conflicts, threats, and secrets of this world. Plain text.
+- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nWomen never experience pain."). These are critical rules that may never be broken.
 - tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
-Be detailed and write up to 1000 words.
+Be detailed and write between 500 and 1000 words. 
+Do not write about future events of the series or its characters.
+Write direct and factual. No purple prose and no complex, nested sentences. 
+Stay always in-universe! No meta and no fourth-wall talk.
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 userMessage = refContent
                     ? `Create a world based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
@@ -6906,15 +6909,22 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 systemPrompt = `You are a creative character designer for an AI roleplay app. Given a character concept, output a JSON object with exactly these keys:
 - cardName: full display name for the card (e.g. "Yuki Tanaka - Vampire Knight")
 - chatName: short in-chat first name (e.g. "Yuki")
-- description: a single plain string — detailed character profile in Steckbrief style, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Write each section as short phrases, separated by semicolons. Total description up to 500 words:
-  1. Identity/Role — name, gender, age, species, role, work
-  2. Personality — core traits and temperament
-  3. Speech Style — how they talk, tone, verbal quirks
-  4. Abilities — skills, powers, or areas of expertise
+- description: a single plain string — detailed character sheet, with these 8 numbered headings written as plain text (NOT as nested JSON keys). Write each section as short phrases, separated by semicolons. No future events for the character, no fourth-wall talk. Always stay in-universe. Total description between 300 and 600 words:
+  1. Identity/Role — full name; gender; species; age group; social status/work
+  [insert line break]
+  2. Personality — core traits, temperament, exceptions/unexpected behaviors
+  [insert line break]
+  3. Speech Style — main characteristics, sentence structure, verbal quirks
+  [insert line break]
+  4. Abilities — main skills, talents, superhuman attributes/weapons if character has any
+  [insert line break]
   5. Appearance — physical look, clothing, notable features
-  6. Likes/Dislikes — what they love and what they hate
-  7. Past — brief background and world context in a few sentences
-  8. Dialog Examples — 5 lines they might actually say in different contexts
+  [insert line break]
+  6. Likes/Dislikes — what they love and what they hate (can include fun facts)
+  [insert line break]
+  7. Past —  heritage, formative experiences
+  [insert line break]
+  8. Dialog Examples — 5 lines they might actually say in positive, negative, and romantic contexts (as bullet points, in between quotation marks)
 - tags: 10-20 comma-separated tags (genre, personality type, hair color etc.)
 - instructions: A few bullet points of AI behavior guidance (e.g. "Stay in character and respond in a dry formal tone.")
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
