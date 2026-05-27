@@ -2960,10 +2960,10 @@ const startTime = Date.now();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
     const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
@@ -3444,10 +3444,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
@@ -3970,10 +3970,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nKeep your reply short.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a medium-length reply.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a long reply.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a very long reply.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
