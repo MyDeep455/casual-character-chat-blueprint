@@ -6658,16 +6658,15 @@ personaEditorAvatarImg.onerror = () => {
         try {
             const hintSection = hints
                 ? `\n\nUser-specified scenario requirements: ${hints}`
-                : '\n\nCreate a surprising, vivid scenario that fits this character\'s world and leaves the user eager to respond.';
+                : '\n\nCreate a vivid scenario that focuses on the character.';
 
-            const systemPrompt = `You are a creative writer for a character roleplay app. Write a medium-length opening scenario paragraph (10-15 sentences) for a chat with ${charName}. The paragraph must:
-- Address the user directly as "you" in second person — the user is the protagonist of the scene.
-- Describe the relationship and dynamic between ${charName} and "you" (the user) — how you know each other, your history, etc.
-- Describe what is currently happening in the scene and what ${charName} wants, feels, or intends toward "you" (the user).
+            const systemPrompt = `You are a creative writer for a character roleplay app. Write a medium-length opening scenario paragraph (10-15 sentences) for a story with ${charName}. Rules:
+- Address the character by name and with "he/she/him/her" in third person — ${charName} is the protagonist of the scene.
+- If user is part of the scenario (check user-specified hints), describe the relationship and dynamic between ${charName} ("he/she/him/her") and the user ("you").
+- Describe what is currently happening in the scene and what ${charName} experiences, does, or wants.
 - Weave in three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
-- Be written in a direct and objective style with concise sentences — no long nested sentences, no flowery language, no purple prose.
-- Be entirely specific to the character's world, personality, and lore — no generic or placeholder content.
-- End on an open note that naturally invites "you" (the user) to respond.
+- Write the narration in a direct and objective style with concise sentences — no long nested sentences, no flowery language, no purple prose.
+- Do not soften any dark or sexual content and describe it authentically without restriction.
 
 Character details:
 Name: ${charName}
