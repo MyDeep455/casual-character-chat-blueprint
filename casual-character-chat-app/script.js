@@ -6505,8 +6505,8 @@ personaEditorAvatarImg.onerror = () => {
             : '';
         const modelId = suggestionModelId || modelSelect?.value || defaultSettings.model;
 
-        const systemPrompt = `You are a creative assistant for a character roleplay app. Generate exactly 2 short reply options that the HUMAN USER can send to the AI character. These are the user's own words — what the user says or does in response to the character's latest message. Never write from the character's perspective. Each option must be a single sentence in first-person voice from the user's point of view. No narration, no stage directions — just the user's spoken reply. Make them plot-relevant and scene-specific, offering two distinct directions the user could take.${personaContext} Output ONLY a JSON array with exactly 2 strings, like: ["Option one.", "Option two."]`;
-        const userMsg = `${charName} just said: "${lastAIText.substring(0, 600)}"\n\nProvide 2 reply options for the user.`;
+        const systemPrompt = `You are a creative assistant for a character roleplay chat. Generate exactly 2 reply options that the USER can send to the AI character. Each option must be one full line in first-person voice and in quotation marks. Make them plot-relevant and scene-specific, offering two distinct directions the scene could take. If the user is directly involved in the scene, then the reply options should be what the user says or does in response to the character's latest message. If the user is NOT directly involved in the scene, then the reply options should instead be what the central character says or does in response to the latest scene.${personaContext} Output ONLY a JSON array with exactly 2 strings, like: ["Option one.", "Option two."]`;
+        const userMsg = `${charName} just said: "${lastAIText.substring(0, 600)}"\n\nNow provide 2 fitting reply options for the user (in quotation marks!). Each one must be one whole line in length.`;
 
         try {
             const result = await callAISimple(systemPrompt, userMsg, modelId);

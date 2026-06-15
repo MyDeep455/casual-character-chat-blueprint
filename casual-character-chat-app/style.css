@@ -5733,8 +5733,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     text-align: left;
     transition: background 0.15s;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
 }
 .mood-option:hover { background: rgba(255,255,255,0.15); }
 .mood-option-clear {
@@ -5843,6 +5842,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 5px;
+    line-height: 1;
     color: #fff;
     cursor: pointer;
     transition: background 0.15s;
