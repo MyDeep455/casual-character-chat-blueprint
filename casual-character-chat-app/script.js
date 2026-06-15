@@ -2795,7 +2795,7 @@ async function handleChatSubmit(type) {
 });
     } else { 
     if (!chat.history || chat.history.length === 0) {
-        messageForAPI = "Introduce yourself in typical manner and start the roleplay with a creative scenario."; 
+        messageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner."; 
         historyForAPI = []; 
     } else {
         const historyCopy = [...chat.history];
@@ -2954,16 +2954,16 @@ const startTime = Date.now();
         if (targetCharacter.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetCharacter.lore.trim()}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
     const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
@@ -3438,16 +3438,16 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
@@ -3964,16 +3964,16 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this scene.\n\n`;
+        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nYour reply must be twelve or thirteen sentences in length.\n\n`;
+    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
+    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
+    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
+    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
@@ -6658,15 +6658,16 @@ personaEditorAvatarImg.onerror = () => {
         try {
             const hintSection = hints
                 ? `\n\nUser-specified scenario requirements: ${hints}`
-                : '\n\nCreate a vivid scenario that focuses on the character.';
+                : '\n\nCreate an authentic scenario that focuses on the character.';
 
-            const systemPrompt = `You are a creative writer for a character roleplay app. Write a medium-length opening scenario paragraph (10-15 sentences) for a story with ${charName}. Rules:
-- Address the character by name and with "he/she/him/her" in third person — ${charName} is the protagonist of the scene.
-- If user is part of the scenario (check user-specified hints), describe the relationship and dynamic between ${charName} ("he/she/him/her") and the user ("you").
-- Describe what is currently happening in the scene and what ${charName} experiences, does, or wants.
-- Weave in three lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
-- Write the narration in a direct and objective style with concise sentences — no long nested sentences, no flowery language, no purple prose.
-- Do not soften any dark or sexual content and describe it authentically without restriction.
+            const systemPrompt = `You are a creative writer for character roleplay scenarios. Write a medium-length opening scenario paragraph (10-15 sentences) for an exciting story with ${charName}. Rules:
+- Address ${charName} by name and with "he/she/him/her" in third person — ${charName} is the protagonist of the scene.
+- If the user is part of the scenario (check user-specified hints), clarify the relationship or dynamic between ${charName} ("he/she/him/her") and the user ("you").
+- Summarize the context of the scene and describe what ${charName} currently experiences or wants.
+- Weave in three full lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
+- Write the narration in a very direct, factual style - no prose, no flowery descriptions. 
+- Prefer short and medium-length sentences over long nested sentences with commas.
+- Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
 
 Character details:
 Name: ${charName}
@@ -6892,14 +6893,25 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 systemPrompt = `You are a creative world designer for an AI roleplay app. Given a world concept, output a JSON object with exactly these keys:
 - worldName: full display name for the world card (e.g. "The Iron Reaches - Steampunk Empire")
 - chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
-- description: a single plain string — a rich and detailed setting overview covering geography/environment, atmosphere/tone, society/factions, key locations/social places. Plain text, no nested JSON.
-- lore: a single plain string — a bunch of relationships between relevant characters, key historical events, notable conflicts, threats, and secrets of this world. Plain text.
-- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nWomen never experience pain."). These are critical rules that may never be broken.
+- description: a single plain string — detailed world sheet, with these 5 numbered headings written as plain text (NOT as nested JSON keys). Plain text, no nested JSON. Total description between 500 and 1000 words:
+  1. Setting — environment, atmosphere, political situation
+  [insert line break]
+  2. Locations — cities, key locations, social places
+  [insert line break]
+  3. Population — citizens, species, lifestyle
+  [insert line break]
+  4. Threats — antagonists, monsters, other dangers etc.
+  [insert line break]
+  5. World Mechanics — magic, rules, etc.
+  [insert line break]
+- lore: a single plain string — a bunch of relationships between relevant characters, key historical events, notable conflicts, and secrets/mysteries of this world. Multiple paragraphs, plain text.
+- worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nPeople never experience pain."). These are critical rules that may never be broken.
 - tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
 Be detailed and write between 500 and 1000 words. 
 Do not write about future events of the series or its characters.
 Write direct and factual. No purple prose and no complex, nested sentences. 
-Stay always in-universe! No meta and no fourth-wall talk.
+Write direct and factual. No prose and no long, nested sentences with commas. 
+Stay always in-universe! No meta and no fourth-wall talk. 
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                 userMessage = refContent
                     ? `Create a world based on the following reference material${desc ? ` and this concept: ${desc}` : ''}.\n\nReference:\n${refContent}`
