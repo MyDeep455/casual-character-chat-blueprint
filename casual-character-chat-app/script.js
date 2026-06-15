@@ -2266,8 +2266,13 @@ if (headerAvatarUrl) {
         const effectiveUrl = (savedUserUrl !== null) ? savedUserUrl : (character.musicUrl || '');
         musicUrlInputEl.value = effectiveUrl;
         if (window._musicFeatureReady) {
-            if (effectiveUrl) playMusic(effectiveUrl); else stopMusic();
-        }
+    const isNewSession = charId !== musicCurrentCharId || chatId !== musicCurrentChatId;
+    if (isNewSession) {
+        musicCurrentCharId = charId;
+        musicCurrentChatId = chatId;
+        if (effectiveUrl) playMusic(effectiveUrl); else stopMusic();
+    }
+}
     }
     await saveSingleCharacterToDB(character);
 if (window.__scrollToBottomNextStartChat) {
@@ -6091,6 +6096,8 @@ personaEditorAvatarImg.onerror = () => {
     let musicAudioEl = null;
     let musicIframeEl = null;
     let musicIsPlaying = false;
+    let musicCurrentCharId = null;  
+    let musicCurrentChatId = null;
 
     function extractYouTubeId(url) {
         const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/);
