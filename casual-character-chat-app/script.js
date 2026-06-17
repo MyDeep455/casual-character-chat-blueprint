@@ -1537,16 +1537,18 @@ function renderCharacterList(searchTerm = '') {
             const favElement = document.createElement('div');
             favElement.className = 'favorite-item';
             favElement.dataset.charId = character.id;
-            const imageUrl = getImageUrl(character.avatar); 
+            const isWorldFav = character.type === 'world';
+            const favImageSource = isWorldFav ? character.background : character.avatar;
+            const imageUrl = getImageUrl(favImageSource);
 favElement.innerHTML = `
   <div class="avatar-container">
-    <img src="${imageUrl}" alt="${character.name}" class="${character.avatar ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
-    <div class="placeholder-icon ${character.avatar ? 'hidden' : ''}">👤</div>
+    <img src="${imageUrl}" alt="${character.name}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+    <div class="placeholder-icon ${favImageSource ? 'hidden' : ''}">${isWorldFav ? '🌍' : '👤'}</div>
 </div>
   <span>${character.name}</span>
 `;
 
-if (character.avatar) {
+if (favImageSource) {
   const avatarContainer = favElement.querySelector('.avatar-container');
   avatarContainer.style.zIndex = index + 1;
 }
@@ -4390,6 +4392,7 @@ function updateSingleMessageView(messageId) {
 
     function updateEditorForType(type) {
     const isWorld = type === 'world';
+    editorAvatarPlaceholder.textContent = isWorld ? '🌍' : '👤';
     editorAvatarUrlGroup.classList.toggle('hidden', isWorld);
     worldCharPickerSection.classList.toggle('hidden', !isWorld);
     typeOptionCharacter.classList.toggle('is-active', !isWorld);
@@ -6563,7 +6566,7 @@ personaEditorAvatarImg.onerror = () => {
 
     // ── AI Scenario Generator ──
 
-    function showScenarioGeneratorModal(charName) {
+    function showScenarioGeneratorModal(charName, isWorld = false) {
         return new Promise(resolve => {
             const overlay = document.createElement('div');
             overlay.className = 'custom-alert-overlay';
@@ -6578,7 +6581,9 @@ personaEditorAvatarImg.onerror = () => {
 
             const p = document.createElement('p');
             p.style.cssText = 'margin:0 0 12px;font-size:0.9em;color:#ccc;line-height:1.5;';
-            p.textContent = `Optionally describe elements that must be part of the scenario for ${charName} (genre, setting, relationship, circumstances…). Leave empty for a random scenario.`;
+            p.textContent = isWorld
+                ? `Optionally describe elements that must be part of the opening scene in ${charName} (location, conflict, characters, atmosphere…). Leave empty for a random opening scene.`
+                : `Optionally describe elements that must be part of the scenario for ${charName} (genre, setting, relationship, circumstances…). Leave empty for a random scenario.`;
             modal.appendChild(p);
 
             const hintLabel = document.createElement('label');
@@ -6587,7 +6592,9 @@ personaEditorAvatarImg.onerror = () => {
             modal.appendChild(hintLabel);
 
             const hintInput = document.createElement('textarea');
-            hintInput.placeholder = 'e.g. "Rainy night, enemies to lovers, first meeting after a long absence…"';
+            hintInput.placeholder = isWorld
+                ? 'e.g. "Marketplace at dusk, political intrigue, the user arrives in the capital as a stranger…"'
+                : 'e.g. "Rainy night, enemies to lovers, first meeting after a long absence…"';
             hintInput.rows = 3;
             hintInput.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 8px;font-size:0.88em;margin-bottom:14px;box-sizing:border-box;resize:vertical;font-family:inherit;';
             modal.appendChild(hintInput);
@@ -6642,18 +6649,22 @@ personaEditorAvatarImg.onerror = () => {
     }
 
     async function handleAIGenerateScenario() {
+        const isWorld = cardTypeWorldRadio.checked;
+        const worldName = document.getElementById('card-name')?.value.trim() || 'the world';
         const charName = document.getElementById('chat-name')?.value.trim()
-            || document.getElementById('card-name')?.value.trim()
+            || worldName
             || 'the character';
         const charDesc = document.getElementById('char-description')?.value || '';
         const charLore = document.getElementById('char-lore')?.value || '';
 
         if (!charDesc.trim() && !charLore.trim()) {
-            showCustomAlert('Please fill in the Character Description or Lorebook first so the AI can create an authentic scenario.');
+            showCustomAlert(isWorld
+                ? 'Please fill in the World Description or World Lore first so the AI can create an authentic opening scene.'
+                : 'Please fill in the Character Description or Lorebook first so the AI can create an authentic scenario.');
             return;
         }
 
-        const result = await showScenarioGeneratorModal(charName);
+        const result = await showScenarioGeneratorModal(isWorld ? worldName : charName, isWorld);
         if (!result) return;
 
         const { hints, modelId } = result;
@@ -6665,14 +6676,34 @@ personaEditorAvatarImg.onerror = () => {
         try {
             const hintSection = hints
                 ? `\n\nUser-specified scenario requirements: ${hints}`
-                : '\n\nCreate an authentic scenario that focuses on the character.';
+                : isWorld
+                    ? '\n\nCreate an immersive opening scene that establishes the world.'
+                    : '\n\nCreate an authentic scenario that focuses on the character.';
 
-            const systemPrompt = `You are a creative writer for character roleplay scenarios. Write a medium-length opening scenario paragraph (10-15 sentences) for an exciting story with ${charName}. Rules:
+            let systemPrompt;
+            if (isWorld) {
+                systemPrompt = `You are a creative writer for immersive world roleplay opening scenes. Write a medium-length opening paragraph (10-15 sentences) set in the world of ${worldName}. Rules:
+- Write from an omniscient narrator perspective, establishing the setting and atmosphere of ${worldName}.
+- Place the user ("you") into the scene as an active participant discovering or entering the world.
+- Introduce one or two named inhabitants or characters of ${worldName} who interact with or observe the user.
+- Weave in at least two lines of dialog (from any character, in quotation marks), integrated naturally into the narration.
+- Write the narration in a very direct, factual style — no flowery prose or overly poetic descriptions.
+- Prefer short and medium-length sentences over long nested sentences with commas.
+- Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
+
+World details:
+World: ${worldName}
+Description: ${charDesc.substring(0, 900)}
+Lore/Background: ${charLore.substring(0, 700)}${hintSection}
+
+Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
+            } else {
+                systemPrompt = `You are a creative writer for character roleplay scenarios. Write a medium-length opening scenario paragraph (10-15 sentences) for an exciting story with ${charName}. Rules:
 - Address ${charName} by name and with "he/she/him/her" in third person — ${charName} is the protagonist of the scene.
 - If the user is part of the scenario (check user-specified hints), clarify the relationship or dynamic between ${charName} ("he/she/him/her") and the user ("you").
 - Summarize the context of the scene and describe what ${charName} currently experiences or wants.
 - Weave in three full lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
-- Write the narration in a very direct, factual style - no prose, no flowery descriptions. 
+- Write the narration in a very direct, factual style - no prose, no flowery descriptions.
 - Prefer short and medium-length sentences over long nested sentences with commas.
 - Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
 
@@ -6682,6 +6713,7 @@ Description: ${charDesc.substring(0, 900)}
 Lore/Background: ${charLore.substring(0, 700)}${hintSection}
 
 Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
+            }
 
             const text = await callAISimple(systemPrompt, 'Generate the scenario now.', modelId);
             if (!text || !text.trim()) throw new Error('Empty response from AI.');
@@ -7156,14 +7188,16 @@ characterList.addEventListener('click', async (event) => {
 
                 favBar.querySelector('.favorites-placeholder')?.remove();
 
-                const imageUrl = getImageUrl(character.avatar);
+                const isWorldFav = character.type === 'world';
+                const favImageSource = isWorldFav ? character.background : character.avatar;
+                const imageUrl = getImageUrl(favImageSource);
                 const favElement = document.createElement('div');
                 favElement.className = 'favorite-item';
                 favElement.dataset.charId = charId;
                 favElement.innerHTML = `
                   <div class="avatar-container">
-                    <img src="${imageUrl}" alt="${character.name}" class="${character.avatar ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
-                    <div class="placeholder-icon ${character.avatar ? 'hidden' : ''}">👤</div>
+                    <img src="${imageUrl}" alt="${character.name}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+                    <div class="placeholder-icon ${favImageSource ? 'hidden' : ''}">${isWorldFav ? '🌍' : '👤'}</div>
                   </div>
                   <span>${character.name}</span>`;
                 favElement.addEventListener('click', () => showChatList(charId));
