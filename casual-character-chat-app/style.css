@@ -5913,26 +5913,52 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 }
 #world-char-picker-section > label {
     display: block;
-    margin-bottom: 8px;
-}
-.world-char-search {
-    width: 100%;
     margin-bottom: 10px;
-}
-.world-char-picker-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 40vh;
-    overflow-y: auto;
-    padding-right: 10px;
-}
-.world-char-picker-empty {
-    padding: 10px;
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-    font-size: 0.85rem;
     text-align: center;
+}
+.world-char-selected-avatars {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 32px;
+    margin-bottom: 10px;
+    padding: 4px 0;
+}
+.world-char-selected-avatars img,
+.world-char-selected-avatars .placeholder-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s;
+}
+.world-char-selected-avatars img:hover {
+    transform: scale(1.2);
+    z-index: 10;
+    position: relative;
+}
+.world-char-selected-avatars .placeholder-icon {
+    font-size: 18px;
+    line-height: 42px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+}
+.world-char-selected-empty {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+.world-char-picker-btn-row {
+    text-align: center;
+    margin-bottom: 4px;
+}
+#worldCharPickerConfirmBtn {
+    background-color: rgba(26, 158, 60, 0.9);
 }
 
 /* World card in character grid */

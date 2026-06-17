@@ -92,6 +92,7 @@ const defaultSettings = {
 };
     let currentChatId = null;
     let worldCharSelectedIds = new Set();
+    let worldCharPickerTempIds = new Set();
     let activeGroupParticipantId = null;
     let personas = {};
     let appSettings = {};
@@ -241,7 +242,6 @@ const defaultSettings = {
     const typeOptionWorld = document.getElementById('type-option-world');
     const editorAvatarUrlGroup = document.getElementById('editor-avatar-url-group');
     const worldCharPickerSection = document.getElementById('world-char-picker-section');
-    const worldCharPickerList = document.getElementById('world-char-picker-list');
     const chatWorldBadge = document.getElementById('chat-world-badge');
     // Group Chat and search elements
     const addParticipantBtn = document.getElementById('add-participant-btn');
@@ -4430,61 +4430,158 @@ function updateSingleMessageView(messageId) {
     const narrReminderLabelEl = document.querySelector('label[for="char-narrator-reminder"]');
     if (narrReminderLabelEl) narrReminderLabelEl.textContent = isWorld ? 'World Narrator Reminder:' : 'Narrator Reminder:';
     if (isWorld) {
-        const worldCharSearch = document.getElementById('world-char-search');
-        if (worldCharSearch) {
-            worldCharSearch.value = '';
-            worldCharSearch.oninput = () => populateWorldCharPicker();
-        }
-        populateWorldCharPicker();
+        renderWorldCharSelectedAvatars();
     }
 }
 
-function populateWorldCharPicker() {
-    worldCharPickerList.innerHTML = '';
-    const searchTerm = (document.getElementById('world-char-search')?.value || '').toLowerCase().trim();
+function renderWorldCharSelectedAvatars() {
+    const container = document.getElementById('world-char-selected-avatars');
+    if (!container) return;
+    container.innerHTML = '';
+    if (worldCharSelectedIds.size === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'world-char-selected-empty';
+        empty.textContent = 'No characters selected';
+        container.appendChild(empty);
+        return;
+    }
+    worldCharSelectedIds.forEach(id => {
+        const char = characters[id];
+        if (!char) return;
+        const avatarUrl = getImageUrl(char.avatar);
+        const wrap = document.createElement('div');
+        wrap.title = char.name;
+        if (avatarUrl) {
+            const img = document.createElement('img');
+            img.src = avatarUrl;
+            img.alt = char.name;
+            img.onerror = function() { this.style.display = 'none'; const ph = this.nextElementSibling; if (ph) ph.classList.remove('hidden'); };
+            const ph = document.createElement('div');
+            ph.className = 'placeholder-icon hidden';
+            ph.textContent = '👤';
+            wrap.appendChild(img);
+            wrap.appendChild(ph);
+        } else {
+            const ph = document.createElement('div');
+            ph.className = 'placeholder-icon';
+            ph.textContent = '👤';
+            wrap.appendChild(ph);
+        }
+        container.appendChild(wrap);
+    });
+}
+
+function openWorldCharPickerModal() {
+    worldCharPickerTempIds = new Set(worldCharSelectedIds);
+    let modal = document.getElementById('worldCharPickerModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'worldCharPickerModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:2200;';
+        const panel = document.createElement('div');
+        panel.className = 'modal-content';
+        panel.style.cssText = 'max-width:600px;width:min(600px,92vw);';
+        panel.innerHTML = `
+          <h2>Add/Remove Characters</h2>
+          <p>Choose the characters for this world:</p>
+          <div class="modal-search-container" style="display:flex;align-items:center;gap:10px;">
+            <input type="search" id="worldCharPickerSearch" class="modal-search-input" placeholder="🔎 Search Character…">
+            <label style="display:flex;align-items:center;gap:6px;font-size:16px;color:#dcddde;">
+              <input id="worldCharPickerSelectAll" type="checkbox">
+              <span>Select all</span>
+            </label>
+          </div>
+          <div id="worldCharPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
+          <div class="form-buttons">
+            <button type="button" id="worldCharPickerConfirmBtn">Confirm</button>
+            <button type="button" id="worldCharPickerCancelBtn">Cancel</button>
+          </div>
+        `;
+        modal.appendChild(panel);
+        document.body.appendChild(modal);
+        panel.querySelector('#worldCharPickerConfirmBtn').addEventListener('click', () => {
+            worldCharSelectedIds = new Set(worldCharPickerTempIds);
+            modal.style.display = 'none';
+            renderWorldCharSelectedAvatars();
+        });
+        panel.querySelector('#worldCharPickerCancelBtn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        panel.querySelector('#worldCharPickerSearch').addEventListener('input', renderWorldCharPickerModalList);
+        panel.querySelector('#worldCharPickerSelectAll').addEventListener('change', (e) => {
+            const boxes = document.querySelectorAll('#worldCharPickerList .worldCharPickerCheckbox');
+            boxes.forEach(cb => {
+                cb.checked = e.target.checked;
+                if (e.target.checked) worldCharPickerTempIds.add(cb.value);
+                else worldCharPickerTempIds.delete(cb.value);
+            });
+            updateWorldCharPickerSelectAll();
+        });
+    }
+    renderWorldCharPickerModalList();
+    modal.style.display = 'flex';
+}
+
+function renderWorldCharPickerModalList() {
+    const list = document.getElementById('worldCharPickerList');
+    if (!list) return;
+    const q = (document.getElementById('worldCharPickerSearch')?.value || '').toLowerCase().trim();
     const editingId = editingCharField.value;
     const chars = Object.values(characters)
-        .filter(c => c.type !== 'world' && c.id !== editingId && (searchTerm === '' || (c.name || '').toLowerCase().includes(searchTerm)))
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        .filter(c => c.type !== 'world' && c.id !== editingId && (!q || (c.name || '').toLowerCase().includes(q)))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    list.innerHTML = '';
     if (chars.length === 0) {
         const empty = document.createElement('div');
-        empty.className = 'world-char-picker-empty';
-        empty.textContent = 'No characters yet. Create some characters first.';
-        worldCharPickerList.appendChild(empty);
+        empty.style.cssText = 'padding:10px;color:rgba(255,255,255,0.4);font-style:italic;text-align:center;';
+        empty.textContent = 'No characters found.';
+        list.appendChild(empty);
+        updateWorldCharPickerSelectAll();
         return;
     }
     chars.forEach(char => {
-        const avatarUrl = getImageUrl(char.avatar);
-        const avatarHtml = avatarUrl
-            ? `<img src="${avatarUrl}" alt="Avatar" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon hidden">👤</div>`
-            : `<div class="placeholder-icon">👤</div>`;
-
+        const avatarSrc = char.avatar ? getImageUrl(char.avatar) : null;
+        const avatarHtml = `<img src="${avatarSrc || ''}" alt="Avatar" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon ${avatarSrc ? 'hidden' : ''}">👤</div>`;
         const row = document.createElement('label');
         row.className = 'participant-option-btn';
-        row.style.justifyContent = 'space-between';
-        row.style.boxSizing = 'border-box';
-
+        row.style.cssText = 'justify-content:space-between;width:100%;box-sizing:border-box;';
         const left = document.createElement('div');
-        left.style.cssText = 'display:flex;align-items:center;gap:10px;';
-        left.innerHTML = `${avatarHtml}<span>${char.name}</span>`;
-
+        left.style.cssText = 'display:flex;align-items:center;gap:15px;';
+        left.innerHTML = `${avatarHtml}<span>${escapeHtml(char.name || '(unnamed)')}</span>`;
         const cb = document.createElement('input');
         cb.type = 'checkbox';
+        cb.className = 'worldCharPickerCheckbox bulkCharCheckbox';
         cb.value = char.id;
-        cb.checked = worldCharSelectedIds.has(char.id);
-        cb.addEventListener('change', () => {
-            if (cb.checked) worldCharSelectedIds.add(char.id);
-            else worldCharSelectedIds.delete(char.id);
+        cb.checked = worldCharPickerTempIds.has(char.id);
+        cb.addEventListener('change', (e) => {
+            if (e.target.checked) worldCharPickerTempIds.add(char.id);
+            else worldCharPickerTempIds.delete(char.id);
+            updateWorldCharPickerSelectAll();
         });
-
         row.appendChild(left);
         row.appendChild(cb);
-        worldCharPickerList.appendChild(row);
+        list.appendChild(row);
     });
+    list.querySelectorAll('img').forEach(img => {
+        img.style.objectFit = 'cover';
+        img.style.objectPosition = 'center';
+    });
+    updateWorldCharPickerSelectAll();
+}
+
+function updateWorldCharPickerSelectAll() {
+    const selectAll = document.getElementById('worldCharPickerSelectAll');
+    if (!selectAll) return;
+    const boxes = document.querySelectorAll('#worldCharPickerList .worldCharPickerCheckbox');
+    const total = boxes.length;
+    const selected = Array.from(boxes).filter(cb => cb.checked).length;
+    selectAll.indeterminate = selected > 0 && selected < total;
+    selectAll.checked = total > 0 && selected === total;
 }
 
 cardTypeCharacterRadio.addEventListener('change', () => updateEditorForType('character'));
 cardTypeWorldRadio.addEventListener('change', () => { worldCharSelectedIds = new Set(); updateEditorForType('world'); });
+document.getElementById('open-world-char-picker-btn').addEventListener('click', openWorldCharPickerModal);
 
     function openEditorForNew() {
     tempUploadedImages = {};
