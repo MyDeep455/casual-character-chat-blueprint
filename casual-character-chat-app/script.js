@@ -2189,7 +2189,12 @@ async function imageFileToWebp(file, quality = 0.80) {
 
 
     async function startChat(charId, chatId) {
-    clearActiveGroupParticipant();
+    // Only clear the selected group-chat name tag when actually switching to a
+    // different chat. Re-rendering the same chat (after editing/deleting a
+    // message, switching a variant, etc.) must keep the current selection.
+    if (charId !== currentCharacterId || chatId !== currentChatId) {
+        clearActiveGroupParticipant();
+    }
     pendingReplyOptions = null;
     ++replyOptionsReqId;
     hideReplyOptionsDropdown();
