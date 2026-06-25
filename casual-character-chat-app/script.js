@@ -1589,8 +1589,13 @@ const filteredCharacters = allSortedCharacters.filter(char => {
         const imageUrl = getImageUrl(cardImageSource);
         const placeholderContent = isWorldCard ? '<div class="world-card-placeholder">🌍</div>' : '<div class="placeholder-icon">👤</div>';
         const worldBadgeHtml = isWorldCard ? `<span class="world-badge">World</span>` : '';
-        const worldCharCountHtml = isWorldCard && (character.characterIds || []).length > 0
-            ? `<span class="world-char-count">${character.characterIds.length} character${character.characterIds.length !== 1 ? 's' : ''}</span>` : '';
+        // Count only characters that still exist, mirroring the chat-participant
+        // logic. Stale/duplicate IDs (e.g. left behind after copying a world)
+        // must not inflate the count shown on the card.
+        const worldCharCount = isWorldCard
+            ? new Set((character.characterIds || []).filter(id => characters[id])).size : 0;
+        const worldCharCountHtml = isWorldCard && worldCharCount > 0
+            ? `<span class="world-char-count">${worldCharCount} character${worldCharCount !== 1 ? 's' : ''}</span>` : '';
         const starSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
         charElement.innerHTML = `
             ${!character.isArchived ? `<button class="favorite-btn ${isFavorite ? 'is-favorite' : ''}" title="Mark as Favorite">${starSvg}</button>` : ''}
@@ -1691,6 +1696,13 @@ if (dashboardAvatarUrl) {
     avatarContainer.style.backgroundImage = 'none';
 }
   nameH2.textContent = character.name;
+
+  // Use "World" wording on the dashboard buttons for world cards.
+  const cardNoun = isWorldChatList ? 'World' : 'Character';
+  editCharacterBtn.textContent = `Edit ${cardNoun}`;
+  copyCharacterBtn.textContent = `Copy ${cardNoun}`;
+  deleteCharacterBtnDashboard.textContent = `Delete ${cardNoun}`;
+
   chatSessionListDiv.innerHTML = '';
   if (character.chats && Object.keys(character.chats).length > 0) {
     const chatIds = Object.keys(character.chats).sort((a, b) => b.localeCompare(a));
@@ -4708,7 +4720,9 @@ async function handleCopyCharacter() {
     const originalCharacter = characters[currentCharacterId];
     if (!originalCharacter) return;
 
-    if (await showCustomConfirm(`Do you really want to copy the character "${originalCharacter.name}"?`)) {
+    const copyNoun = originalCharacter.type === 'world' ? 'world' : 'character';
+
+    if (await showCustomConfirm(`Do you really want to copy the ${copyNoun} "${originalCharacter.name}"?`)) {
 
         const newCharacter = JSON.parse(JSON.stringify(originalCharacter));
 
@@ -4720,7 +4734,7 @@ async function handleCopyCharacter() {
 
         await saveSingleCharacterToDB(newCharacter);
         renderCharacterList();
-        showCustomAlert(`Character "${originalCharacter.name}" was successfully copied!`);
+        showCustomAlert(`${copyNoun.charAt(0).toUpperCase() + copyNoun.slice(1)} "${originalCharacter.name}" was successfully copied!`);
         showMainScreen();
     }
 }
@@ -7840,7 +7854,11 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
     deleteCharacterBtnDashboard.addEventListener('click', async () => {
     if (!currentCharacterId || !characters[currentCharacterId]) return;
     const characterName = characters[currentCharacterId].name;
-    if (await showCustomConfirm(`Are you sure you want to permanently delete the character "${characterName}" and all their chats?`, true)) {
+    const isWorld = characters[currentCharacterId].type === 'world';
+    const deletePrompt = isWorld
+        ? `Are you sure you want to permanently delete the world "${characterName}" and all its chats?`
+        : `Are you sure you want to permanently delete the character "${characterName}" and all their chats?`;
+    if (await showCustomConfirm(deletePrompt, true)) {
         const idToDelete = currentCharacterId; 
         delete characters[idToDelete];
         await deleteSingleCharacterFromDB(idToDelete);
