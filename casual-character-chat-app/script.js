@@ -7820,6 +7820,9 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
                 changed = true;
             } else {
                 event.preventDefault();
+                // Ignore regenerate requests while a generation is already
+                // streaming; a second press mid-stream corrupts the formatting.
+                if (currentStreamController) return;
                 await handleRegenerate(lastMessage.id);
                 return;
             }
