@@ -791,6 +791,26 @@ function applyUserPlaceholder(s, persona) {
     return s || '';
 }
 
+// Returns the lore text to inject for a character.
+// 'flat' mode (default, legacy): the whole `lore` string, always included.
+// 'keyword' mode: only the loreEntries whose trigger keywords appear in `scanText` (recent messages).
+function getLoreText(character, scanText) {
+    if (!character) return '';
+    if ((character.loreMode || 'flat') === 'keyword') {
+        if (!Array.isArray(character.loreEntries) || character.loreEntries.length === 0) return '';
+        const hay = (scanText || '').toLowerCase();
+        return character.loreEntries
+            .filter(e => (e.keywords || '').split(',').some(k => {
+                const kw = k.trim().toLowerCase();
+                return kw && hay.includes(kw);
+            }))
+            .map(e => (e.text || '').trim())
+            .filter(Boolean)
+            .join('\n\n');
+    }
+    return (character.lore || '').trim();
+}
+
 
 
 function closeAppSettingsModal() {
@@ -2313,7 +2333,7 @@ if (saved !== null) {
 
 
 
-async function createNewChat(initialMessage = null, scenarioName = null) {
+async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null) {
     if (!currentCharacterId) return;
     const character = characters[currentCharacterId];
     if (!character.chats) {
@@ -2350,7 +2370,7 @@ async function createNewChat(initialMessage = null, scenarioName = null) {
         memories: '',
         participants: worldParticipants,
         activePersonaId: null,
-        mood: null
+        mood: initialMood
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -2851,6 +2871,12 @@ async function handleChatSubmit(type) {
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
 
+    // Text scanned for keyword-triggered lore entries: the last few turns plus the current message.
+    const loreScanText = [
+        ...((historyForAPI || []).slice(-6).map(h => h.main || '')),
+        messageForAPI || ''
+    ].join('\n');
+
     const currentModelId = modelSelect.value || defaultSettings.model;
     const modelSettings = appSettings.availableModels.find(m => m.id === currentModelId);
 
@@ -2931,7 +2957,8 @@ const startTime = Date.now();
     if (isWorldChat) {
         const worldName = worldChar.name || 'This World';
         if (worldChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldChar.description.trim()}\n\n`;
-        if (worldChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldChar.lore.trim()}\n\n`;
+        const worldLoreText = getLoreText(worldChar, loreScanText);
+        if (worldLoreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldLoreText}\n\n`;
         if (worldChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldChar.reminder.trim()}\n\n`;
         if (targetCharId === currentCharacterId || type === 'story') {
             fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
@@ -2948,7 +2975,8 @@ const startTime = Date.now();
             fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
             if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
             if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
-            if (targetCharacter.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${targetCharacter.lore.trim()}\n\n`;
+            const charLoreText = getLoreText(targetCharacter, loreScanText);
+            if (charLoreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${charLoreText}\n\n`;
         }
     } else if (type === 'story') {
         fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any character and narrate the scene objectively.]\n\n`;
@@ -2958,8 +2986,9 @@ const startTime = Date.now();
             if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
         });
         const mainCharacterForLore = characters[currentCharacterId];
-        if (mainCharacterForLore && mainCharacterForLore.lore) {
-            fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
+        const mainLoreText = getLoreText(mainCharacterForLore, loreScanText);
+        if (mainLoreText) {
+            fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainLoreText}\n\n`;
         }
     } else {
         if (chat.participants && chat.participants.length > 1) {
@@ -2975,7 +3004,8 @@ const startTime = Date.now();
         }
         if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
         if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
-        if (targetCharacter.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetCharacter.lore.trim()}\n\n`;
+        const targetLoreText = getLoreText(targetCharacter, loreScanText);
+        if (targetLoreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetLoreText}\n\n`;
     }
     if (chat.mood) {
         fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
@@ -4612,6 +4642,10 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
     });
     document.getElementById('scenario-editor-list').innerHTML = '';
     createScenarioInput({ name: 'Main Greeting', text: '' });
+    document.getElementById('lore-editor-list').innerHTML = '';
+    const flatLoreRadio = document.querySelector('input[name="lore-mode"][value="flat"]');
+    if (flatLoreRadio) flatLoreRadio.checked = true;
+    updateEditorForLoreMode('flat');
     editingCharField.value = '';
     document.getElementById('chat-list-screen').style.backgroundImage = 'none';
     editorAvatarImg.src = '';
@@ -4694,7 +4728,19 @@ if (editorDisplayUrl) {
   } else {
       createScenarioInput({ name: '', text: '' });
   }
-  
+
+  const loreMode = character.loreMode || 'flat';
+  const loreModeRadio = document.querySelector(`input[name="lore-mode"][value="${loreMode}"]`);
+  if (loreModeRadio) loreModeRadio.checked = true;
+  const loreListDiv = document.getElementById('lore-editor-list');
+  loreListDiv.innerHTML = '';
+  if (Array.isArray(character.loreEntries) && character.loreEntries.length > 0) {
+      character.loreEntries.forEach(createLoreEntryInput);
+  } else {
+      createLoreEntryInput({});
+  }
+  updateEditorForLoreMode(loreMode);
+
   editingCharField.value = currentCharacterId;
   updateEditorTokenCount();
   
@@ -5218,7 +5264,7 @@ async function setActivePersonaForChat(personaId) {
   const musicUrl = document.getElementById('char-music-url').value.trim();
   const cardType = cardTypeWorldRadio.checked ? 'world' : 'character';
   const characterIds = cardType === 'world' ? Array.from(worldCharSelectedIds) : [];
-  const scenarioEntries = document.querySelectorAll('.scenario-entry');
+  const scenarioEntries = document.querySelectorAll('#scenario-editor-list .scenario-entry');
   const scenarios = [];
   scenarioEntries.forEach(entry => {
     const nameInput = entry.querySelector('.scenario-name-input');
@@ -5226,6 +5272,20 @@ async function setActivePersonaForChat(personaId) {
     if (textInput.value.trim() !== "") {
       scenarios.push({
         name: nameInput.value.trim() || 'Unnamed Scenario',
+        text: textInput.value
+      });
+    }
+  });
+
+  const loreModeRadio = document.querySelector('input[name="lore-mode"]:checked');
+  const loreMode = loreModeRadio ? loreModeRadio.value : 'flat';
+  const loreEntries = [];
+  document.querySelectorAll('#lore-editor-list .lore-entry').forEach(entry => {
+    const keyInput = entry.querySelector('.lore-keyword-input');
+    const textInput = entry.querySelector('textarea');
+    if (textInput && textInput.value.trim() !== "") {
+      loreEntries.push({
+        keywords: (keyInput ? keyInput.value : '').trim(),
         text: textInput.value
       });
     }
@@ -5241,6 +5301,8 @@ async function setActivePersonaForChat(personaId) {
     character.instructions = instructions;
     character.description = description;
     character.lore = lore;
+    character.loreMode = loreMode;
+    character.loreEntries = loreEntries;
     character.tags = tags;
     character.reminder = reminder;
     character.narratorReminder = narratorReminder;
@@ -5259,6 +5321,8 @@ async function setActivePersonaForChat(personaId) {
       instructions: instructions,
       description: description,
       lore: lore,
+      loreMode: loreMode,
+      loreEntries: loreEntries,
       tags: tags,
       reminder: reminder,
       narratorReminder: narratorReminder,
@@ -5327,6 +5391,90 @@ document.getElementById('scenario-editor-list').addEventListener('click', async 
         }
     }
 });
+
+// --- Keyword-triggered lorebook entries ---
+function createLoreEntryInput(entry = {}) {
+    const listDiv = document.getElementById('lore-editor-list');
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'scenario-entry lore-entry';
+    const fieldsWrapper = document.createElement('div');
+    fieldsWrapper.style.flexGrow = '1';
+
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'scenario-name-input lore-keyword-input';
+    keyInput.placeholder = 'Trigger keywords (comma-separated, e.g. sword, blade, weapon)';
+    keyInput.value = entry.keywords || '';
+
+    const textarea = document.createElement('textarea');
+    textarea.rows = 4;
+    textarea.placeholder = 'Lore text added to context when a keyword above appears in recent messages.';
+    textarea.value = entry.text || '';
+    textarea.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
+    textarea.addEventListener('input', autoResizeTextarea);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-scenario-btn delete-lore-entry-btn';
+    deleteBtn.title = 'Delete Lore Entry';
+    deleteBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+
+    fieldsWrapper.appendChild(keyInput);
+    fieldsWrapper.appendChild(textarea);
+    entryDiv.appendChild(fieldsWrapper);
+    entryDiv.appendChild(deleteBtn);
+    listDiv.appendChild(entryDiv);
+}
+
+function updateEditorForLoreMode(mode) {
+    const flatC = document.getElementById('lore-flat-container');
+    const kwC = document.getElementById('lore-keyword-container');
+    if (!flatC || !kwC) return;
+    if (mode === 'keyword') {
+        flatC.classList.add('hidden');
+        kwC.classList.remove('hidden');
+    } else {
+        flatC.classList.remove('hidden');
+        kwC.classList.add('hidden');
+    }
+}
+
+document.querySelectorAll('input[name="lore-mode"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (e.target.checked) updateEditorForLoreMode(e.target.value);
+    });
+});
+
+document.getElementById('add-lore-entry-btn').addEventListener('click', () => {
+    createLoreEntryInput({});
+});
+
+document.getElementById('lore-editor-list').addEventListener('click', async (event) => {
+    const delBtn = event.target.closest('.delete-lore-entry-btn');
+    if (delBtn) {
+        if (await showCustomConfirm("Do you really want to delete this lore entry?", true)) {
+            delBtn.closest('.lore-entry').remove();
+        }
+    }
+});
+
+document.getElementById('lore-editor-list').addEventListener('input', updateEditorTokenCount);
+
+// --- Character randomizer: start a fresh chat with a random character and a random mood ---
+async function startRandomChat() {
+    const pool = Object.values(characters).filter(c => c.type !== 'world' && !c.isArchived);
+    if (pool.length === 0) {
+        showCustomAlert('No characters available for a random chat. Create a character first!');
+        return;
+    }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    currentCharacterId = pick.id;
+    const RANDOM_MOODS = ['Happy', 'Sad', 'Angry', 'Excited', 'Nervous', 'Flirty', 'Tired', 'Curious', 'Scared', 'Bored'];
+    const randomMood = RANDOM_MOODS[Math.floor(Math.random() * RANDOM_MOODS.length)];
+    await createNewChat(null, null, randomMood);
+}
+
+document.getElementById('random-chat-btn')?.addEventListener('click', startRandomChat);
 
 
 

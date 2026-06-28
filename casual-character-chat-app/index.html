@@ -61,6 +61,9 @@
     <input type="search" id="search-input" placeholder="🔎 Search Name...">
     <input type="search" id="tag-search-input" placeholder="🔎 Search Tag...">
 </div>
+    <div id="random-chat-container">
+        <button id="random-chat-btn" title="Start a new chat with a random character and a random mood">🎲 Random Chat</button>
+    </div>
     <div id="character-list">
     </div>
     
@@ -408,8 +411,23 @@
                 <label for="char-description" id="char-description-label">Character Description:</label>
                 <textarea id="char-description" rows="1" placeholder="Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc."></textarea>
 
-                <label for="char-lore">Lorebook:</label>
-                <textarea id="char-lore" rows="1" placeholder="Deeper Background Story, World & Relationships of the Character, Fun Facts etc."></textarea>
+                <div class="lore-header-row">
+                    <label for="char-lore">Lorebook:</label>
+                    <div class="lore-mode-toggle">
+                        <label><input type="radio" name="lore-mode" value="flat" checked> Always-on</label>
+                        <label><input type="radio" name="lore-mode" value="keyword"> Keyword-triggered</label>
+                    </div>
+                </div>
+                <div id="lore-flat-container">
+                    <textarea id="char-lore" rows="1" placeholder="Deeper Background Story, World & Relationships of the Character, Fun Facts etc."></textarea>
+                </div>
+                <div id="lore-keyword-container" class="hidden">
+                    <p class="lore-help-text">Each entry is only added to the AI's context when one of its trigger keywords appears in recent messages. Saves tokens and keeps the AI focused.</p>
+                    <div id="lore-editor-list" class="scenario-list-container"></div>
+                    <div class="scenario-action-row">
+                        <button type="button" id="add-lore-entry-btn" class="add-scenario-button">+ Add Lore Entry</button>
+                    </div>
+                </div>
 
                 <label for="char-tags">Tags:</label>
                 <textarea id="char-tags" rows="1" placeholder="Series title, Genre, Personality type, etc. (comma-separated!)"></textarea>
