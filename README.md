@@ -107,7 +107,7 @@ This is where you bring your characters to life. All changes you make here take 
 
 ### Key Input Fields
 
-* **Card Name & In-Chat Name:** The full name displayed on the character card (e.g., "Natsuki Subaru - Re:Zero") and the shorter name used in dialogue and by the AI (e.g., "Subaru").
+* **Card Name & In-Chat Name:** The full name displayed on the character card (e.g., "Natsuki Subaru - Re:Zero") and the shorter name used in dialogue and by the AI (e.g., "Subaru"). The In-Chat Name field only appears for Character cards — World cards have no in-chat name, since the World itself narrates anonymously as an omniscient narrator rather than as a named character.
 * **Avatar & Background URL:** Direct links or local file uploads (via the 📁 icon) for the character's profile picture and chat background.
 * **Character Description:** The most crucial field. Describe identity, personality, appearance, abilities, speech style, and provide dialogue examples. A good length is between 500-1000 words.
 * **Lorebook:** For deeper background information, world-building details, relationships, or any facts the AI should know that don't fit into the core personality description.

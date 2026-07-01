@@ -1468,6 +1468,17 @@ async function loadCharactersFromDB() {
         obj[char.id] = char;
         return obj;
     }, {});
+
+    // Migration: World cards must not carry an in-chat name. Older worlds were saved
+    // with chatName "Narrator", which then leaked into prompts (e.g. the mood line and
+    // {{char}} substitution) as a named, behaving entity. Strip it so the world narrates
+    // anonymously instead of being treated as a character called "Narrator".
+    for (const char of Object.values(characters)) {
+        if (char.type === 'world' && char.chatName) {
+            char.chatName = '';
+            await saveSingleCharacterToDB(char);
+        }
+    }
 }
 
 
@@ -2815,6 +2826,15 @@ async function handleChatSubmit(type) {
         targetCharId = activeGroupParticipantId;
     }
 
+    // In World chats, the "Character" button only replies as a specific character when one is
+    // tagged via the participant selector. With no character tagged, the reply target is the
+    // World itself — asking it to reply "as a character" makes the AI invent and name one
+    // (often "Narrator"). So treat an untagged Character reply as narration, i.e. the Character
+    // button behaves exactly like the Narrator button.
+    if (mainCharacter?.type === 'world' && targetCharId === currentCharacterId && type === 'dialog') {
+        type = 'story';
+    }
+
     let messageForAPI;
     let historyForAPI;
     let lastMessageInChat = chat.history && chat.history.length > 0 ? chat.history[chat.history.length - 1] : null;
@@ -2830,7 +2850,7 @@ async function handleChatSubmit(type) {
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+        return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
@@ -2857,7 +2877,7 @@ async function handleChatSubmit(type) {
                 const speaker = characters[msg.speakerId || currentCharacterId];
                 const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
                 const text = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
-                return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${text}` : text };
+                return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${text}` : text };
             }
             const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
             const userName = persona?.name || 'User';
@@ -2961,7 +2981,7 @@ const startTime = Date.now();
         if (worldLoreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldLoreText}\n\n`;
         if (worldChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldChar.reminder.trim()}\n\n`;
         if (targetCharId === currentCharacterId || type === 'story') {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only in form of omniscient narration.\nNarrate the events and interactions of characters objectively from a third-person perspective. Do not write dialog for {{user}} or {{char}}, but do voice third-party NPCs with spoken dialog whenever the user's message calls for it (e.g. a stranger approaching and greeting {{char}}).]\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -2979,7 +2999,7 @@ const startTime = Date.now();
             if (charLoreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${charLoreText}\n\n`;
         }
     } else if (type === 'story') {
-        fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any character and narrate the scene objectively.]\n\n`;
+        fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only in form of omniscient narration.\nNarrate the events and interactions of characters objectively from a third-person perspective. Do not write dialog for {{user}} or {{char}}, but do voice third-party NPCs with spoken dialog whenever the user's message calls for it (e.g. a stranger approaching and greeting {{char}}).]\n\n`;
         fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
         chat.participants.forEach(pid => {
             const pChar = characters[pid];
@@ -3008,7 +3028,9 @@ const startTime = Date.now();
         if (targetLoreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetLoreText}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
+        fullSystemPrompt += isWorldChat
+            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
+            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
@@ -3378,10 +3400,15 @@ if (messageElement) {
     dialogBtn.disabled = true;
     storyBtn.disabled = true;
     const message = chat.history[messageIndex];
-    const messageType = message.type || 'dialog';
+    let messageType = message.type || 'dialog';
     const speakerId = message.speakerId || currentCharacterId;
     const speakerCharacter = characters[speakerId];
     const charNameForAI = speakerCharacter.chatName || speakerCharacter.name;
+    // World narration (the speaker is the World itself) is always story/narration, even if an
+    // older message was stored as 'dialog' — keeps the Character and Narrator buttons aligned.
+    if (characters[currentCharacterId]?.type === 'world' && speakerId === currentCharacterId && messageType === 'dialog') {
+        messageType = 'story';
+    }
 
     if(messageElement) {
         const regenBtn = messageElement.querySelector('.regenerate-btn');
@@ -3423,7 +3450,7 @@ if (messageElement) {
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+        return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
@@ -3466,7 +3493,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (worldRegenChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldRegenChar.lore.trim()}\n\n`;
         if (worldRegenChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldRegenChar.reminder.trim()}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only in form of omniscient narration.\nNarrate the events and interactions of characters objectively from a third-person perspective. Do not write dialog for {{user}} or {{char}}, but do voice third-party NPCs with spoken dialog whenever the user's message calls for it (e.g. a stranger approaching and greeting {{char}}).]\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -3485,14 +3512,16 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     } else {
         const hasCustomNarratorReminder = speakerCharacter.narratorReminder && speakerCharacter.narratorReminder.trim() !== '';
         if (messageType === 'story' && !hasCustomNarratorReminder) {
-            fullSystemPrompt += `[SYSTEM INSTRUCTION: Respond only as a third-person omniscient narrator.\nDo not speak as any main character and narrate the scene objectively.]\n\n`;
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only in form of omniscient narration.\nNarrate the events and interactions of characters objectively from a third-person perspective. Do not write dialog for {{user}} or {{char}}, but do voice third-party NPCs with spoken dialog whenever the user's message calls for it (e.g. a stranger approaching and greeting {{char}}).]\n\n`;
         }
         if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
         if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
+        fullSystemPrompt += isWorldRegenChat
+            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
+            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
@@ -3921,7 +3950,12 @@ if (messageElement) {
     const speakerId = message.speakerId || currentCharacterId;
     const speakerCharacter = characters[speakerId];
     const charNameForAI = speakerCharacter.chatName || speakerCharacter.name;
-    const messageType = message.type || 'dialog';
+    let messageType = message.type || 'dialog';
+    // World narration (the speaker is the World itself) is always story/narration, even if an
+    // older message was stored as 'dialog' — keeps the Character and Narrator buttons aligned.
+    if (characters[currentCharacterId]?.type === 'world' && speakerId === currentCharacterId && messageType === 'dialog') {
+        messageType = 'story';
+    }
     if(messageElement) {
         const regenBtn = messageElement.querySelector('.regenerate-btn');
     const continueBtn = messageElement.querySelector('.continue-btn');
@@ -3944,7 +3978,7 @@ if (messageElement) {
     const historyCopy = chat.history.slice(0, messageIndex + 1);
     const lastMessage = historyCopy.pop(); 
     let messageForAPI = lastMessage.variations[lastMessage.activeVariant].main; 
-    messageForAPI += "\n\n(Please drive the current point of the scene actively forward to the next point of the scene. Keep it concise and write only one short paragraph maximum. In case a sentence or dialog was cut off, complete it seamlessly (without three dots '...') and then move on with fresh sentences. Do not repeat any of the previous sentences.)";
+    messageForAPI += "\n\n(Drive the current point of the scene actively forward to the next point of the scene. Keep it concise and write only one short paragraph maximum. If a sentence or dialog was cut off, complete the sentence seamlessly and then move on with fresh sentences. Do not repeat any of the previous sentences.)";
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
@@ -3971,7 +4005,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
         let processedText = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
         processedText = applyUserPlaceholder(processedText, activePersona);
-        return { sender: 'ai', main: isMultiChar ? `${speakerName}: ${processedText}` : processedText };
+        return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
         const userName = activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
@@ -3996,7 +4030,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (worldContChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldContChar.lore.trim()}\n\n`;
         if (worldContChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldContChar.reminder.trim()}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only as a third-person omniscient narrator of this world.\nDo not speak directly as any character. Narrate events, scenes, and interactions from a third-person perspective.]\n\n`;
+            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: Respond only in form of omniscient narration.\nNarrate the events and interactions of characters objectively from a third-person perspective. Do not write dialog for {{user}} or {{char}}, but do voice third-party NPCs with spoken dialog whenever the user's message calls for it (e.g. a stranger approaching and greeting {{char}}).]\n\n`;
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
             if (worldChars.length > 0) {
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
@@ -4018,7 +4052,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
     if (chat.mood) {
-        fullSystemPrompt += `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
+        fullSystemPrompt += isWorldContChat
+            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
+            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
     }
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
@@ -4454,7 +4490,14 @@ function updateSingleMessageView(messageId) {
     document.getElementById('card-name').placeholder = isWorld
         ? "e.g., 'The Iron Reaches - Steampunk Empire'"
         : "e.g., 'Natsuki Subaru - Re:Zero'";
-    document.getElementById('chat-name').placeholder = isWorld ? "e.g., 'Narrator'" : "e.g., 'Subaru'";
+    document.getElementById('chat-name').placeholder = "e.g., 'Subaru'";
+    const chatNameGroup = document.getElementById('chat-name-group');
+    const chatNameInput = document.getElementById('chat-name');
+    if (chatNameGroup) chatNameGroup.classList.toggle('hidden', isWorld);
+    if (chatNameInput) {
+        chatNameInput.required = !isWorld;
+        if (isWorld) chatNameInput.value = '';
+    }
     document.getElementById('char-description').placeholder = isWorld
         ? 'Setting overview, geography, atmosphere, society, factions, tone etc.'
         : 'Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc.';
@@ -4706,7 +4749,7 @@ if (editorDisplayUrl) {
 }
 
   document.getElementById('card-name').value = character.name || '';
-  document.getElementById('chat-name').value = character.chatName || character.name || '';
+  document.getElementById('chat-name').value = isWorld ? '' : (character.chatName || character.name || '');
   document.getElementById('char-avatar').value = avatarUrl;
   document.getElementById('char-background').value = backgroundUrl;
   document.getElementById('chat-list-screen').style.backgroundImage = backgroundUrl ? `url('${backgroundUrl}')` : 'none';
@@ -5234,7 +5277,8 @@ async function setActivePersonaForChat(personaId) {
   const charIdToEdit = editingCharField.value;
   
   const cardName = document.getElementById('card-name').value;
-  const chatName = document.getElementById('chat-name').value;
+  const cardType = cardTypeWorldRadio.checked ? 'world' : 'character';
+  const chatName = cardType === 'world' ? '' : document.getElementById('chat-name').value;
   const avatarValue = document.getElementById('char-avatar').value;
   const backgroundValue = document.getElementById('char-background').value;
 
@@ -5262,7 +5306,6 @@ async function setActivePersonaForChat(personaId) {
   const reminder = document.getElementById('char-reminder').value;
   const narratorReminder = document.getElementById('char-narrator-reminder').value;
   const musicUrl = document.getElementById('char-music-url').value.trim();
-  const cardType = cardTypeWorldRadio.checked ? 'world' : 'character';
   const characterIds = cardType === 'world' ? Array.from(worldCharSelectedIds) : [];
   const scenarioEntries = document.querySelectorAll('#scenario-editor-list .scenario-entry');
   const scenarios = [];
@@ -7195,7 +7238,6 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
             if (isWorld) {
                 systemPrompt = `You are a creative world designer for an AI roleplay app. Given a world concept, output a JSON object with exactly these keys:
 - worldName: full display name for the world card (e.g. "The Iron Reaches - Steampunk Empire")
-- chatName: short narrator label used in chat (e.g. "Narrator", "The Oracle", or a world-specific term)
 - description: a single plain string — detailed world sheet, with these 5 numbered headings written as plain text (NOT as nested JSON keys). Plain text, no nested JSON. Total description between 500 and 1000 words:
   1. Setting — environment, atmosphere, political situation
   [insert line break]
@@ -7287,7 +7329,6 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                     document.getElementById('card-name').value = parsed.worldName;
                     autoResizeTextarea({ target: document.getElementById('card-name') });
                 }
-                if (parsed.chatName) document.getElementById('chat-name').value = parsed.chatName;
                 if (parsed.description) {
                     charDescriptionInput.value = String(parsed.description);
                     autoResizeTextarea({ target: charDescriptionInput });
