@@ -3121,7 +3121,6 @@ max-height: 27em;
     background-color: rgba(0,0,0,0.2);
 }
 
-.persona-list-entry .edit-persona-btn,
 .persona-list-entry .delete-persona-btn {
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -3139,12 +3138,20 @@ max-height: 27em;
     padding: 0;
 }
 
-.persona-list-entry .edit-persona-btn:hover {
-    background-color: rgba(88, 101, 242, 0.9);
-    border-color: rgba(140, 150, 255, 0.5);
-    color: #fff;
-    transform: scale(1.08);
-    box-shadow: 0 2px 8px rgba(88, 101, 242, 0.35);
+.persona-list-entry .edit-persona-icon {
+    color: rgba(255, 255, 255, 0.5);
+    width: 28px;
+    height: 28px;
+    margin-left: 5px;
+    flex-shrink: 0;
+    transition: color 0.18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.persona-list-entry:hover .edit-persona-icon {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .persona-list-entry .delete-persona-btn:hover {
@@ -3779,7 +3786,7 @@ hr.settings-separator {
 
 .delete-scenario-btn svg,
 .delete-model-btn svg,
-.persona-list-entry .edit-persona-btn svg,
+.persona-list-entry .edit-persona-icon svg,
 .persona-list-entry .delete-persona-btn svg,
 .participant-option-btn .edit-persona-btn svg,
 .participant-option-btn .delete-persona-btn svg {
