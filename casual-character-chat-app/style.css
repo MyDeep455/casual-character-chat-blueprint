@@ -2613,14 +2613,67 @@ max-height: 27em;
   opacity: 0;
   transition: opacity 0.8s ease-in-out;
   background:
-    radial-gradient(ellipse 90% 70% at 15% 45%, rgba(18, 45, 130, 0.42) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 90% at 85% 30%, rgba(70, 15, 100, 0.32) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 85%, rgba(10, 20, 70, 0.35) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 65% 60%, rgba(90, 20, 60, 0.18) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 60% at 18% 38%, rgba(30, 60, 140, 0.26) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 83% 25%, rgba(78, 40, 122, 0.20) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 50% 88%, rgba(16, 44, 96, 0.24) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 28% at 68% 58%, rgba(108, 50, 84, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 18% at 50% 100%, rgba(44, 92, 108, 0.12) 0%, transparent 70%),
+    linear-gradient(180deg, #01030a 0%, #030816 45%, #071022 100%);
 }
 
 #stars-container.visible {
   opacity: 1;
+}
+
+/* Faint milky-way band — rotates in sync with the star field */
+#stars-container::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160vmax;
+  height: 160vmax;
+  margin: -80vmax 0 0 -80vmax;
+  background:
+    radial-gradient(ellipse 26% 9% at 60% 42%, rgba(198, 212, 244, 0.055) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 10% at 40% 58%, rgba(186, 202, 238, 0.045) 0%, transparent 70%),
+    linear-gradient(115deg,
+      transparent 40%,
+      rgba(158, 178, 216, 0.030) 46%,
+      rgba(190, 205, 236, 0.055) 50%,
+      rgba(158, 178, 216, 0.030) 54%,
+      transparent 60%);
+  transform-origin: center center;
+  will-change: transform;
+  backface-visibility: hidden;
+  animation: rotate-clockwise 1300s linear infinite;
+}
+
+/* Occasional meteor — brief, thin streak with a bright leading head */
+#stars-container::after {
+  content: '';
+  position: absolute;
+  top: 14%;
+  left: 62%;
+  width: 110px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(196, 216, 255, 0) 35%,
+      rgba(196, 216, 255, 0.45) 75%,
+      rgba(255, 255, 255, 0.95) 100%);
+  opacity: 0;
+  transform: rotate(146deg) translateX(0);
+  pointer-events: none;
+  animation: meteor-streak 19s linear 6s infinite;
+}
+
+@keyframes meteor-streak {
+    0%, 94% { opacity: 0; transform: rotate(146deg) translateX(0); }
+    94.5%   { opacity: 0.9; }
+    97.6%   { opacity: 0; transform: rotate(146deg) translateX(58vmin); }
+    100%    { opacity: 0; transform: rotate(146deg) translateX(58vmin); }
 }
 
 @keyframes rotate-clockwise {
@@ -2628,10 +2681,10 @@ max-height: 27em;
     to   { transform: rotate(360deg); }
 }
 
-@keyframes rotate-counter-clockwise {
-    from { transform: rotate(360deg); }
-    to   { transform: rotate(0deg); }
-}
+/* Gentle scintillation — layers pulse out of phase so stars never blink in unison */
+@keyframes twinkle-faint  { from { opacity: 0.9; } to { opacity: 0.55; } }
+@keyframes twinkle        { from { opacity: 1;   } to { opacity: 0.75; } }
+@keyframes twinkle-bright { from { opacity: 1;   } to { opacity: 0.65; } }
 
 #stars, #stars2, #stars3 {
     position: absolute;
@@ -2644,43 +2697,67 @@ max-height: 27em;
     background: transparent;
     background-repeat: repeat;
     transform-origin: center center;
-    will-change: transform;
+    will-change: transform, opacity;
     backface-visibility: hidden;
 }
 
-/* Dense layer of tiny stars — cool blue-white tones */
+/* Far layer — dense faint star dust, mostly cool tones with a few warm points */
 #stars {
     background-image:
-        radial-gradient(1px 1px at 20px 30px,  #c8d8ff, transparent),
-        radial-gradient(1px 1px at 40px 70px,  #ffffff, transparent),
-        radial-gradient(1px 1px at 50px 160px, #dde8ff, transparent),
-        radial-gradient(1px 1px at 90px 40px,  #ffffff, transparent),
-        radial-gradient(1px 1px at 130px 80px, #e8f0ff, transparent),
-        radial-gradient(1px 1px at 160px 120px,#c4d4ff, transparent);
-    background-size: 200px 200px;
-    animation: rotate-clockwise 700s linear infinite;
+        radial-gradient(1px 1px at 25px 35px,   rgba(200, 214, 255, 0.55) 50%, transparent),
+        radial-gradient(1px 1px at 58px 130px,  rgba(255, 255, 255, 0.40) 50%, transparent),
+        radial-gradient(1px 1px at 92px 22px,   rgba(215, 226, 255, 0.65) 50%, transparent),
+        radial-gradient(1px 1px at 120px 88px,  rgba(255, 244, 224, 0.35) 50%, transparent),
+        radial-gradient(1px 1px at 150px 180px, rgba(196, 212, 255, 0.50) 50%, transparent),
+        radial-gradient(1px 1px at 185px 60px,  rgba(255, 255, 255, 0.30) 50%, transparent),
+        radial-gradient(1px 1px at 210px 140px, rgba(222, 232, 255, 0.55) 50%, transparent),
+        radial-gradient(1px 1px at 12px 205px,  rgba(255, 255, 255, 0.45) 50%, transparent),
+        radial-gradient(1px 1px at 70px 235px,  rgba(206, 220, 255, 0.35) 50%, transparent),
+        radial-gradient(1px 1px at 168px 8px,   rgba(255, 236, 210, 0.28) 50%, transparent),
+        radial-gradient(1px 1px at 232px 96px,  rgba(238, 244, 255, 0.50) 50%, transparent),
+        radial-gradient(1px 1px at 105px 168px, rgba(255, 255, 255, 0.25) 50%, transparent);
+    background-size: 260px 260px;
+    animation: rotate-clockwise 1300s linear infinite,
+               twinkle-faint 13s ease-in-out -4s infinite alternate;
 }
 
-/* Mid-layer — slightly varied star sizes */
+/* Mid layer — varied sizes and brightness, occasional warm star */
 #stars2 {
     background-image:
-        radial-gradient(1px 1px   at 10px 90px,  #e8f0ff, transparent),
-        radial-gradient(1.5px 1.5px at 40px 40px,  #ffffff, transparent),
-        radial-gradient(1px 1px   at 50px 100px, #dde8ff, transparent),
-        radial-gradient(1.5px 1.5px at 90px 20px,  #ffffff, transparent),
-        radial-gradient(1px 1px   at 110px 80px, #c8d8ff, transparent);
-    background-size: 250px 250px;
-    animation: rotate-counter-clockwise 550s linear infinite;
+        radial-gradient(1px 1px at 15px 125px,     rgba(226, 236, 255, 0.80) 50%, transparent),
+        radial-gradient(1.5px 1.5px at 55px 45px,  rgba(255, 255, 255, 0.90) 50%, transparent),
+        radial-gradient(1px 1px at 88px 210px,     rgba(203, 218, 255, 0.70) 50%, transparent),
+        radial-gradient(1.5px 1.5px at 140px 25px, rgba(255, 241, 214, 0.70) 50%, transparent),
+        radial-gradient(1px 1px at 178px 150px,    rgba(226, 236, 255, 0.60) 50%, transparent),
+        radial-gradient(1.5px 1.5px at 235px 90px, rgba(255, 255, 255, 0.85) 50%, transparent),
+        radial-gradient(1px 1px at 285px 250px,    rgba(196, 214, 255, 0.65) 50%, transparent),
+        radial-gradient(1px 1px at 260px 185px,    rgba(255, 255, 255, 0.50) 50%, transparent),
+        radial-gradient(1.2px 1.2px at 40px 280px, rgba(214, 228, 255, 0.75) 50%, transparent),
+        radial-gradient(1px 1px at 205px 310px,    rgba(255, 249, 235, 0.55) 50%, transparent);
+    background-size: 340px 340px;
+    animation: rotate-clockwise 1000s linear infinite,
+               twinkle 9s ease-in-out -2s infinite alternate;
 }
 
-/* Accent layer — sparse, slightly brighter stars */
+/* Near layer — sparse bright stars with soft halos, realistic colour temperatures */
 #stars3 {
     background-image:
-        radial-gradient(2px 2px at 30px 70px,  #ffffff, transparent),
-        radial-gradient(2px 2px at 80px 120px, #c8d8ff, transparent),
-        radial-gradient(2px 2px at 120px 40px, #ffffff, transparent);
-    background-size: 300px 300px;
-    animation: rotate-clockwise 450s linear infinite;
+        radial-gradient(1.8px 1.8px at 60px 110px,  rgba(255, 255, 255, 0.95) 50%, transparent),
+        radial-gradient(6px 6px at 60px 110px,      rgba(180, 205, 255, 0.18), transparent),
+        radial-gradient(1.6px 1.6px at 205px 290px, rgba(255, 226, 183, 0.90) 50%, transparent),
+        radial-gradient(5px 5px at 205px 290px,     rgba(255, 205, 150, 0.14), transparent),
+        radial-gradient(1.7px 1.7px at 330px 80px,  rgba(214, 230, 255, 0.95) 50%, transparent),
+        radial-gradient(6px 6px at 330px 80px,      rgba(160, 195, 255, 0.16), transparent),
+        radial-gradient(1.4px 1.4px at 150px 200px, rgba(255, 255, 255, 0.80) 50%, transparent),
+        radial-gradient(1.3px 1.3px at 390px 330px, rgba(230, 240, 255, 0.75) 50%, transparent);
+    background-size: 440px 440px;
+    animation: rotate-clockwise 800s linear infinite,
+               twinkle-bright 6s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #stars, #stars2, #stars3, #stars-container::before { animation: none; }
+    #stars-container::after { display: none; }
 }
 
 .scenario-list-container {
