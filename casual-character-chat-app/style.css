@@ -2837,6 +2837,36 @@ max-height: 27em;
                twinkle-bright 6s ease-in-out infinite alternate;
 }
 
+/* Touch devices: the continuously rotating 150-160vmax star layers (kept
+   composited by will-change) and the per-frame shimmer repaints of the
+   gradient titles are too expensive for mobile GPUs. Freeze the rotation and
+   shrink the layers to viewport size; keep the twinkle so the sky stays
+   alive — opacity fades on static layers are compositor-cheap. */
+@media (hover: none) and (pointer: coarse) {
+    #stars-container::before {
+        animation: none;
+        will-change: auto;
+    }
+    #stars, #stars2, #stars3 {
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        margin: 0;
+        will-change: auto;
+    }
+    #stars  { animation: twinkle-faint 13s ease-in-out -4s infinite alternate; }
+    #stars2 { animation: twinkle 9s ease-in-out -2s infinite alternate; }
+    #stars3 { animation: twinkle-bright 6s ease-in-out infinite alternate; }
+
+    /* Gradient stays, per-frame shimmer repaint (with 3 stacked drop-shadows) goes */
+    .main-title,
+    .main-header h3,
+    #app-loader-title {
+        animation: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     #stars, #stars2, #stars3, #stars-container::before { animation: none; }
     #stars-container::after { display: none; }
@@ -4598,8 +4628,9 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     height: 150px;
   }
   .card-name-container {
-    height: auto;
-    min-height: 52px;
+    /* Fixed height (not auto) — adjustFontSizeToFit() shrinks the font until
+       the text fits this box; with height:auto the box just grows instead */
+    height: 52px;
     padding: 6px 8px;
     font-size: 18px;
   }
