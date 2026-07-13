@@ -583,13 +583,41 @@ h1 {
 }
 
 #chat-list-avatar-container {
+  position: relative;
   width: 216px;
   height: 216px;
-  border-radius: 0;
+  border-radius: 18px;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.30);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(196, 181, 255, 0.35);
+  box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.55),
+      0 2px 8px rgba(0, 0, 0, 0.45),
+      0 0 22px rgba(139, 108, 247, 0.15);
+  box-sizing: border-box;
   flex-shrink: 0;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+#chat-list-avatar-container:hover {
+  border-color: rgba(216, 203, 255, 0.6);
+  box-shadow:
+      0 12px 34px rgba(0, 0, 0, 0.6),
+      0 2px 8px rgba(0, 0, 0, 0.45),
+      0 0 32px rgba(139, 108, 247, 0.3);
+}
+
+/* ID selector outranks the later .effect-container::after { content: none } */
+#chat-list-avatar-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+  box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 2;
 }
 
 #chat-list-avatar {
@@ -606,17 +634,24 @@ h1 {
 #chat-list-avatar-placeholder {
     width: 216px;
     height: 216px;
-    border-radius: 0;
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+    border: 1px solid rgba(196, 181, 255, 0.35);
+    background-color: #14121f;
+    background-image: radial-gradient(circle at 50% 40%, rgba(139, 108, 247, 0.16), rgba(255, 255, 255, 0.02) 70%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 81px;
-    color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    color: rgba(216, 203, 255, 0.35);
+    text-shadow: 0 4px 18px rgba(139, 108, 247, 0.35);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.55),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 22px rgba(139, 108, 247, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10);
     user-select: none;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .chat-list-character-header h2 {
@@ -1289,15 +1324,43 @@ h1 {
 
 
 .editor-avatar-container {
+    position: relative;
     width: 216px;
     height: 216px;
-    border-radius: 0;
-    border: 2px solid rgba(255, 255, 255, 0.30);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    border: 1px solid rgba(196, 181, 255, 0.35);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.55),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 22px rgba(139, 108, 247, 0.15);
     box-sizing: border-box;
     flex-shrink: 0;
     overflow: hidden;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #14121f;
+    background-image: linear-gradient(165deg, rgba(139, 108, 247, 0.18), rgba(20, 18, 31, 0) 60%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.editor-avatar-container:hover {
+    border-color: rgba(216, 203, 255, 0.6);
+    box-shadow:
+        0 12px 34px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 32px rgba(139, 108, 247, 0.3);
+}
+
+/* .modal-content prefix outranks the later .effect-container::after { content: none } */
+.modal-content .editor-avatar-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 2;
 }
 
 #persona-editor-avatar-container {
@@ -1323,12 +1386,13 @@ h1 {
 #editor-avatar-placeholder, #persona-editor-avatar-placeholder {
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.1);
+    background: radial-gradient(circle at 50% 40%, rgba(139, 108, 247, 0.16), rgba(255, 255, 255, 0.02) 70%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 81px;
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(216, 203, 255, 0.35);
+    text-shadow: 0 4px 18px rgba(139, 108, 247, 0.35);
     user-select: none;
 }
 
