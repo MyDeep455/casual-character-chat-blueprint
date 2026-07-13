@@ -100,10 +100,11 @@
     }
     #search-container button {
         background-color: #4e83c9;
+        background-image: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 48%, rgba(0,0,0,0.12) 100%);
         color: white;
-        border: none;
+        border: 1px solid rgba(255, 255, 255, 0.18);
         padding: 6px;
-        border-radius: 5px;
+        border-radius: 7px;
         cursor: pointer;
         font-size: 14px;
         min-width: 36px;
@@ -111,6 +112,19 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.14);
+        transition: filter 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+    }
+    #search-container button:hover:not(:disabled) {
+        filter: brightness(1.12) saturate(1.1);
+        border-color: rgba(255, 255, 255, 0.35);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 9px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    #search-container button:active:not(:disabled) {
+        filter: brightness(0.94);
+        transform: translateY(1px);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     #search-container button:disabled {
         opacity: 0.5;
@@ -183,18 +197,26 @@
     #feedback-form button {
         margin-top: 10px;
         background-color: #569cd6;
+        background-image: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 48%, rgba(0,0,0,0.1) 100%);
         color: #1e1e1e;
-        border: none;
-        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 8px;
         padding: 10px 22px;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: background-color 0.2s, transform 0.1s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.25);
+        transition: background-color 0.2s, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
     }
     #feedback-form button:hover {
         background-color: #4ec9b0;
+        border-color: rgba(255, 255, 255, 0.4);
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    #feedback-form button:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 2px 4px rgba(0,0,0,0.18);
     }
     #feedback-form button:disabled {
         opacity: 0.6;
