@@ -22,15 +22,15 @@
 #app-loader-title {
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     font-size: clamp(1.4rem, 5vw, 2.2rem);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    background: linear-gradient(120deg, #c8b8ff 0%, #a78bfa 30%, #e0d7ff 55%, #a78bfa 75%, #c8b8ff 100%);
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    background: linear-gradient(115deg, #d8cbff 0%, #a78bfa 20%, #8b6cf7 36%, #f2edff 52%, #a78bfa 68%, #c8b8ff 84%, #e4daff 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: title-shimmer 4s linear infinite;
-    filter: drop-shadow(0 0 18px rgba(167,139,250,0.45));
+    filter: drop-shadow(0 0 20px rgba(167,139,250,0.5)) drop-shadow(0 0 55px rgba(139,108,247,0.22));
 }
 #app-loader-spinner {
     width: 40px;
@@ -55,10 +55,16 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: #020610;
     margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.012em;
+    line-height: 1.25;
 }
 
 h1 {
@@ -76,16 +82,16 @@ h1 {
     left: 0;
     right: 0;
     text-align: center;
-    font-size: 3em;
+    font-size: 2.9em;
     margin: 0;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+    font-weight: 800;
+    letter-spacing: 0.035em;
     z-index: 10;
     pointer-events: none;
 
     /* gradient text */
-    background: linear-gradient(120deg, #c8b8ff 0%, #a78bfa 30%, #e0d7ff 55%, #a78bfa 75%, #c8b8ff 100%);
+    background: linear-gradient(115deg, #d8cbff 0%, #a78bfa 20%, #8b6cf7 36%, #f2edff 52%, #a78bfa 68%, #c8b8ff 84%, #e4daff 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -94,8 +100,19 @@ h1 {
     /* shimmer animation */
     animation: title-shimmer 4s linear infinite;
 
-    /* soft glow behind the text */
-    filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.45)) drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    /* layered ambient glow behind the text */
+    filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.5)) drop-shadow(0 0 55px rgba(139, 108, 247, 0.22)) drop-shadow(0 2px 6px rgba(0,0,0,0.55));
+}
+
+/* delicate glowing accent line under the main title */
+.main-title::after {
+    content: '';
+    display: block;
+    width: min(300px, 55%);
+    height: 2px;
+    margin: 12px auto 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent 0%, rgba(200,184,255,0.85) 50%, transparent 100%);
 }
 
 @keyframes title-shimmer {
@@ -133,18 +150,18 @@ h1 {
     margin-top: 36px;
     position: relative;
     transform: translateY(135px);
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    font-weight: 800;
+    letter-spacing: 0.03em;
 
     /* warm gold gradient to match the ⭐ */
-    background: linear-gradient(120deg, #fde68a 0%, #eeac3b 35%, #fef3c7 60%, #eeac3b 80%, #fde68a 100%);
+    background: linear-gradient(115deg, #fde68a 0%, #f3c14f 22%, #eeac3b 38%, #fff3d1 52%, #eeac3b 68%, #f5cf6b 84%, #fde68a 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 
     animation: title-shimmer 5s linear infinite;
-    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.35)) drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 0 13px rgba(245, 158, 11, 0.45)) drop-shadow(0 0 34px rgba(245, 158, 11, 0.16)) drop-shadow(0 1px 4px rgba(0,0,0,0.5));
 }
 
 
@@ -606,7 +623,10 @@ h1 {
     margin: 0;
     font-size: 32px;
     flex-grow: 1;
-    text-shadow: 0 2px 5px rgba(0,0,0, 0.5);
+    font-weight: 800;
+    letter-spacing: 0.015em;
+    color: #fff;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.55), 0 8px 28px rgba(0,0,0,0.4);
     min-width: 0; 
     overflow: hidden;
     overflow-wrap: break-word;
@@ -664,7 +684,9 @@ h1 {
 .chat-list-session-header h3 {
     margin: 0;
     font-size: 20px;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    letter-spacing: 0.02em;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.6);
 }
 
 
@@ -875,7 +897,9 @@ h1 {
 
 #chat-character-name {
     font-size: 0.88em;
-    font-weight: normal;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1311,7 +1335,9 @@ h1 {
 .modal-content h2 {
     margin: 0;
     color: #fff;
-    text-shadow: 0 2px 5px rgba(0, 0, 0);
+    font-weight: 800;
+    letter-spacing: 0.015em;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.85), 0 6px 24px rgba(0,0,0,0.45);
 }
 
 
@@ -1348,8 +1374,8 @@ h1 {
   margin-top: 20px;
   margin-bottom: 4px;
   color: #ffffff;
-  letter-spacing: .2px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 #char-instructions-container {
@@ -1718,7 +1744,11 @@ max-height: 27em;
 .message-editor-content h2 {
     margin-top: 0;
     margin-bottom: 14px;
-    border-bottom: 1px solid #4f545c;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    border-bottom: 1px solid rgba(255,255,255,0.14);
     padding-bottom: 9px;
 }
 
@@ -1846,6 +1876,10 @@ max-height: 27em;
 
 .chat-memories-content h2 {
     margin: 0 0 5px 0;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
 }
 
 .chat-memories-hint {
@@ -3002,8 +3036,8 @@ max-height: 27em;
   margin-top: 20px;
   margin-bottom: 4px;
   color: #ffffff;
-  letter-spacing: .2px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 #persona-form input,
@@ -3173,7 +3207,8 @@ max-height: 27em;
     color: white;
     margin: 0 0 9px 0;
     font-size: 1.1em;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.35);
 }
 
 #favorites-bar {
@@ -3543,7 +3578,8 @@ html {
 #archive-header h3 {
     color: white;
     margin: 0;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.35);
 }
 
 
@@ -3696,8 +3732,8 @@ html {
   display: block;
   margin-top: 20px;
   margin-bottom: 4px;
-  letter-spacing: .2px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 
 hr.settings-separator {
@@ -5618,7 +5654,8 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 .tutorial-title {
     margin: 0 0 9px 0;
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: 0.015em;
     color: #ffffff;
     line-height: 1.3;
 }
