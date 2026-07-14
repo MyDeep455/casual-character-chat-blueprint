@@ -492,9 +492,16 @@ h1 {
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    background: rgba(59, 59, 59, 0.473);
+    /* faint light-gray wash layered over the glass — keeps the transparency */
+    background: linear-gradient(rgba(228, 228, 234, 0.07), rgba(228, 228, 234, 0.07)), rgba(59, 59, 59, 0.473);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     border-left: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+/* World cards: same glass, but the wash leans subtly bluish to set them apart */
+.card--world .card-name-container {
+    background: linear-gradient(rgba(178, 202, 244, 0.09), rgba(178, 202, 244, 0.09)), rgba(59, 59, 59, 0.473);
+    border-left-color: rgba(186, 210, 255, 0.4);
 }
 
 .card-name-container span {
