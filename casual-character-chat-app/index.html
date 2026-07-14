@@ -429,8 +429,20 @@
                     </div>
                 </div>
 
-                <label for="char-tags">Tags:</label>
-                <textarea id="char-tags" rows="1" placeholder="Series title, Genre, Personality type, etc. (comma-separated!)"></textarea>
+                <label for="tag-input">Tags:</label>
+                <div id="tag-editor" class="tag-editor">
+                    <div id="tag-editor-box" class="tag-editor-box">
+                        <input type="text" id="tag-input" class="tag-input" placeholder="Series title, Genre, Personality type, etc. — press Enter to add" autocomplete="off">
+                    </div>
+                    <div id="tag-suggestions" class="tag-suggestions hidden">
+                        <div class="tag-suggestions-header">
+                            <input type="text" id="tag-suggestions-search" class="tag-suggestions-search" placeholder="🔍 Search tags..." autocomplete="off">
+                            <button type="button" id="tag-suggestions-exit" class="tag-suggestions-exit" title="Close tag list">Exit</button>
+                        </div>
+                        <div id="tag-suggestions-list" class="tag-suggestions-list"></div>
+                    </div>
+                    <textarea id="char-tags" rows="1" class="visually-hidden" tabindex="-1" aria-hidden="true"></textarea>
+                </div>
 
          <div id="char-instructions-container"><label for="char-instructions">AI Instructions:</label>
                 <textarea id="char-instructions" rows="1" placeholder="General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')"></textarea></div>

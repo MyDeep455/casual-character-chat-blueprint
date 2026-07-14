@@ -4467,6 +4467,7 @@ function updateSingleMessageView(messageId) {
     if (genBtn) { genBtn.textContent = cardTypeWorldRadio.checked ? '✨ AI Generate World' : '✨ AI Generate Character'; genBtn.disabled = false; }
     document.getElementById('card-name').style.height = 'auto';
     tempUploadedImages = {};
+    hideTagSuggestions();
     characterEditorModalContent.scrollTop = 0;
     characterEditorModal.classList.add('hidden');
 }
@@ -4673,9 +4674,214 @@ cardTypeCharacterRadio.addEventListener('change', () => updateEditorForType('cha
 cardTypeWorldRadio.addEventListener('change', () => { worldCharSelectedIds = new Set(); updateEditorForType('world'); });
 document.getElementById('open-world-char-picker-btn').addEventListener('click', openWorldCharPickerModal);
 
+    // --- TAG EDITOR (bubbles + suggestion popup) ---
+
+    const tagEditorEl = document.getElementById('tag-editor');
+    const tagEditorBox = document.getElementById('tag-editor-box');
+    const tagInputEl = document.getElementById('tag-input');
+    const tagHiddenField = document.getElementById('char-tags');
+    const tagSuggestionsEl = document.getElementById('tag-suggestions');
+    const tagSuggestionsSearch = document.getElementById('tag-suggestions-search');
+    const tagSuggestionsList = document.getElementById('tag-suggestions-list');
+
+    function parseTagString(str) {
+        return (str || '').split(',').map(t => t.trim()).filter(t => t !== '');
+    }
+
+    function getEditorTags() {
+        return parseTagString(tagHiddenField.value);
+    }
+
+    function setEditorTags(tags) {
+        const seen = new Set();
+        const clean = [];
+        tags.forEach(t => {
+            const trimmed = String(t).trim();
+            const key = trimmed.toLowerCase();
+            if (!trimmed || seen.has(key)) return;
+            seen.add(key);
+            clean.push(trimmed);
+        });
+        tagHiddenField.value = clean.join(', ');
+        renderTagBubbles();
+        updateEditorTokenCount();
+    }
+
+    function renderTagBubbles() {
+        tagEditorBox.querySelectorAll('.tag-bubble').forEach(el => el.remove());
+        getEditorTags().forEach(tag => {
+            const bubble = document.createElement('span');
+            bubble.className = 'tag-bubble';
+            const text = document.createElement('span');
+            text.className = 'tag-bubble-text';
+            text.textContent = tag;
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'tag-bubble-remove';
+            removeBtn.textContent = '×';
+            removeBtn.title = 'Remove tag';
+            removeBtn.addEventListener('mousedown', (e) => e.preventDefault());
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeEditorTag(tag);
+            });
+            bubble.appendChild(text);
+            bubble.appendChild(removeBtn);
+            tagEditorBox.insertBefore(bubble, tagInputEl);
+        });
+    }
+
+    function refreshTagEditorFromField() {
+        if (!tagEditorBox) return;
+        tagInputEl.value = '';
+        renderTagBubbles();
+    }
+
+    function addEditorTag(tag) {
+        const clean = String(tag).replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!clean) return;
+        setEditorTags([...getEditorTags(), clean]);
+    }
+
+    function removeEditorTag(tag) {
+        const key = String(tag).trim().toLowerCase();
+        setEditorTags(getEditorTags().filter(t => t.toLowerCase() !== key));
+        if (!tagSuggestionsEl.classList.contains('hidden')) renderTagSuggestionsList();
+    }
+
+    function commitPendingTagInput() {
+        if (tagInputEl && tagInputEl.value.trim() !== '') {
+            addEditorTag(tagInputEl.value);
+            tagInputEl.value = '';
+        }
+    }
+
+    function collectAllKnownTags() {
+        const seen = new Map();
+        const collect = (tag) => {
+            const key = tag.toLowerCase();
+            if (!seen.has(key)) seen.set(key, tag);
+        };
+        Object.values(characters).forEach(char => parseTagString(char.tags).forEach(collect));
+        getEditorTags().forEach(collect);
+        return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    }
+
+    function renderTagSuggestionsList() {
+        const prevScroll = tagSuggestionsList.scrollTop;
+        const filter = tagSuggestionsSearch.value.trim().toLowerCase();
+        const current = new Set(getEditorTags().map(t => t.toLowerCase()));
+        tagSuggestionsList.innerHTML = '';
+        const matches = collectAllKnownTags().filter(tag => !filter || tag.toLowerCase().includes(filter));
+        if (matches.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'tag-suggestions-empty';
+            empty.textContent = filter
+                ? 'No matching tags.'
+                : 'No saved tags yet — type into the field and press Enter to add one.';
+            tagSuggestionsList.appendChild(empty);
+            return;
+        }
+        matches.forEach(tag => {
+            const isSelected = current.has(tag.toLowerCase());
+            const item = document.createElement('div');
+            item.className = 'tag-suggestion-item' + (isSelected ? ' is-selected' : '');
+            item.textContent = tag;
+            item.title = isSelected ? 'Remove this tag' : 'Add this tag';
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isSelected) {
+                    removeEditorTag(tag);
+                } else {
+                    addEditorTag(tag);
+                }
+                renderTagSuggestionsList();
+            });
+            tagSuggestionsList.appendChild(item);
+        });
+        tagSuggestionsList.scrollTop = prevScroll;
+    }
+
+    function showTagSuggestions() {
+        renderTagSuggestionsList();
+        tagSuggestionsEl.classList.remove('hidden');
+    }
+
+    function hideTagSuggestions() {
+        if (tagSuggestionsEl) tagSuggestionsEl.classList.add('hidden');
+    }
+
+    if (tagEditorEl) {
+        tagEditorBox.addEventListener('click', (e) => {
+            if (e.target === tagEditorBox) tagInputEl.focus();
+        });
+
+        const openSuggestionsFromInput = () => {
+            tagSuggestionsSearch.value = tagInputEl.value;
+            showTagSuggestions();
+        };
+        tagInputEl.addEventListener('focus', openSuggestionsFromInput);
+        tagInputEl.addEventListener('click', openSuggestionsFromInput);
+        tagInputEl.addEventListener('input', openSuggestionsFromInput);
+
+        tagInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                commitPendingTagInput();
+                tagSuggestionsSearch.value = '';
+                renderTagSuggestionsList();
+            } else if (e.key === 'Backspace' && tagInputEl.value === '') {
+                const tags = getEditorTags();
+                if (tags.length > 0) removeEditorTag(tags[tags.length - 1]);
+            } else if (e.key === 'Escape') {
+                hideTagSuggestions();
+            }
+        });
+
+        tagSuggestionsSearch.addEventListener('input', renderTagSuggestionsList);
+        tagSuggestionsSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const term = tagSuggestionsSearch.value.trim();
+                const firstMatch = tagSuggestionsList.querySelector('.tag-suggestion-item:not(.is-selected)');
+                if (firstMatch) {
+                    addEditorTag(firstMatch.textContent);
+                } else if (term) {
+                    addEditorTag(term);
+                }
+                renderTagSuggestionsList();
+            } else if (e.key === 'Escape') {
+                hideTagSuggestions();
+            }
+        });
+
+        document.getElementById('tag-suggestions-exit').addEventListener('click', () => {
+            commitPendingTagInput();
+            hideTagSuggestions();
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!tagSuggestionsEl.classList.contains('hidden') && !tagEditorEl.contains(e.target)) {
+                hideTagSuggestions();
+            }
+        });
+
+        tagEditorEl.addEventListener('focusout', () => {
+            setTimeout(() => {
+                if (!tagEditorEl.contains(document.activeElement)) {
+                    commitPendingTagInput();
+                    hideTagSuggestions();
+                }
+            }, 0);
+        });
+    }
+
+
     function openEditorForNew() {
     tempUploadedImages = {};
     characterForm.reset();
+    refreshTagEditorFromField();
     cardTypeCharacterRadio.checked = true;
     updateEditorForType('character');
     const textareas = characterForm.querySelectorAll('textarea');
@@ -4757,6 +4963,7 @@ if (editorDisplayUrl) {
   charDescriptionInput.value = character.description || '';
   charLoreInput.value = character.lore || '';
   document.getElementById('char-tags').value = character.tags || '';
+  refreshTagEditorFromField();
   document.getElementById('char-reminder').value = character.reminder || '';
   document.getElementById('char-narrator-reminder').value = character.narratorReminder || '';
   document.getElementById('char-music-url').value = character.musicUrl || '';
@@ -5301,6 +5508,7 @@ async function setActivePersonaForChat(personaId) {
   const instructions = charInstructionsInput.value;
   const description = charDescriptionInput.value;
   const lore = charLoreInput.value;
+  commitPendingTagInput();
   const tags = document.getElementById('char-tags').value;
   const reminder = document.getElementById('char-reminder').value;
   const narratorReminder = document.getElementById('char-narrator-reminder').value;
@@ -7341,7 +7549,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                     reminderEl.value = String(parsed.worldRules);
                     autoResizeTextarea({ target: reminderEl });
                 }
-                if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
+                if (parsed.tags) { document.getElementById('char-tags').value = String(parsed.tags); refreshTagEditorFromField(); }
             } else {
                 if (parsed.cardName) {
                     document.getElementById('card-name').value = parsed.cardName;
@@ -7355,7 +7563,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                         : String(descRaw);
                     autoResizeTextarea({ target: charDescriptionInput });
                 }
-                if (parsed.tags) document.getElementById('char-tags').value = parsed.tags;
+                if (parsed.tags) { document.getElementById('char-tags').value = String(parsed.tags); refreshTagEditorFromField(); }
                 if (parsed.instructions) {
                     charInstructionsInput.value = parsed.instructions;
                     autoResizeTextarea({ target: charInstructionsInput });
