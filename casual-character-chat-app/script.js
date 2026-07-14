@@ -7771,11 +7771,9 @@ archiveToggleBtn.addEventListener('click', () => {
         });
         archiveToggleBtn.textContent = 'Hide all';
     } else {
-        archiveContent.style.opacity = '0';
-        setTimeout(() => {
-            archiveContent.classList.add('collapsed');
-            archiveContent.style.opacity = '';
-        }, 200);
+        // Collapse immediately — #archive-content has no opacity transition,
+        // so a delayed collapse just leaves a blank gap for 200ms.
+        archiveContent.classList.add('collapsed');
         archiveToggleBtn.textContent = 'Show Characters';
     }
 });

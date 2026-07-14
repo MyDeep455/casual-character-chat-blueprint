@@ -100,6 +100,10 @@ h1 {
     /* shimmer animation */
     animation: title-shimmer 4s linear infinite;
 
+    /* Isolate the per-frame shimmer repaint onto its own compositing layer,
+       so it doesn't dirty the page's scrolling layer and stutter the scroll */
+    will-change: transform;
+
     /* layered ambient glow behind the text */
     filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.5)) drop-shadow(0 0 55px rgba(139, 108, 247, 0.22)) drop-shadow(0 2px 6px rgba(0,0,0,0.55));
 }
@@ -161,6 +165,9 @@ h1 {
     background-clip: text;
 
     animation: title-shimmer 5s linear infinite;
+    /* Isolate the per-frame shimmer repaint onto its own compositing layer,
+       so it doesn't dirty the page's scrolling layer and stutter the scroll */
+    will-change: transform;
     filter: drop-shadow(0 0 13px rgba(245, 158, 11, 0.45)) drop-shadow(0 0 34px rgba(245, 158, 11, 0.16)) drop-shadow(0 1px 4px rgba(0,0,0,0.5));
 }
 
