@@ -2689,12 +2689,22 @@ max-height: 27em;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 100vh;  /* fallback */
+  height: 100lvh; /* largest viewport size: never resizes when the mobile URL bar hides */
   z-index: 0;
   overflow: hidden;
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.8s ease-in-out;
+  /* The whole sky is one static paint: base gradient, nebula accents and a
+     whisper of a milky band. No animation, no oversized layers, no filters. */
   background:
+    linear-gradient(115deg,
+      transparent 40%,
+      rgba(170, 188, 222, 0.020) 46%,
+      rgba(190, 205, 236, 0.038) 50%,
+      rgba(170, 188, 222, 0.020) 54%,
+      transparent 60%),
     radial-gradient(ellipse 80% 60% at 18% 38%, rgba(30, 60, 140, 0.26) 0%, transparent 60%),
     radial-gradient(ellipse 60% 80% at 83% 25%, rgba(78, 40, 122, 0.20) 0%, transparent 60%),
     radial-gradient(ellipse 55% 40% at 50% 88%, rgba(16, 44, 96, 0.24) 0%, transparent 65%),
@@ -2707,80 +2717,15 @@ max-height: 27em;
   opacity: 1;
 }
 
-/* Faint milky-way band — rotates in sync with the star field */
-#stars-container::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 160vmax;
-  height: 160vmax;
-  margin: -80vmax 0 0 -80vmax;
-  background:
-    radial-gradient(ellipse 26% 9% at 60% 42%, rgba(198, 212, 244, 0.055) 0%, transparent 70%),
-    radial-gradient(ellipse 30% 10% at 40% 58%, rgba(186, 202, 238, 0.045) 0%, transparent 70%),
-    linear-gradient(115deg,
-      transparent 40%,
-      rgba(158, 178, 216, 0.030) 46%,
-      rgba(190, 205, 236, 0.055) 50%,
-      rgba(158, 178, 216, 0.030) 54%,
-      transparent 60%);
-  transform-origin: center center;
-  will-change: transform;
-  backface-visibility: hidden;
-  animation: rotate-clockwise 1300s linear infinite;
-}
-
-/* Occasional meteor — brief, thin streak with a bright leading head */
-#stars-container::after {
-  content: '';
-  position: absolute;
-  top: 14%;
-  left: 62%;
-  width: 110px;
-  height: 1.5px;
-  border-radius: 999px;
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(196, 216, 255, 0) 35%,
-      rgba(196, 216, 255, 0.45) 75%,
-      rgba(255, 255, 255, 0.95) 100%);
-  opacity: 0;
-  transform: rotate(146deg) translateX(0);
-  pointer-events: none;
-  animation: meteor-streak 19s linear 6s infinite;
-}
-
-@keyframes meteor-streak {
-    0%, 94% { opacity: 0; transform: rotate(146deg) translateX(0); }
-    94.5%   { opacity: 0.9; }
-    97.6%   { opacity: 0; transform: rotate(146deg) translateX(58vmin); }
-    100%    { opacity: 0; transform: rotate(146deg) translateX(58vmin); }
-}
-
-@keyframes rotate-clockwise {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-
-/* Gentle scintillation — layers pulse out of phase so stars never blink in unison */
-@keyframes twinkle-faint  { from { opacity: 0.9; } to { opacity: 0.55; } }
-@keyframes twinkle        { from { opacity: 1;   } to { opacity: 0.75; } }
-@keyframes twinkle-bright { from { opacity: 1;   } to { opacity: 0.65; } }
-
+/* Star layers — static tiled gradients, painted once into the same surface
+   as the sky: no rotation, no twinkle, no will-change, no pseudo-elements. */
 #stars, #stars2, #stars3 {
     position: absolute;
-    width: 150vmax;
-    height: 150vmax;
-    top: 50%;
-    left: 50%;
-    margin-top: -75vmax;
-    margin-left: -75vmax;
-    background: transparent;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-repeat: repeat;
-    transform-origin: center center;
-    will-change: transform, opacity;
-    backface-visibility: hidden;
 }
 
 /* Far layer — dense faint star dust, mostly cool tones with a few warm points */
@@ -2799,8 +2744,6 @@ max-height: 27em;
         radial-gradient(1px 1px at 232px 96px,  rgba(238, 244, 255, 0.50) 50%, transparent),
         radial-gradient(1px 1px at 105px 168px, rgba(255, 255, 255, 0.25) 50%, transparent);
     background-size: 260px 260px;
-    animation: rotate-clockwise 1300s linear infinite,
-               twinkle-faint 13s ease-in-out -4s infinite alternate;
 }
 
 /* Mid layer — varied sizes and brightness, occasional warm star */
@@ -2817,8 +2760,6 @@ max-height: 27em;
         radial-gradient(1.2px 1.2px at 40px 280px, rgba(214, 228, 255, 0.75) 50%, transparent),
         radial-gradient(1px 1px at 205px 310px,    rgba(255, 249, 235, 0.55) 50%, transparent);
     background-size: 340px 340px;
-    animation: rotate-clockwise 1000s linear infinite,
-               twinkle 9s ease-in-out -2s infinite alternate;
 }
 
 /* Near layer — sparse bright stars with soft halos, realistic colour temperatures */
@@ -2833,43 +2774,16 @@ max-height: 27em;
         radial-gradient(1.4px 1.4px at 150px 200px, rgba(255, 255, 255, 0.80) 50%, transparent),
         radial-gradient(1.3px 1.3px at 390px 330px, rgba(230, 240, 255, 0.75) 50%, transparent);
     background-size: 440px 440px;
-    animation: rotate-clockwise 800s linear infinite,
-               twinkle-bright 6s ease-in-out infinite alternate;
 }
 
-/* Touch devices: the continuously rotating 150-160vmax star layers (kept
-   composited by will-change) and the per-frame shimmer repaints of the
-   gradient titles are too expensive for mobile GPUs. Freeze the rotation and
-   shrink the layers to viewport size; keep the twinkle so the sky stays
-   alive — opacity fades on static layers are compositor-cheap. */
+/* Touch devices: per-frame shimmer repaints of the gradient titles (with 3
+   stacked drop-shadows) are too expensive for mobile GPUs. */
 @media (hover: none) and (pointer: coarse) {
-    #stars-container::before {
-        animation: none;
-        will-change: auto;
-    }
-    #stars, #stars2, #stars3 {
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        margin: 0;
-        will-change: auto;
-    }
-    #stars  { animation: twinkle-faint 13s ease-in-out -4s infinite alternate; }
-    #stars2 { animation: twinkle 9s ease-in-out -2s infinite alternate; }
-    #stars3 { animation: twinkle-bright 6s ease-in-out infinite alternate; }
-
-    /* Gradient stays, per-frame shimmer repaint (with 3 stacked drop-shadows) goes */
     .main-title,
     .main-header h3,
     #app-loader-title {
         animation: none;
     }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    #stars, #stars2, #stars3, #stars-container::before { animation: none; }
-    #stars-container::after { display: none; }
 }
 
 .scenario-list-container {
