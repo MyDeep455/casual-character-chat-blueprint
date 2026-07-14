@@ -412,6 +412,11 @@ h1 {
     border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: transparent;
+    /* Permanent compositing layer for the whole card: frame, image and name
+       field must scroll as one unit. Without this the image (promoted to the
+       GPU by its blur layer) and the painted card body can drift apart by a
+       subpixel during scroll, and hover-time layer promotion adds snapping. */
+    transform: translateZ(0);
 }
 
 .character-card::before {
@@ -419,8 +424,7 @@ h1 {
 }
 
 .character-card:hover {
-    will-change: transform;
-    transform: translateY(-4px);
+    transform: translateY(-4px) translateZ(0);
     border-color: rgba(255, 255, 255, 0.32);
     box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7);
 }
