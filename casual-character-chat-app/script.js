@@ -755,7 +755,49 @@ const allLore = [
   if (source instanceof Blob) {
     return URL.createObjectURL(source);
   }
-  return source || ''; 
+  return source || '';
+}
+
+// Card backdrop (blurred side fill): desktop keeps the full-res background
+// feeding the live ::before blur layer. On touch devices that's one GPU
+// filter surface per card — too much for mobile GPUs — so there the avatar
+// is pre-blurred once into a tiny canvas and the upscaled result is used
+// instead. Keyed by source identity, so an edited avatar gets a fresh backdrop.
+const isCoarseTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+const cardBackdropCache = new Map();
+
+function setBlurredCardBackdrop(container, source, imageUrl) {
+    if (!isCoarseTouchDevice) {
+        container.style.backgroundImage = `url('${imageUrl}')`;
+        return;
+    }
+    const cached = cardBackdropCache.get(source);
+    if (cached) {
+        container.style.backgroundImage = `url('${cached}')`;
+        return;
+    }
+    const useLiveBlurFallback = () => {
+        container.style.backgroundImage = `url('${imageUrl}')`;
+        container.classList.add('has-live-blur');
+    };
+    const img = new Image();
+    if (/^https?:/i.test(imageUrl)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        try {
+            const scale = Math.min(1, 32 / Math.max(img.naturalWidth, img.naturalHeight, 1));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            cardBackdropCache.set(source, dataUrl);
+            container.style.backgroundImage = `url('${dataUrl}')`;
+        } catch (err) {
+            useLiveBlurFallback();
+        }
+    };
+    img.onerror = useLiveBlurFallback;
+    img.src = imageUrl;
 }
 
 
@@ -1644,7 +1686,7 @@ const filteredCharacters = allSortedCharacters.filter(char => {
 
             if (cardImageSource) {
   const imageContainer = charElement.querySelector('.card-image-container');
-  imageContainer.style.backgroundImage = `url('${imageUrl}')`;
+  setBlurredCardBackdrop(imageContainer, cardImageSource, imageUrl);
 }
 
         charElement.addEventListener('click', (event) => {

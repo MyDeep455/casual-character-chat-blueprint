@@ -466,6 +466,21 @@ h1 {
     z-index: 2;
 }
 
+/* Touch devices: one live GPU blur layer per card (from the generic
+   .effect-container::before) overwhelms mobile GPUs, so there the backdrop
+   is a tiny pre-blurred canvas thumbnail set as background-image by
+   setBlurredCardBackdrop(). has-live-blur re-enables the blur surface only
+   when a backdrop can't be generated (e.g. a cross-origin avatar would
+   taint the canvas). Desktop keeps the live blur. */
+@media (hover: none) and (pointer: coarse) {
+    .card-image-container.effect-container::before {
+        content: none;
+    }
+    .card-image-container.effect-container.has-live-blur::before {
+        content: '';
+    }
+}
+
 .card-image-container img {
     width: 100%;
     height: 100%;
