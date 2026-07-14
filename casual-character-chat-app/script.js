@@ -785,8 +785,9 @@ function applyCharPlaceholder(s, charName) {
 
 
 function applyUserPlaceholder(s, persona) {
-    if (persona && persona.name) {
-        return (s || '').replace(/{{\s*user\s*}}/g, persona.name);
+    const userName = persona ? (persona.chatName || persona.name) : '';
+    if (userName) {
+        return (s || '').replace(/{{\s*user\s*}}/g, userName);
     }
     return s || '';
 }
@@ -1866,6 +1867,7 @@ function updatePersonaEditorTokenCount() {
 
     let totalText = '';
     totalText += document.getElementById('persona-name').value || '';
+    totalText += document.getElementById('persona-chat-name').value || '';
     totalText += document.getElementById('persona-description').value || '';
 
     const estimatedTokens = Math.round(totalText.length / 4);
@@ -2852,7 +2854,7 @@ async function handleChatSubmit(type) {
         processedText = applyUserPlaceholder(processedText, activePersona);
         return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
-        const userName = activePersona?.name || 'User';
+        const userName = activePersona?.chatName || activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
         return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
@@ -2880,7 +2882,7 @@ async function handleChatSubmit(type) {
                 return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${text}` : text };
             }
             const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
-            const userName = persona?.name || 'User';
+            const userName = persona?.chatName || persona?.name || 'User';
             return { sender: 'user', main: isMultiChar ? `${userName}: ${msg.main}` : msg.main };
         });
     }
@@ -2969,7 +2971,7 @@ const startTime = Date.now();
         fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(modelSettings.instructions.trim(), charNameForAI), persona)}\n\n`;
     }
     if (persona) {
-        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
+        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.chatName || persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
     const isWorldChat = characters[currentCharacterId]?.type === 'world';
     const worldChar = isWorldChat ? characters[currentCharacterId] : null;
@@ -3452,7 +3454,7 @@ if (messageElement) {
         processedText = applyUserPlaceholder(processedText, activePersona);
         return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
-        const userName = activePersona?.name || 'User';
+        const userName = activePersona?.chatName || activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
         return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
@@ -3484,7 +3486,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
 }
 
     if (persona) {
-        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
+        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.chatName || persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
 
     if (isWorldRegenChat) {
@@ -4007,7 +4009,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         processedText = applyUserPlaceholder(processedText, activePersona);
         return { sender: 'ai', main: (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${processedText}` : processedText };
     } else {
-        const userName = activePersona?.name || 'User';
+        const userName = activePersona?.chatName || activePersona?.name || 'User';
         let processedText = applyUserPlaceholder(msg.main, activePersona);
         return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
@@ -4022,7 +4024,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         fullSystemPrompt += `--- GLOBAL AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(modelSettings.instructions.trim(), charNameForAI), persona)}\n\n`;
     }
     if (persona) {
-        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
+        fullSystemPrompt += `--- EXACT USER PERSONA ---\nName: ${persona.chatName || persona.name}\nDescription: ${applyUserPlaceholder(applyCharPlaceholder(persona.description, charNameForAI), persona)}\n---\n\n`;
     }
     if (isWorldContChat) {
         const worldName = worldContChar.name || 'This World';
@@ -5281,6 +5283,7 @@ function openPersonaEditor(personaId = null) {
 
     if (persona) {
       document.getElementById('persona-name').value = persona.name || '';
+      document.getElementById('persona-chat-name').value = persona.chatName || persona.name || '';
       document.getElementById('persona-avatar').value = getImageUrl(persona.avatar || '');
       personaAvatarInput.dispatchEvent(new Event('input', { bubbles: true }));
       document.getElementById('persona-description').value = persona.description || '';
@@ -5327,6 +5330,7 @@ async function handlePersonaFormSubmit(event) {
 
     const personaData = {
         name: document.getElementById('persona-name').value,
+        chatName: document.getElementById('persona-chat-name').value,
         avatar: finalAvatar,
         description: document.getElementById('persona-description').value
     };
@@ -5986,7 +5990,7 @@ editorFieldsToMonitor.forEach(id => {
 
 document.getElementById('scenario-editor-list').addEventListener('input', updateEditorTokenCount);
 
-const personaEditorFieldsToMonitor = ['persona-name', 'persona-description'];
+const personaEditorFieldsToMonitor = ['persona-name', 'persona-chat-name', 'persona-description'];
 personaEditorFieldsToMonitor.forEach(id => {
     const element = document.getElementById(id);
     if (element) {
@@ -7025,7 +7029,7 @@ personaEditorAvatarImg.onerror = () => {
         const charName = character?.chatName || character?.cardName || 'the character';
         const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
         const personaContext = persona
-            ? ` The user is playing as "${persona.name}" (${(persona.description || '').substring(0, 200)}).`
+            ? ` The user is playing as "${persona.chatName || persona.name}" (${(persona.description || '').substring(0, 200)}).`
             : '';
         const modelId = suggestionModelId || modelSelect?.value || defaultSettings.model;
 
