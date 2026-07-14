@@ -2776,13 +2776,17 @@ max-height: 27em;
     background-size: 440px 440px;
 }
 
-/* Touch devices: per-frame shimmer repaints of the gradient titles (with 3
-   stacked drop-shadows) are too expensive for mobile GPUs. */
+/* Touch devices: keep the title shimmer running, but slim the glow down to
+   fewer drop-shadows so the per-frame gradient repaints stay fluid on mobile GPUs. */
 @media (hover: none) and (pointer: coarse) {
-    .main-title,
-    .main-header h3,
+    .main-title {
+        filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.45)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
+    }
+    .main-header h3 {
+        filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.4)) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+    }
     #app-loader-title {
-        animation: none;
+        filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.45));
     }
 }
 
