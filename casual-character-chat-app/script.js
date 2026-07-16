@@ -1734,7 +1734,7 @@ document.fonts.ready.then(() => {
   chatListScreen.style.pointerEvents = 'auto';
   chatScreen.style.pointerEvents = 'none';
   const character = characters[charId];
-  
+
   const backgroundUrl = getImageUrl(character.background);
   if (backgroundUrl) {
     chatListScreen.style.backgroundImage = `url('${backgroundUrl}')`;
