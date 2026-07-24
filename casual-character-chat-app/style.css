@@ -2117,38 +2117,65 @@ max-height: 27em;
 #settings-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
 
 .accordion-section {
+    --section-accent-rgb: 139, 92, 246;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.02);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+#section-design   { --section-accent-rgb: 139, 92, 246; }
+#section-ai       { --section-accent-rgb: 56, 189, 248; }
+#section-features { --section-accent-rgb: 52, 211, 153; }
+
 .accordion-header {
+    box-sizing: border-box;
     width: 100%;
+    min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 9px 12px;
-    background: transparent;
+    background: linear-gradient(90deg, rgba(var(--section-accent-rgb), 0.13), rgba(255, 255, 255, 0.025));
     border: none;
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 0.72em;
+    border-left: 3px solid rgba(var(--section-accent-rgb), 0.65);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.75em;
     font-weight: 700;
     letter-spacing: 0.09em;
+    text-align: left;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .accordion-header:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.95);
+    background: linear-gradient(90deg, rgba(var(--section-accent-rgb), 0.23), rgba(255, 255, 255, 0.06));
+    color: #fff;
+}
+
+.accordion-header:focus-visible {
+    outline: 2px solid rgba(var(--section-accent-rgb), 0.9);
+    outline-offset: -3px;
+}
+
+.accordion-section.open {
+    border-color: rgba(var(--section-accent-rgb), 0.45);
+    box-shadow: 0 0 0 1px rgba(var(--section-accent-rgb), 0.08);
+}
+
+.accordion-section.open .accordion-header {
+    background: linear-gradient(90deg, rgba(var(--section-accent-rgb), 0.3), rgba(var(--section-accent-rgb), 0.09));
+    border-left-color: rgba(var(--section-accent-rgb), 1);
+    color: #fff;
 }
 
 .accordion-arrow {
     transition: transform 0.25s ease;
     flex-shrink: 0;
-    opacity: 0.6;
+    color: rgb(var(--section-accent-rgb));
+    opacity: 0.9;
 }
 
 .accordion-section.open .accordion-arrow {
@@ -4354,7 +4381,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 		order: 5;
 	}
 
-	#settings-container button {
+	#settings-container > button {
 		width: 28px;
 		height: 28px;
 		font-size: 14px;
@@ -4366,6 +4393,12 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 		max-height: 65vh;
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
+	}
+
+	#settings-panel .accordion-header {
+		width: 100%;
+		min-height: 44px;
+		padding: 10px 14px;
 	}
 
 	#chat-window {
