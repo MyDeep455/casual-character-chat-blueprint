@@ -117,6 +117,81 @@ function getReplyLengthVerbosityConfig(targetApiUrl, value) {
         : {};
 }
 
+function getContinuationInstruction(value) {
+    const lengthRule = REPLY_LENGTH_TARGETS[value]
+        ? 'After repairing the ending, continue with fresh material at the selected target reply length.'
+        : 'After repairing the ending, add one concise paragraph of fresh material.';
+
+    return `Continue the preceding assistant message directly from its exact final character.
+
+Continuation contract:
+- Return only continuation text: no preface, label, summary, restart, or quotation of text that is already complete.
+- Inspect the ending before writing. If it stops inside a word, begin with that entire intended word from its first letter. The app will merge the repeated fragment; never insert a space inside the repaired word.
+- If it stops inside a sentence, dialogue line, quotation, thought, markdown emphasis, or bracketed phrase, finish that open structure first. Preserve its grammar, punctuation, tense, point of view, speaker, tone, and formatting.
+- If the ending is already complete, begin with the next natural sentence or paragraph.
+- Do not repeat any complete phrase or sentence from the preceding message.
+- ${lengthRule} Move the scene forward with genuinely new action, dialogue, or description after repairing the ending.`;
+}
+
+function mergeContinuationText(originalText, continuationText) {
+    const original = String(originalText || '');
+    let addition = String(continuationText || '').trim();
+    if (!original) return addition;
+    if (!addition) return original.trim();
+
+    const originalEndTrimmed = original.trimEnd();
+    const trailingWord = originalEndTrimmed.match(/([\p{L}\p{N}'\u2019-]+)$/u)?.[1] || '';
+    const leadingWord = addition.match(/^([\p{L}\p{N}'\u2019-]+)/u)?.[1] || '';
+
+    // The prompt asks the model to repeat a word in full when the old response
+    // stops mid-word. Replace the partial tail with that full word.
+    if (
+        trailingWord.length >= 2
+        && leadingWord.length > trailingWord.length
+        && leadingWord.toLocaleLowerCase().startsWith(trailingWord.toLocaleLowerCase())
+    ) {
+        const withoutPartialWord = originalEndTrimmed.slice(0, -trailingWord.length);
+        return (withoutPartialWord + addition).trim();
+    }
+
+    // Remove a repeated tail if a provider restarts with the last phrase despite
+    // the prompt. Longer overlaps are checked first to preserve new content.
+    const originalLower = originalEndTrimmed.toLocaleLowerCase();
+    const additionLower = addition.toLocaleLowerCase();
+    const maxOverlap = Math.min(originalEndTrimmed.length, addition.length, 240);
+    for (let length = maxOverlap; length >= 8; length--) {
+        if (originalLower.slice(-length) === additionLower.slice(0, length)) {
+            addition = addition.slice(length).trimStart();
+            break;
+        }
+    }
+    if (!addition) return originalEndTrimmed;
+
+    const straightQuoteCount = (originalEndTrimmed.match(/"/g) || []).length;
+    if (
+        straightQuoteCount % 2 === 1
+        && (addition.startsWith('"') || originalEndTrimmed.endsWith('"'))
+    ) {
+        return (originalEndTrimmed + addition).trim();
+    }
+    for (const marker of ['```', '`', '**', '__', '*', '_']) {
+        if (addition.startsWith(marker)) {
+            const markerCount = originalEndTrimmed.split(marker).length - 1;
+            if (markerCount % 2 === 1) {
+                return (originalEndTrimmed + addition).trim();
+            }
+        }
+    }
+
+    if (/\s$/.test(original) || /^[,.;:!?\u0027\u2026\)\]\}\u00BB\u201D\u2019]/u.test(addition)) {
+        return (original + addition).trim();
+    }
+    if (/[\(\[\{\u00AB\u201C\u2018\u2014-]$/u.test(originalEndTrimmed)) {
+        return (originalEndTrimmed + addition).trim();
+    }
+    return `${originalEndTrimmed} ${addition}`.trim();
+}
+
 const defaultSettings = {
         fontSize: '18',
         temperature: '0.70',
@@ -4167,10 +4242,10 @@ if (messageElement) {
     if (counter) counter.style.display = 'none';
     }
 
+    // Keep the message being continued in its original assistant role. Sending
+    // it back as a user message makes models more likely to restart or repeat it.
     const historyCopy = chat.history.slice(0, messageIndex + 1);
-    const lastMessage = historyCopy.pop(); 
-    let messageForAPI = lastMessage.variations[lastMessage.activeVariant].main; 
-    messageForAPI += "\n\n(Drive the current point of the scene actively forward to the next point of the scene. Keep it concise and write only one short paragraph maximum. If a sentence or dialog was cut off, complete the sentence seamlessly and then move on with fresh sentences. Do not repeat any of the previous sentences.)";
+    const messageForAPI = getContinuationInstruction(replyLength);
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
@@ -4428,7 +4503,7 @@ const response = await fetch(fetchUrl, {
                                 mainOnly = fullReply.trim();
                             }
 
-                            const combinedTextRaw = (originalText ? `${originalText} ${mainOnly}` : mainOnly).trim();
+                            const combinedTextRaw = mergeContinuationText(originalText, mainOnly);
                             const sanitizedCombined = sanitizeModelOutput(combinedTextRaw);
                             mainTypewriter.update(sanitizedCombined, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                             activeVariant.main = sanitizedCombined;
@@ -4462,7 +4537,7 @@ const response = await fetch(fetchUrl, {
                 console.log(`Successful response after ${attempt} attempts.`);
                 const finalThinkMatch = fullReply.match(thinkRegex);
                 const mainOnly = fullReply.replace(thinkRegex, '').trim();
-                const combinedFinalRaw = (originalText ? `${originalText} ${mainOnly}` : mainOnly).trim();
+                const combinedFinalRaw = mergeContinuationText(originalText, mainOnly);
                 const reasoningMainFallback = extractMainFromReasoning(reasoningBuf);
                 activeVariant.main = sanitizeModelOutput(combinedFinalRaw); 
                 
@@ -4479,7 +4554,7 @@ if (!finalThink) {
   if (!hasOpen && closeIdx !== -1) {
     finalThink = sanitizeModelOutput(fullReply.slice(0, closeIdx).trim());
     const mainTail = fullReply.slice(closeIdx + "</think>".length).trimStart();
-    const combinedTail = (originalText ? `${originalText} ${mainTail}` : mainTail).trim();
+    const combinedTail = mergeContinuationText(originalText, mainTail);
     activeVariant.main = sanitizeModelOutput(combinedTail);
   }
 }
@@ -4493,12 +4568,12 @@ if (!finalThink) {
   if (!hasOpen && cIdx !== -1) {
     finalThink = sanitizeModelOutput(fullReply.slice(0, cIdx).trim());
     const mainTail = fullReply.slice(cIdx + "</think>".length).trimStart();
-    const combinedTail = (originalText ? `${originalText} ${mainTail}` : mainTail).trim();
+    const combinedTail = mergeContinuationText(originalText, mainTail);
     activeVariant.main = sanitizeModelOutput(combinedTail);
   }
 }
                 if ((!mainOnly || mainOnly.trim() === '') && reasoningMainFallback) {
-                    const combinedFallback = (originalText ? `${originalText} ${reasoningMainFallback}` : reasoningMainFallback).trim();
+                    const combinedFallback = mergeContinuationText(originalText, reasoningMainFallback);
                     activeVariant.main = sanitizeModelOutput(combinedFallback);
                 }
 
