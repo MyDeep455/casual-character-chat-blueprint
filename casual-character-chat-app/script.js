@@ -70,7 +70,7 @@ function isOpenRouterChatCompletionsUrl(value) {
     }
 }
 
-function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto', reasoningVisible = true) {
+function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto') {
     if (!isOpenRouterChatCompletionsUrl(targetApiUrl)) return {};
 
     const normalizedEffort = typeof reasoningEffort === 'string'
@@ -81,14 +81,14 @@ function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto', reaso
         return {
             reasoning: {
                 effort: normalizedEffort,
-                exclude: !reasoningVisible
+                exclude: false
             }
         };
     }
 
     // With automatic effort, let the model/provider choose its normal amount
-    // of reasoning. Only ask OpenRouter to omit the returned trace when hidden.
-    return reasoningVisible ? {} : { reasoning: { exclude: true } };
+    // of reasoning. Returned traces remain visible by default.
+    return {};
 }
 
 
@@ -105,7 +105,6 @@ const defaultSettings = {
         aiBubbleOpacity: '0.7',
         messageSpacing: '50',
         soundEnabled: 'true',
-        thinkEnabled: 'true',
         reasoningEffort: 'low',
         replyOptionsEnabled: 'true',
         blur: '5',
@@ -117,7 +116,6 @@ const defaultSettings = {
 
     let audioCtx;
     let soundEnabled = true;
-    let thinkEnabled = true;
     let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
     let ttsEnabled = false;
@@ -239,7 +237,6 @@ const defaultSettings = {
     const spacingSlider = document.getElementById('spacing-slider');
     const spacingValue = document.getElementById('spacing-value');
     const soundToggle = document.getElementById('sound-toggle');
-    const thinkToggle = document.getElementById('think-toggle');
     const reasoningEffortSelect = document.getElementById('reasoning-effort-select');
     const replyOptionsToggle = document.getElementById('reply-options-toggle');
     const scrollTopFab = document.getElementById('scroll-top-fab');
@@ -1068,9 +1065,6 @@ async function resetAppSettings() {
             case 'soundEnabled':
                 soundEnabled = (value === 'true' || value === true);
                 break;
-            case 'thinkEnabled':
-                thinkEnabled = (value === 'true' || value === true);
-                break;
             case 'reasoningEffort': {
                 const supportedEfforts = ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
                 reasoningEffort = supportedEfforts.includes(value) ? value : 'auto';
@@ -1163,7 +1157,6 @@ async function resetAppSettings() {
         aiBubbleOpacity: aiBubbleOpacitySlider,
         messageSpacing: spacingSlider,
         soundEnabled: soundToggle,
-        thinkEnabled: thinkToggle,
         reasoningEffort: reasoningEffortSelect,
         replyOptionsEnabled: replyOptionsToggle,
         blur: blurSlider,
@@ -3246,7 +3239,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3359,7 +3352,7 @@ if (elapsedTime > 20000) {
                 aiMessageObject.variations[0].main = sanitizedMainOnly;
                 mainTypewriter.update(sanitizedMainOnly, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
 
-                if (thinkEnabled && streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
+                if (streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     thinkBlockEl.open = true;
                     const sanitizedThink = sanitizeModelOutput(streamThinkText);
@@ -3371,7 +3364,7 @@ if (elapsedTime > 20000) {
             }
             if (reasoningDelta) {
                 reasoningBuf += reasoningDelta;
-                if (thinkEnabled && ensureThinkBlockPresent()) {
+                if (ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     thinkBlockEl.open = true;
                     const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
@@ -3430,7 +3423,6 @@ if (elapsedTime > 20000) {
                     finalMainText = sanitizeModelOutput(extractMainFromReasoning(reasoningBuf));
                 }
 
-                if (!thinkEnabled) { finalThink = null; }
                 finalVariant.main = finalMainText;
                 finalVariant.think = finalThink;
                 mainTypewriter.flush(finalMainText || '', t => { if (mainContentElement) mainContentElement.innerHTML = formatSubString(t); });
@@ -3768,7 +3760,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3881,7 +3873,7 @@ continue;
                 message.variations[message.activeVariant].main = sanitizedMainOnly;
                 newVariant = { main: sanitizedMainOnly, think: null };
 
-                if (thinkEnabled && streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
+                if (streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                     const sanitizedThink = sanitizeModelOutput(streamThinkText);
@@ -3894,7 +3886,7 @@ continue;
             }
             if (reasoningDelta) {
                 reasoningBuf += reasoningDelta;
-                if (thinkEnabled && ensureThinkBlockPresent()) {
+                if (ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                     const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
@@ -3954,7 +3946,6 @@ continue;
                     finalMainText = sanitizeModelOutput(extractMainFromReasoning(reasoningBuf));
                 }
 
-                if (!thinkEnabled) { finalThink = null; }
                 finalVariant.main = finalMainText;
                 finalVariant.think = finalThink;
                 newVariant = { main: finalMainText, think: finalThink };
@@ -4314,7 +4305,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -4424,7 +4415,7 @@ const response = await fetch(fetchUrl, {
                             mainTypewriter.update(sanitizedCombined, t => { if (mainContentEl) { mainContentEl.innerHTML = formatSubString(t); if (chatWindow._autoScroll !== false) chatWindow.scrollTop = chatWindow.scrollHeight; } });
                             activeVariant.main = sanitizedCombined;
 
-                            if (thinkEnabled && streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
+                            if (streamThinkText !== null && reasoningBuf === '' && ensureThinkBlockPresent()) {
                                 thinkBlockEl.classList.remove('hidden');
                                 if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
                                 const sanitizedThink = sanitizeModelOutput(streamThinkText);
@@ -4436,7 +4427,7 @@ const response = await fetch(fetchUrl, {
                         }
                         if (reasoningDelta) {
                            reasoningBuf += reasoningDelta;
-                           if (thinkEnabled && ensureThinkBlockPresent()) {
+                           if (ensureThinkBlockPresent()) {
                                const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
                                thinkBlockEl.classList.remove('hidden');
                                if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
@@ -4493,7 +4484,6 @@ if (!finalThink) {
                     activeVariant.main = sanitizeModelOutput(combinedFallback);
                 }
 
-                if (!thinkEnabled) { finalThink = null; }
                 activeVariant.think = finalThink;
 
                 if (finalThink && (!thinkBlockEl || !thinkContentEl)) {
@@ -8234,7 +8224,6 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     addSettingListener(aiBubbleOpacitySlider, 'aiBubbleOpacity');
     addSettingListener(spacingSlider, 'messageSpacing');
     addSettingListener(soundToggle, 'soundEnabled', 'change');
-    addSettingListener(thinkToggle, 'thinkEnabled', 'change');
     addSettingListener(reasoningEffortSelect, 'reasoningEffort', 'change');
     addSettingListener(replyOptionsToggle, 'replyOptionsEnabled', 'change');
     addSettingListener(blurSlider, 'blur');
