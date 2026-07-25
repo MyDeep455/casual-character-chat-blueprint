@@ -2189,7 +2189,7 @@ max-height: 27em;
 }
 
 #section-design.open .accordion-content   { max-height: 580px; }
-#section-ai.open .accordion-content       { max-height: 360px; }
+#section-ai.open .accordion-content       { max-height: 440px; }
 #section-features.open .accordion-content { max-height: 280px; }
 
 .accordion-inner {

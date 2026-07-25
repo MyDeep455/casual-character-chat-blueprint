@@ -45,6 +45,15 @@ const APP_VERSION = 1.0;
 
 
 const DEFAULT_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_REASONING_EFFORTS = new Set([
+    'none',
+    'minimal',
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max'
+]);
 
 function isOpenRouterChatCompletionsUrl(value) {
     try {
@@ -61,14 +70,25 @@ function isOpenRouterChatCompletionsUrl(value) {
     }
 }
 
-function getReasoningRequestConfig(targetApiUrl, enabled) {
-    if (!enabled || !isOpenRouterChatCompletionsUrl(targetApiUrl)) return {};
-    return {
-        reasoning: {
-            enabled: true,
-            exclude: false
-        }
-    };
+function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto', reasoningVisible = true) {
+    if (!isOpenRouterChatCompletionsUrl(targetApiUrl)) return {};
+
+    const normalizedEffort = typeof reasoningEffort === 'string'
+        ? reasoningEffort.toLowerCase()
+        : 'auto';
+
+    if (OPENROUTER_REASONING_EFFORTS.has(normalizedEffort)) {
+        return {
+            reasoning: {
+                effort: normalizedEffort,
+                exclude: !reasoningVisible
+            }
+        };
+    }
+
+    // With automatic effort, let the model/provider choose its normal amount
+    // of reasoning. Only ask OpenRouter to omit the returned trace when hidden.
+    return reasoningVisible ? {} : { reasoning: { exclude: true } };
 }
 
 
@@ -86,6 +106,7 @@ const defaultSettings = {
         messageSpacing: '50',
         soundEnabled: 'true',
         thinkEnabled: 'true',
+        reasoningEffort: 'low',
         replyOptionsEnabled: 'true',
         blur: '5',
         avatarSize: '200',
@@ -97,6 +118,7 @@ const defaultSettings = {
     let audioCtx;
     let soundEnabled = true;
     let thinkEnabled = true;
+    let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
     let ttsEnabled = false;
     let ttsCurrentVoiceURI = '';
@@ -218,6 +240,7 @@ const defaultSettings = {
     const spacingValue = document.getElementById('spacing-value');
     const soundToggle = document.getElementById('sound-toggle');
     const thinkToggle = document.getElementById('think-toggle');
+    const reasoningEffortSelect = document.getElementById('reasoning-effort-select');
     const replyOptionsToggle = document.getElementById('reply-options-toggle');
     const scrollTopFab = document.getElementById('scroll-top-fab');
     const deleteCharacterBtnDashboard = document.getElementById('delete-character-btn-dashboard');
@@ -1048,6 +1071,12 @@ async function resetAppSettings() {
             case 'thinkEnabled':
                 thinkEnabled = (value === 'true' || value === true);
                 break;
+            case 'reasoningEffort': {
+                const supportedEfforts = ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+                reasoningEffort = supportedEfforts.includes(value) ? value : 'auto';
+                if (reasoningEffortSelect) reasoningEffortSelect.value = reasoningEffort;
+                break;
+            }
             case 'replyOptionsEnabled':
                 replyOptionsEnabled = (value === 'true' || value === true);
                 if (!replyOptionsEnabled) {
@@ -1135,6 +1164,7 @@ async function resetAppSettings() {
         messageSpacing: spacingSlider,
         soundEnabled: soundToggle,
         thinkEnabled: thinkToggle,
+        reasoningEffort: reasoningEffortSelect,
         replyOptionsEnabled: replyOptionsToggle,
         blur: blurSlider,
         avatarSize: avatarSizeSlider,
@@ -3216,7 +3246,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3738,7 +3768,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -4284,7 +4314,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -8205,6 +8235,7 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     addSettingListener(spacingSlider, 'messageSpacing');
     addSettingListener(soundToggle, 'soundEnabled', 'change');
     addSettingListener(thinkToggle, 'thinkEnabled', 'change');
+    addSettingListener(reasoningEffortSelect, 'reasoningEffort', 'change');
     addSettingListener(replyOptionsToggle, 'replyOptionsEnabled', 'change');
     addSettingListener(blurSlider, 'blur');
     addSettingListener(avatarSizeSlider, 'avatarSize');
@@ -8226,8 +8257,10 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
 
     resetSettingsBtn.addEventListener('click', async () => {
         if (await showCustomConfirm("Do you really want to reset all settings to the default values?", true)) {
-            Object.keys(defaultSettings).forEach(key => localStorage.removeItem(key));
-            loadAndApplySettings();
+            await Promise.all(
+                Object.entries(defaultSettings).map(([key, value]) => saveSettingToDB(key, value))
+            );
+            await loadAndApplySettingsFromDB();
             enforceResponsiveSettingLimits();
         }
     });

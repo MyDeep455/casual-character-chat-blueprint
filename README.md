@@ -163,7 +163,8 @@ This panel lets you customize the chat's appearance and the AI's behavior on the
     * **AI Model:** Select the AI model for the responses from the list you configured in the global App Settings.
     * **Temperature:** The most important slider for creativity. Range is 0.1–1.0. Lower values (e.g., 0.7) are more focused; higher values (e.g., 1.0) lead to more creative and varied responses.
 * **Notification Sound:** A toggle for the sound effect when a message is received.
-* **Show Think Blocks:** A toggle to show or hide the collapsible reasoning block that some AI models produce. When disabled, only the final response is shown.
+* **Reasoning Effort:** Controls how much supported OpenRouter models reason before replying. Use **Minimal** or **Low** for faster roleplay. **Off** only works on models that permit reasoning to be disabled; **Auto** uses the model/provider default.
+* **Show Think Blocks:** Shows or hides reasoning returned by supported models. This is separate from Reasoning Effort; hiding the block does not itself make the model think less.
 * **Reply Suggestions:** A toggle for AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response. Suggestions are automatically regenerated after deleting messages.
 * **Suggestions Model:** A dropdown to choose a dedicated AI model just for reply suggestions (independent of your main chat model). **Tip:** use a free or cheap model here to avoid unnecessary API costs.
 * **Text-to-Speech (TTS):** A toggle that enables the browser's built-in text-to-speech for AI responses. When active, each new message is automatically read aloud once it finishes generating. A **Voice** dropdown lets you pick from all voices installed on your device. Uses the Web Speech API — no external service or API key needed.
