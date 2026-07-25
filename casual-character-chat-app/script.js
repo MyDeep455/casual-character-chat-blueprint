@@ -93,6 +93,30 @@ function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto') {
 
 
 
+const REPLY_LENGTH_TARGETS = Object.freeze({
+    short: Object.freeze({ words: '40-80 words', sentences: 'usually 3-5 sentences', verbosity: 'low' }),
+    medium: Object.freeze({ words: '90-160 words', sentences: 'usually 6-9 sentences', verbosity: 'medium' }),
+    long: Object.freeze({ words: '170-280 words', sentences: 'usually 10-15 sentences', verbosity: 'high' }),
+    verylong: Object.freeze({ words: '300-500 words', sentences: 'usually 16-24 sentences', verbosity: 'high' })
+});
+
+function getReplyLengthInstruction(value) {
+    const target = REPLY_LENGTH_TARGETS[value];
+    if (!target) return '';
+
+    return `--- TARGET REPLY LENGTH ---
+Aim for ${target.words} (${target.sentences}) in this reply. Treat the word range as an approximate target, not a reason to cut off a sentence or leave the current story beat incomplete. Keep all content useful: do not pad, repeat, mention the target, or summarize these instructions.
+
+`;
+}
+
+function getReplyLengthVerbosityConfig(targetApiUrl, value) {
+    const verbosity = REPLY_LENGTH_TARGETS[value]?.verbosity;
+    return isOpenRouterChatCompletionsUrl(targetApiUrl) && verbosity
+        ? { verbosity }
+        : {};
+}
+
 const defaultSettings = {
         fontSize: '18',
         temperature: '0.70',
@@ -3191,10 +3215,7 @@ const startTime = Date.now();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
+    fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
     const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
@@ -3240,6 +3261,7 @@ const fetchBody = JSON.stringify({
     top_p: 0.95,
     stream: true,
     ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3693,10 +3715,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
+    fullSystemPrompt += getReplyLengthInstruction(replyLength);
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
@@ -3761,6 +3780,7 @@ const fetchBody = JSON.stringify({
     top_p: 0.95,
     stream: true,
     ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -4241,10 +4261,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    if (replyLength === 'short') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is three or four sentences in length.\n\n`;
-    else if (replyLength === 'medium') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is six or seven sentences in length.\n\n`;
-    else if (replyLength === 'long') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is nine or ten sentences in length.\n\n`;
-    else if (replyLength === 'verylong') fullSystemPrompt += `--- REPLY LENGTH ---\nWrite a reply that is twelve or thirteen sentences in length.\n\n`;
+    fullSystemPrompt += getReplyLengthInstruction(replyLength);
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
@@ -4306,6 +4323,7 @@ const fetchBody = JSON.stringify({
     top_p: 0.95,
     stream: true,
     ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
