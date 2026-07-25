@@ -46,6 +46,31 @@ const APP_VERSION = 1.0;
 
 const DEFAULT_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+function isOpenRouterChatCompletionsUrl(value) {
+    try {
+        const url = new URL(value);
+        const pathname = url.pathname.replace(/\/+$/, '') || '/';
+        return url.protocol === 'https:'
+            && url.hostname.toLowerCase() === 'openrouter.ai'
+            && (url.port === '' || url.port === '443')
+            && url.username === ''
+            && url.password === ''
+            && pathname === '/api/v1/chat/completions';
+    } catch (_) {
+        return false;
+    }
+}
+
+function getReasoningRequestConfig(targetApiUrl, enabled) {
+    if (!enabled || !isOpenRouterChatCompletionsUrl(targetApiUrl)) return {};
+    return {
+        reasoning: {
+            enabled: true,
+            exclude: false
+        }
+    };
+}
+
 
 
 const defaultSettings = {
@@ -2498,6 +2523,31 @@ function extractMainFromReasoning(reasoningText) {
     return stripThinkTags(safe);
 }
 
+function extractReasoningDelta(delta) {
+    if (!delta || typeof delta !== 'object') return '';
+    if (typeof delta.reasoning === 'string' && delta.reasoning) return delta.reasoning;
+    if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) return delta.reasoning_content;
+    if (!Array.isArray(delta.reasoning_details)) return '';
+
+    return delta.reasoning_details.map(detail => {
+        if (!detail || typeof detail !== 'object') return '';
+        if (detail.type === 'reasoning.text' && typeof detail.text === 'string') {
+            return detail.text;
+        }
+        if (detail.type === 'reasoning.summary') {
+            if (typeof detail.summary === 'string') return detail.summary;
+            if (Array.isArray(detail.summary)) {
+                return detail.summary.map(item => (
+                    typeof item === 'string'
+                        ? item
+                        : (item && typeof item.text === 'string' ? item.text : '')
+                )).join('');
+            }
+        }
+        return '';
+    }).join('');
+}
+
 function formatSubString(text) {
     if (!text) return '';
 
@@ -3128,6 +3178,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
+    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3206,6 +3257,7 @@ if (elapsedTime > 20000) {
         try {
             const parsed = JSON.parse(dataContent);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+            const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
                 fullReply += delta.content;
 
@@ -3249,8 +3301,8 @@ if (elapsedTime > 20000) {
                     }
                 }
             }
-            if (delta?.reasoning) {
-                reasoningBuf += delta.reasoning;
+            if (reasoningDelta) {
+                reasoningBuf += reasoningDelta;
                 if (thinkEnabled && ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     thinkBlockEl.open = true;
@@ -3638,6 +3690,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
+    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -3718,6 +3771,7 @@ continue;
         try {
             const parsed = JSON.parse(dataContent);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+            const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
                 fullReply += delta.content;
 
@@ -3760,8 +3814,8 @@ continue;
                     }
                 }
             }
-            if (delta?.reasoning) {
-                reasoningBuf += delta.reasoning;
+            if (reasoningDelta) {
+                reasoningBuf += reasoningDelta;
                 if (thinkEnabled && ensureThinkBlockPresent()) {
                     thinkBlockEl.classList.remove('hidden');
                     if (!thinkOpened) { thinkBlockEl.open = true; thinkOpened = true; }
@@ -4168,6 +4222,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
+    ...getReasoningRequestConfig(targetApiUrlToSend, thinkEnabled),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
         top_p: 0.95
@@ -4237,8 +4292,9 @@ const response = await fetch(fetchUrl, {
                     try {
                         const parsed = JSON.parse(dataContent);
                         const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+                        const reasoningDelta = extractReasoningDelta(delta);
 
-                        if (isFirstChunk && (delta?.content || delta?.reasoning)) {
+                        if (isFirstChunk && (delta?.content || reasoningDelta)) {
                             message.isStreaming = false;
                             message.streamingVariant = null;
                             if (mainContentEl) setBubbleLoading(mainContentEl, false);
@@ -4286,8 +4342,8 @@ const response = await fetch(fetchUrl, {
                                 }
                             }
                         }
-                        if (delta?.reasoning) {
-                           reasoningBuf += delta.reasoning;
+                        if (reasoningDelta) {
+                           reasoningBuf += reasoningDelta;
                            if (thinkEnabled && ensureThinkBlockPresent()) {
                                const sanitizedReasoning = sanitizeModelOutput(reasoningBuf.trim());
                                thinkBlockEl.classList.remove('hidden');
