@@ -4393,6 +4393,15 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 		max-height: 65vh;
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
+		overscroll-behavior-y: contain;
+	}
+
+	#settings-panel > * {
+		flex-shrink: 0;
+	}
+
+	#settings-panel .accordion-section.open .accordion-content {
+		max-height: none;
 	}
 
 	#settings-panel .accordion-header {
