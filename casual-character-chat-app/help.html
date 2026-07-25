@@ -539,11 +539,11 @@ No one else, including the developer, can access your characters or conversation
     <h3>The Input Area</h3>
     <p>This is where you write your messages.</p>
     <ul>
-        <li><strong>💬 Character vs. 📖 Narrator:</strong> You have two send buttons. <code>Character</code> is for standard character responses and dialogue. <code>Narrator</code> instructs the AI to respond purely as an omniscient, third-person narrator, describing the scene and actions without speaking as the character.</li>
+        <li><strong>💬 Character vs. 📖 Narrator:</strong> <code>Character</code> requests dialogue from the current or tagged character. In a World chat, this button appears only while a character tag is selected. <code>Narrator</code> always ignores character-tag targeting and requests omniscient, third-person narration instead. The narrator does not speak as the user or an established card character, but may create and voice incidental NPCs such as witnesses, guards, bystanders, or strangers when they enrich the scene.</li>
         <li><strong>Context Continuation:</strong> If you leave the input field empty and click either send button, the app will use the last message in the chat as the new prompt to generate a continuation. This is great for letting the AI move the story forward on its own.
             <blockquote>Note: Sometimes, the AI might get repetitive and it can look like as if the AI ignores the last message and doesn't drive the plot forward. In that case, simply make use of your Reminder instructions (e.g., "Drive the plot actively forward and let something new happen.") and also adjust the Temperature slider.</blockquote>
         </li>
-        <li><strong>Tag Suggestions:</strong> When you click on the input field in a group chat, suggestions for selecting one of the participants will appear above the input field. Simply click one of the tags to speak to that specific Character. As long as you leave the tag for the selected character selected, all your messages will be sent to that particular character.</li>
+        <li><strong>Tag Suggestions:</strong> When you click the input field in a group chat, suggestions for selecting a participant appear above it. Select a tag to direct <code>Character</code> requests to that character; the selection remains active until you dismiss it. <code>Narrator</code> requests always ignore the selected tag.</li>
         <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind.</li>
     </ul>
 
