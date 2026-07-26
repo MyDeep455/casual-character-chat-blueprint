@@ -1,4 +1,54 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
+const CCC_MOOD_DEFINITIONS = Object.freeze({
+    Happy: Object.freeze({ emoji: '😊' }),
+    Sad: Object.freeze({ emoji: '😢' }),
+    Angry: Object.freeze({ emoji: '😠' }),
+    Excited: Object.freeze({ emoji: '🤩' }),
+    Nervous: Object.freeze({ emoji: '😰' }),
+    Flirty: Object.freeze({ emoji: '😏' }),
+    Tired: Object.freeze({ emoji: '😴' }),
+    Curious: Object.freeze({ emoji: '🧐' }),
+    Scared: Object.freeze({ emoji: '😨' }),
+    Bored: Object.freeze({ emoji: '😑' })
+});
+
+const CCC_MOOD_LOOKUP = Object.freeze(Object.fromEntries(
+    Object.keys(CCC_MOOD_DEFINITIONS).map(mood => [mood.toLowerCase(), mood])
+));
+
+function normalizeMood(value) {
+    if (typeof value !== 'string') return null;
+    return CCC_MOOD_LOOKUP[value.trim().toLowerCase()] || null;
+}
+
+function getMoodEmoji(value) {
+    const mood = normalizeMood(value);
+    return mood ? CCC_MOOD_DEFINITIONS[mood].emoji : '😊';
+}
+
+function getMoodSystemContext({ mood: rawMood, characterName, isNarration = false }) {
+    const mood = normalizeMood(rawMood);
+    if (!mood) return '';
+
+    if (isNarration) {
+        return `--- CURRENT SCENE MOOD (ACTIVE) ---
+Mood: ${mood}
+Use this as the scene's current emotional atmosphere. Consistently but naturally reflect it in the narration, pacing, imagery, and reactions. Do not announce, label, or explain the mood unless it arises naturally in the story. Keep it active for this response.
+
+`;
+    }
+
+    const safeCharacterName = typeof characterName === 'string' && characterName.trim()
+        ? characterName.trim()
+        : 'The character';
+    return `--- CHARACTER CURRENT MOOD (ACTIVE) ---
+Character: ${safeCharacterName}
+Mood: ${mood}
+Treat this as the character's current emotional state. Consistently but naturally reflect it in their word choice, expressions, decisions, and reactions. Do not announce, label, or explain the mood unless it arises naturally in the story. Keep it active for this response.
+
+`;
+}
+
 document.body.style.opacity = '1';
 
 let db;
@@ -2483,6 +2533,7 @@ async function imageFileToWebp(file, quality = 0.80) {
     if (!chat.participants) chat.participants = [charId];
     if (chat.activePersonaId === undefined) chat.activePersonaId = null;
     if (chat.memories === undefined) chat.memories = '';
+    chat.mood = normalizeMood(chat.mood);
     closeChatMemoriesModal();
     
     selectPersonaBtn.classList.remove('hidden');
@@ -2612,7 +2663,7 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         memories: '',
         participants: worldParticipants,
         activePersonaId: null,
-        mood: initialMood
+        mood: normalizeMood(initialMood)
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -3281,11 +3332,11 @@ const startTime = Date.now();
         const targetLoreText = getLoreText(targetCharacter, loreScanText);
         if (targetLoreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetLoreText}\n\n`;
     }
-    if (chat.mood) {
-        fullSystemPrompt += (isWorldChat || type === 'story')
-            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
-            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
-    }
+    fullSystemPrompt += getMoodSystemContext({
+        mood: chat.mood,
+        characterName: charNameForAI,
+        isNarration: isWorldChat || type === 'story'
+    });
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
@@ -3781,11 +3832,11 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
-    if (chat.mood) {
-        fullSystemPrompt += (isWorldRegenChat || messageType === 'story')
-            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
-            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
-    }
+    fullSystemPrompt += getMoodSystemContext({
+        mood: chat.mood,
+        characterName: charNameForAI,
+        isNarration: isWorldRegenChat || messageType === 'story'
+    });
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
@@ -4327,11 +4378,11 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
     }
-    if (chat.mood) {
-        fullSystemPrompt += (isWorldContChat || messageType === 'story')
-            ? `--- CURRENT ATMOSPHERE ---\nThe current mood of the scene is ${chat.mood}. Let this mood subtly color the tone and atmosphere of the narration.\n\n`
-            : `--- CHARACTER CURRENT MOOD ---\n${charNameForAI} is currently feeling ${chat.mood}. This mood should subtly influence how they speak, react, and behave in this story.\n\n`;
-    }
+    fullSystemPrompt += getMoodSystemContext({
+        mood: chat.mood,
+        characterName: charNameForAI,
+        isNarration: isWorldContChat || messageType === 'story'
+    });
     const chatMemoriesText = (chat.memories || '').trim();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
@@ -6388,41 +6439,56 @@ personaEditorAvatarImg.onerror = () => {
     const moodBtn = document.getElementById('mood-btn');
     const moodPickerEl = document.getElementById('mood-picker');
 
-    const MOOD_EMOJIS = {
-        Happy: '😊', Sad: '😢', Angry: '😠', Excited: '🤩',
-        Nervous: '😰', Flirty: '😏', Tired: '😴', Curious: '🧐', Scared: '😨', Bored: '😑'
-    };
-
     function updateMoodButton() {
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!moodBtn) return;
-        const mood = chat?.mood || null;
-        moodBtn.textContent = mood ? (MOOD_EMOJIS[mood] || '😊') : '😊';
+        const mood = normalizeMood(chat?.mood);
+        moodBtn.textContent = getMoodEmoji(mood);
         moodBtn.title = mood ? `Mood: ${mood}` : 'Set Character Mood';
         moodBtn.classList.toggle('mood-active', !!mood);
+        moodBtn.setAttribute('aria-label', mood ? `Change character mood. Current mood: ${mood}` : 'Set character mood');
+        moodBtn.setAttribute('aria-haspopup', 'true');
+        moodBtn.setAttribute('aria-controls', 'mood-picker');
+        if (!moodBtn.hasAttribute('aria-expanded')) moodBtn.setAttribute('aria-expanded', 'false');
+        if (moodPickerEl) {
+            moodPickerEl.setAttribute('role', 'group');
+            moodPickerEl.setAttribute('aria-label', 'Character mood');
+        }
+        moodPickerEl?.querySelectorAll('.mood-option').forEach(option => {
+            const optionMood = normalizeMood(option.dataset.mood);
+            const isSelected = mood === optionMood && (mood !== null || option.dataset.mood === '');
+            option.type = 'button';
+            option.classList.toggle('is-selected', isSelected);
+            option.setAttribute('aria-pressed', String(isSelected));
+        });
     }
 
     if (moodBtn) {
         moodBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (moodPickerEl) moodPickerEl.classList.toggle('hidden');
+            if (moodPickerEl) {
+                moodPickerEl.classList.toggle('hidden');
+                moodBtn.setAttribute('aria-expanded', String(!moodPickerEl.classList.contains('hidden')));
+            }
         });
     }
     document.addEventListener('click', (e) => {
         if (moodPickerEl && !moodPickerEl.classList.contains('hidden') &&
             !moodBtn?.contains(e.target) && !moodPickerEl.contains(e.target)) {
             moodPickerEl.classList.add('hidden');
+            moodBtn?.setAttribute('aria-expanded', 'false');
         }
     });
     if (moodPickerEl) {
         moodPickerEl.addEventListener('click', async (e) => {
             const btn = e.target.closest('.mood-option');
             if (!btn) return;
-            const mood = btn.dataset.mood || null;
+            const mood = normalizeMood(btn.dataset.mood);
             const chat = characters[currentCharacterId]?.chats?.[currentChatId];
             if (!chat) return;
-            chat.mood = mood || null;
+            chat.mood = mood;
             moodPickerEl.classList.add('hidden');
+            moodBtn?.setAttribute('aria-expanded', 'false');
             updateMoodButton();
             await saveSingleCharacterToDB(characters[currentCharacterId]);
         });

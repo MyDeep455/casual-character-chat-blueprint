@@ -5988,6 +5988,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     border-color: rgba(255,255,255,0.28);
     transform: translateY(-1px);
 }
+.mood-option.is-selected {
+    background: rgba(255,217,82,0.2);
+    color: var(--dialogue-color, #ffd952);
+    box-shadow: inset 0 0 0 1px rgba(255,217,82,0.45);
+}
 .mood-option:active { transform: translateY(1px); }
 .mood-option-clear {
     grid-column: 1 / -1;
