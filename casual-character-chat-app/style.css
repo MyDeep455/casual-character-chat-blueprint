@@ -188,6 +188,7 @@ h1 {
 #edit-character-btn,
 #copy-character-btn,
 #start-new-chat-btn,
+#new-chat-group-btn,
 .chat-session-entry button,
 #chat-form button,
 .form-buttons button,
@@ -227,6 +228,7 @@ h1 {
 #edit-character-btn:hover,
 #copy-character-btn:hover,
 #start-new-chat-btn:hover,
+#new-chat-group-btn:hover,
 .chat-session-entry button:hover,
 #chat-form button:hover,
 .form-buttons button:hover,
@@ -258,6 +260,7 @@ h1 {
 #edit-character-btn:active,
 #copy-character-btn:active,
 #start-new-chat-btn:active,
+#new-chat-group-btn:active,
 .chat-session-entry button:active,
 #chat-form button:active,
 .form-buttons button:active,
@@ -288,6 +291,7 @@ h1 {
 #edit-character-btn:focus-visible,
 #copy-character-btn:focus-visible,
 #start-new-chat-btn:focus-visible,
+#new-chat-group-btn:focus-visible,
 .chat-session-entry button:focus-visible,
 #chat-form button:focus-visible,
 .form-buttons button:focus-visible,
@@ -834,11 +838,11 @@ h1 {
 }
 
 #new-chat-group-btn {
-    background-color: rgba(191, 138, 26, 0.90);
-    padding: 6px 14px;
-    font-size: 16px;
-    margin-bottom: 9px;
-    white-space: nowrap;
+	background-color: rgba(176, 124, 20, 0.90);
+	padding: 6px 14px;
+	font-size: 16px;
+	margin-bottom: 9px;
+	white-space: nowrap;
 }
 
 #chat-group-bar {
@@ -854,26 +858,37 @@ h1 {
     flex-shrink: 0;
 }
 
+/* Same treatment as #back-to-selection-btn, the app's icon back-button. */
 #exit-chat-group-btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: 30px;
     height: 30px;
-    padding: 0;
     flex-shrink: 0;
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 8px;
-    background-color: rgba(0,0,0,0.28);
+    background: linear-gradient(180deg, rgba(48, 48, 62, 0.5), rgba(6, 6, 12, 0.52));
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 50%;
+    color: white;
     cursor: pointer;
-    transition: filter 0.16s ease, transform 0.12s ease-out, background-color 0.16s ease;
+    padding: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease-out, box-shadow 0.15s ease;
 }
 
 #exit-chat-group-btn:hover {
-    background-color: rgba(0,0,0,0.45);
-    filter: brightness(1.15);
+    background: linear-gradient(180deg, rgba(66, 66, 84, 0.62), rgba(14, 14, 22, 0.64));
+    border-color: rgba(255, 255, 255, 0.4);
     transform: translateX(-1px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+#exit-chat-group-btn:active {
+    background: linear-gradient(180deg, rgba(20, 20, 28, 0.55), rgba(4, 4, 8, 0.55));
+    transform: scale(0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 #exit-chat-group-btn:focus-visible {
