@@ -826,22 +826,16 @@ h1 {
 
 /* ── Chat groups: folders inside a character's chat list ── */
 
-.chat-list-session-header-actions {
+#chat-list-group-actions {
     display: flex;
-    align-items: center;
-    gap: 9px;
+    margin-bottom: 14px;
     flex-shrink: 0;
-}
-
-.chat-list-session-header-actions #start-new-chat-btn {
-    width: auto;
 }
 
 #new-chat-group-btn {
 	background-color: rgba(176, 124, 20, 0.90);
 	padding: 6px 14px;
 	font-size: 16px;
-	margin-bottom: 9px;
 	white-space: nowrap;
 }
 
@@ -5063,18 +5057,12 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     margin-left: 0;
   }
 
-  .chat-list-session-header-actions {
-    order: 1;
-    width: 100%;
-    gap: 8px;
+  #chat-list-group-actions {
+    margin-bottom: 18px;
   }
 
-  .chat-list-session-header-actions #new-chat-group-btn,
-  .chat-list-session-header-actions #start-new-chat-btn {
-    order: 0;
-    flex: 1 1 0;
-    width: auto;
-    margin-bottom: 0;
+  #new-chat-group-btn {
+    width: 100%;
   }
 
   #chat-group-bar {

@@ -333,6 +333,7 @@ const defaultSettings = {
     const chatSessionListDiv = document.getElementById('chat-session-list');
     const startNewChatBtn = document.getElementById('start-new-chat-btn');
     const newChatGroupBtn = document.getElementById('new-chat-group-btn');
+    const chatListGroupActions = document.getElementById('chat-list-group-actions');
     const chatGroupBar = document.getElementById('chat-group-bar');
     const chatGroupBarName = document.getElementById('chat-group-bar-name');
     const exitChatGroupBtn = document.getElementById('exit-chat-group-btn');
@@ -2295,8 +2296,8 @@ function updatePersonaEditorTokenCount() {
         const group = openChatGroupId ? getChatGroups(character)[openChatGroupId] : null;
         if (chatGroupBar) chatGroupBar.classList.toggle('hidden', !group);
         if (chatGroupBarName) chatGroupBarName.textContent = group ? group.name : '';
-        // Groups do not nest, so hide the create button while one is open.
-        if (newChatGroupBtn) newChatGroupBtn.classList.toggle('hidden', !!group);
+        // Groups do not nest, so hide the create button's whole row while one is open.
+        if (chatListGroupActions) chatListGroupActions.classList.toggle('hidden', !!group);
     }
 
     function scrollChatListToTop() {
@@ -2377,7 +2378,7 @@ function updatePersonaEditorTokenCount() {
             moveChatModalSubtitle.textContent = `Choose where "${chat.name}" should be filed.`;
         }
 
-        const targets = [{ id: null, name: 'Main chat list (no group)', icon: '💬' }].concat(
+        const targets = [{ id: null, name: 'Main chat list', icon: '💬' }].concat(
             Object.values(groups)
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(g => ({ id: g.id, name: g.name, icon: '🗂️' }))
