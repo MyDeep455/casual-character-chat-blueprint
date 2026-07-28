@@ -5014,15 +5014,15 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     width: 100%;
   }
 
-  /* Same footprint as the Edit/Copy Character buttons further up the screen.
-     max-width (not width) does the pinning, because a later 768px block
-     re-declares width: 100% on this button. */
+  /* Same width as the Edit/Copy Character buttons, but left-aligned under the
+     "Saved Chats:" headline. max-width (not width) does the pinning, because a
+     later 768px block re-declares width: 100% on this button. */
   #start-new-chat-btn {
     order: 2;
     width: 100%;
     max-width: 260px;
     min-width: 160px;
-    margin: 0 auto;
+    margin: 0;
   }
 
   #chat-session-list {
@@ -5076,7 +5076,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     width: 100%;
     max-width: 260px;
     min-width: 160px;
-    margin: 0 auto;
+    margin: 0;
   }
 
   #chat-group-bar {
