@@ -820,6 +820,172 @@ h1 {
 
 
 
+/* ── Chat groups: folders inside a character's chat list ── */
+
+.chat-list-session-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+}
+
+.chat-list-session-header-actions #start-new-chat-btn {
+    width: auto;
+}
+
+#new-chat-group-btn {
+    background-color: rgba(191, 138, 26, 0.90);
+    padding: 6px 14px;
+    font-size: 16px;
+    margin-bottom: 9px;
+    white-space: nowrap;
+}
+
+#chat-group-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 12px;
+    border-radius: 11px;
+    background-image: linear-gradient(180deg, rgba(240,186,64,.20), rgba(0,0,0,.14));
+    border: 1px solid rgba(240,186,64,.42);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    flex-shrink: 0;
+}
+
+#exit-chat-group-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    flex-shrink: 0;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.28);
+    cursor: pointer;
+    transition: filter 0.16s ease, transform 0.12s ease-out, background-color 0.16s ease;
+}
+
+#exit-chat-group-btn:hover {
+    background-color: rgba(0,0,0,0.45);
+    filter: brightness(1.15);
+    transform: translateX(-1px);
+}
+
+#exit-chat-group-btn:focus-visible {
+    outline: 2px solid rgba(255,255,255,0.55);
+    outline-offset: 2px;
+}
+
+.chat-group-bar-icon {
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+#chat-group-bar-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffe1a3;
+    text-shadow: 0 1px 2px rgba(0,0,0,.55);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-session-entry.chat-group-entry {
+    background-image: linear-gradient(180deg, rgba(240,186,64,.22), rgba(0,0,0,.14));
+    border-color: rgba(240,186,64,.42);
+}
+
+.chat-session-entry.chat-group-entry:hover {
+    background-color: rgba(240,186,64,.16);
+    border-color: rgba(240,186,64,.65);
+}
+
+.chat-group-name {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    cursor: pointer;
+    font-size: 17px;
+    color: #ffe1a3;
+    text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    transition: color .18s ease, text-shadow .18s ease;
+}
+
+.chat-group-entry:hover .chat-group-name,
+.chat-group-name:hover {
+    color: #fff3d6;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+
+.chat-group-name:focus-visible {
+    outline: none;
+    border-radius: 7px;
+    box-shadow:
+        0 0 0 2px rgba(0,0,0,.55),
+        0 0 0 4px rgba(240,186,64,.45);
+}
+
+.chat-group-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.chat-group-title {
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-group-badge {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: rgba(240,186,64,.20);
+    border: 1px solid rgba(240,186,64,.48);
+    color: #ffd98a;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    text-shadow: none;
+    white-space: nowrap;
+}
+
+.chat-group-count {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: rgba(255,255,255,.62);
+    white-space: nowrap;
+}
+
+.chat-session-entry .chat-session-actions {
+    flex-shrink: 0;
+}
+
+.move-chat-btn {
+    background-color: rgba(60, 72, 184, 0.62);
+}
+
+.rename-group-btn {
+    background-color: #525860;
+}
+
+.delete-group-btn {
+    background-color: rgba(201, 48, 64, 0.90);
+}
+
+
+
 #chat-session-list::-webkit-scrollbar {
     width: 7px;
 }
@@ -4882,6 +5048,35 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     margin-left: 0;
   }
 
+  .chat-list-session-header-actions {
+    order: 1;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .chat-list-session-header-actions #new-chat-group-btn,
+  .chat-list-session-header-actions #start-new-chat-btn {
+    order: 0;
+    flex: 1 1 0;
+    width: auto;
+    margin-bottom: 0;
+  }
+
+  #chat-group-bar {
+    padding: 8px 10px;
+    margin-bottom: 14px;
+  }
+
+  #chat-group-bar-name {
+    font-size: 16px;
+  }
+
+  .chat-group-name {
+    font-size: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   /* Modals fullscreen-nah */
   .modal-content {
     width: calc(100vw - 24px);
@@ -5950,6 +6145,72 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     max-height: 50vh;
     overflow-y: auto;
     padding-right: 9px;
+}
+
+/* ── Chat groups: "move chat" picker ── */
+#move-chat-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2200;
+}
+#move-chat-modal.hidden { display: none; }
+#move-chat-modal-content {
+    max-width: 495px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+}
+#move-chat-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin: 18px 0;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 9px;
+}
+.move-chat-option-btn.is-current {
+    background-color: rgba(255,255,255,0.08);
+    cursor: default;
+    opacity: 0.75;
+}
+.move-chat-option-btn.is-current:hover {
+    background-color: rgba(255,255,255,0.08);
+    filter: none;
+    transform: none;
+}
+.move-chat-option-icon {
+    font-size: 20px;
+    width: 26px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.move-chat-option-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.move-chat-option-current {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.22);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.move-chat-empty-hint {
+    margin: 0;
+    padding: 4px 2px 0;
+    font-size: 13px;
+    opacity: 0.7;
 }
 
 /* ── Feature A: Mood System ── */

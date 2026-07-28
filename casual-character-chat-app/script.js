@@ -288,6 +288,8 @@ const defaultSettings = {
     let worldCharSelectedIds = new Set();
     let worldCharPickerTempIds = new Set();
     let activeGroupParticipantId = null;
+    // Chat group currently opened in the chat list (null = main, ungrouped list).
+    let openChatGroupId = null;
     let personas = {};
     let appSettings = {};
     let currentStreamController = null; 
@@ -330,6 +332,14 @@ const defaultSettings = {
     const backToSelectionBtn = document.getElementById('back-to-selection-btn');
     const chatSessionListDiv = document.getElementById('chat-session-list');
     const startNewChatBtn = document.getElementById('start-new-chat-btn');
+    const newChatGroupBtn = document.getElementById('new-chat-group-btn');
+    const chatGroupBar = document.getElementById('chat-group-bar');
+    const chatGroupBarName = document.getElementById('chat-group-bar-name');
+    const exitChatGroupBtn = document.getElementById('exit-chat-group-btn');
+    const moveChatModal = document.getElementById('move-chat-modal');
+    const moveChatModalSubtitle = document.getElementById('move-chat-modal-subtitle');
+    const moveChatGroupList = document.getElementById('move-chat-group-list');
+    const cancelMoveChatBtn = document.getElementById('cancel-move-chat-btn');
     const editCharacterBtn = document.getElementById('edit-character-btn');
     const copyCharacterBtn = document.getElementById('copy-character-btn');
     const characterEditorModal = document.getElementById('character-editor-modal');
@@ -2013,34 +2023,89 @@ if (dashboardAvatarUrl) {
   copyCharacterBtn.textContent = `Copy ${cardNoun}`;
   deleteCharacterBtnDashboard.textContent = `Delete ${cardNoun}`;
 
+  // A group belongs to one character, so switching characters always drops
+  // back to that character's main chat list.
+  if (previousCharacterId !== charId) openChatGroupId = null;
+  const chatGroups = getChatGroups(character);
+  if (openChatGroupId && !chatGroups[openChatGroupId]) openChatGroupId = null;
+  renderChatGroupBar(character);
+
   chatSessionListDiv.innerHTML = '';
-  if (character.chats && Object.keys(character.chats).length > 0) {
-    const chatIds = Object.keys(character.chats).sort((a, b) => b.localeCompare(a));
-    chatIds.forEach(chatId => {
-      const chat = character.chats[chatId];
-      const chatEntry = document.createElement('div');
-      chatEntry.className = 'chat-session-entry';
-      chatEntry.innerHTML = `
-        <span class="chat-session-name" data-chat-id="${chatId}">${chat.name}</span>
+  const allChats = character.chats || {};
+  const chatIds = Object.keys(allChats)
+    .filter(chatId => getChatGroupId(allChats[chatId]) === openChatGroupId)
+    .sort((a, b) => b.localeCompare(a));
+  // Groups are flat, so they are only listed on the main level, above the loose chats.
+  const groupList = openChatGroupId
+    ? []
+    : Object.values(chatGroups).sort((a, b) => a.name.localeCompare(b.name));
+
+  groupList.forEach(group => {
+    const chatCount = Object.values(allChats).filter(c => getChatGroupId(c) === group.id).length;
+    const groupEntry = document.createElement('div');
+    groupEntry.className = 'chat-session-entry chat-group-entry';
+    groupEntry.innerHTML = `
+        <span class="chat-group-name" data-group-id="${group.id}" role="button" tabindex="0" title="Open chat group">
+          <span class="chat-group-icon" aria-hidden="true">🗂️</span>
+          <span class="chat-group-title">${escapeHtml(group.name)}</span>
+          <span class="chat-group-badge">Group</span>
+          <span class="chat-group-count">${chatCount} ${chatCount === 1 ? 'chat' : 'chats'}</span>
+        </span>
         <div class="chat-session-actions">
+          <button class="rename-group-btn" data-group-id="${group.id}">Rename</button>
+          <button class="delete-group-btn" data-group-id="${group.id}">Delete</button>
+        </div>`;
+    chatSessionListDiv.appendChild(groupEntry);
+  });
+
+  chatIds.forEach(chatId => {
+    const chat = allChats[chatId];
+    const chatEntry = document.createElement('div');
+    chatEntry.className = 'chat-session-entry';
+    chatEntry.innerHTML = `
+        <span class="chat-session-name" data-chat-id="${chatId}">${escapeHtml(chat.name)}</span>
+        <div class="chat-session-actions">
+          <button class="move-chat-btn" data-chat-id="${chatId}" title="Move this chat to a group">Move</button>
           <button class="rename-chat-btn" data-chat-id="${chatId}">Rename</button>
           <button class="delete-chat-btn" data-chat-id="${chatId}">Delete</button>
         </div>`;
-      chatSessionListDiv.appendChild(chatEntry);
-    });
-  } else {
-    chatSessionListDiv.innerHTML = '<p style="color:rgb(233, 233, 233);">No chats yet.</p>';
+    chatSessionListDiv.appendChild(chatEntry);
+  });
+
+  if (groupList.length === 0 && chatIds.length === 0) {
+    chatSessionListDiv.innerHTML = openChatGroupId
+      ? '<p style="color:rgb(233, 233, 233);">No chats in this group yet.</p>'
+      : '<p style="color:rgb(233, 233, 233);">No chats yet.</p>';
   }
-  document.querySelectorAll('.chat-session-name').forEach(nameSpan => {
-  nameSpan.addEventListener('click', async (e) => {
-    await startChat(charId, e.target.dataset.chatId);
+
+  chatSessionListDiv.querySelectorAll('.chat-session-name').forEach(nameSpan => {
+    nameSpan.addEventListener('click', async (e) => {
+      await startChat(charId, e.currentTarget.dataset.chatId);
+    });
   });
-});
-  document.querySelectorAll('.rename-chat-btn').forEach(button => {
-    button.addEventListener('click', (e) => handleRenameChat(charId, e.target.dataset.chatId));
+  chatSessionListDiv.querySelectorAll('.chat-group-name').forEach(groupSpan => {
+    groupSpan.addEventListener('click', (e) => openChatGroup(charId, e.currentTarget.dataset.groupId));
+    groupSpan.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openChatGroup(charId, e.currentTarget.dataset.groupId);
+      }
+    });
   });
-  document.querySelectorAll('.delete-chat-btn').forEach(button => {
-    button.addEventListener('click', (e) => handleDeleteChat(charId, e.target.dataset.chatId));
+  chatSessionListDiv.querySelectorAll('.move-chat-btn').forEach(button => {
+    button.addEventListener('click', (e) => openMoveChatModal(charId, e.currentTarget.dataset.chatId));
+  });
+  chatSessionListDiv.querySelectorAll('.rename-chat-btn').forEach(button => {
+    button.addEventListener('click', (e) => handleRenameChat(charId, e.currentTarget.dataset.chatId));
+  });
+  chatSessionListDiv.querySelectorAll('.delete-chat-btn').forEach(button => {
+    button.addEventListener('click', (e) => handleDeleteChat(charId, e.currentTarget.dataset.chatId));
+  });
+  chatSessionListDiv.querySelectorAll('.rename-group-btn').forEach(button => {
+    button.addEventListener('click', (e) => handleRenameChatGroup(charId, e.currentTarget.dataset.groupId));
+  });
+  chatSessionListDiv.querySelectorAll('.delete-group-btn').forEach(button => {
+    button.addEventListener('click', (e) => handleDeleteChatGroup(charId, e.currentTarget.dataset.groupId));
   });
   if (previousCharacterId !== charId) {
     chatListScreen.scrollTop = 0;
@@ -2207,6 +2272,154 @@ function updatePersonaEditorTokenCount() {
             await saveSingleCharacterToDB(characters[charId]);
             showChatList(charId);
         }
+    }
+
+
+
+    // --- CHAT GROUPS ---
+
+    function getChatGroups(character) {
+        if (!character) return {};
+        if (!character.chatGroups || typeof character.chatGroups !== 'object') {
+            character.chatGroups = {};
+        }
+        return character.chatGroups;
+    }
+
+    // Chats created before chat groups existed simply carry no groupId.
+    function getChatGroupId(chat) {
+        return (chat && chat.groupId) ? chat.groupId : null;
+    }
+
+    function renderChatGroupBar(character) {
+        const group = openChatGroupId ? getChatGroups(character)[openChatGroupId] : null;
+        if (chatGroupBar) chatGroupBar.classList.toggle('hidden', !group);
+        if (chatGroupBarName) chatGroupBarName.textContent = group ? group.name : '';
+        // Groups do not nest, so hide the create button while one is open.
+        if (newChatGroupBtn) newChatGroupBtn.classList.toggle('hidden', !!group);
+    }
+
+    function scrollChatListToTop() {
+        chatListScreen.scrollTop = 0;
+        if (chatSessionListDiv) chatSessionListDiv.scrollTop = 0;
+    }
+
+    function openChatGroup(charId, groupId) {
+        if (!groupId || !getChatGroups(characters[charId])[groupId]) return;
+        openChatGroupId = groupId;
+        showChatList(charId);
+        scrollChatListToTop();
+    }
+
+    function exitChatGroup() {
+        if (!currentCharacterId) return;
+        openChatGroupId = null;
+        showChatList(currentCharacterId);
+        scrollChatListToTop();
+    }
+
+    async function handleCreateChatGroup() {
+        if (!currentCharacterId) return;
+        const character = characters[currentCharacterId];
+        if (!character) return;
+        const name = await showCustomPrompt("Enter a name for the new chat group:", "");
+        if (!name || name.trim() === "") return;
+        const groups = getChatGroups(character);
+        const groupId = 'grp-' + Date.now();
+        groups[groupId] = { id: groupId, name: name.trim(), createdAt: Date.now() };
+        await saveSingleCharacterToDB(character);
+        showChatList(currentCharacterId);
+    }
+
+    async function handleRenameChatGroup(charId, groupId) {
+        const character = characters[charId];
+        const group = getChatGroups(character)[groupId];
+        if (!group) return;
+        const newName = await showCustomPrompt("Enter a new name for the chat group:", group.name);
+        if (newName && newName.trim() !== "") {
+            group.name = newName.trim();
+            await saveSingleCharacterToDB(character);
+            showChatList(charId);
+        }
+    }
+
+    async function handleDeleteChatGroup(charId, groupId) {
+        const character = characters[charId];
+        const group = getChatGroups(character)[groupId];
+        if (!group) return;
+        const chats = character.chats || {};
+        const containedIds = Object.keys(chats).filter(id => getChatGroupId(chats[id]) === groupId);
+        // Deleting a group never deletes chats - they fall back to the main list.
+        const message = containedIds.length > 0
+            ? `Are you sure you want to delete the chat group "${group.name}"? Its ${containedIds.length} chat(s) will be kept and moved back to the main chat list.`
+            : `Are you sure you want to delete the chat group "${group.name}"?`;
+        if (!await showCustomConfirm(message, true)) return;
+        containedIds.forEach(id => { chats[id].groupId = null; });
+        delete character.chatGroups[groupId];
+        if (openChatGroupId === groupId) openChatGroupId = null;
+        await saveSingleCharacterToDB(character);
+        showChatList(charId);
+    }
+
+    function closeMoveChatModal() {
+        if (moveChatModal) moveChatModal.classList.add('hidden');
+    }
+
+    function openMoveChatModal(charId, chatId) {
+        const character = characters[charId];
+        const chat = character && character.chats ? character.chats[chatId] : null;
+        if (!chat || !moveChatModal || !moveChatGroupList) return;
+
+        const groups = getChatGroups(character);
+        const currentGroupId = getChatGroupId(chat);
+
+        if (moveChatModalSubtitle) {
+            moveChatModalSubtitle.textContent = `Choose where "${chat.name}" should be filed.`;
+        }
+
+        const targets = [{ id: null, name: 'Main chat list (no group)', icon: '💬' }].concat(
+            Object.values(groups)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(g => ({ id: g.id, name: g.name, icon: '🗂️' }))
+        );
+
+        moveChatGroupList.innerHTML = '';
+        targets.forEach(target => {
+            const isCurrent = target.id === currentGroupId;
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'participant-option-btn move-chat-option-btn' + (isCurrent ? ' is-current' : '');
+            option.disabled = isCurrent;
+            option.innerHTML = `
+                <span class="move-chat-option-icon" aria-hidden="true">${target.icon}</span>
+                <span class="move-chat-option-name"></span>
+                ${isCurrent ? '<span class="move-chat-option-current">Current</span>' : ''}`;
+            option.querySelector('.move-chat-option-name').textContent = target.name;
+            if (!isCurrent) {
+                option.addEventListener('click', () => moveChatToGroup(charId, chatId, target.id));
+            }
+            moveChatGroupList.appendChild(option);
+        });
+
+        if (Object.keys(groups).length === 0) {
+            const hint = document.createElement('p');
+            hint.className = 'move-chat-empty-hint';
+            hint.textContent = 'No chat groups yet - create one with the "New Group" button above the chat list.';
+            moveChatGroupList.appendChild(hint);
+        }
+
+        moveChatModal.classList.remove('hidden');
+    }
+
+    async function moveChatToGroup(charId, chatId, groupId) {
+        const character = characters[charId];
+        const chat = character && character.chats ? character.chats[chatId] : null;
+        if (!chat) return;
+        if (groupId && !getChatGroups(character)[groupId]) return;
+        chat.groupId = groupId || null;
+        closeMoveChatModal();
+        await saveSingleCharacterToDB(character);
+        showChatList(charId);
     }
 
 
@@ -2530,6 +2743,10 @@ async function imageFileToWebp(file, quality = 0.80) {
     const character = characters[charId];
     const chat = character.chats[chatId];
 
+    // Keep the chat list in sync so leaving this chat returns to its group.
+    const chatGroupIdOnOpen = getChatGroupId(chat);
+    openChatGroupId = getChatGroups(character)[chatGroupIdOnOpen] ? chatGroupIdOnOpen : null;
+
     if (!chat.participants) chat.participants = [charId];
     if (chat.activePersonaId === undefined) chat.activePersonaId = null;
     if (chat.memories === undefined) chat.memories = '';
@@ -2656,6 +2873,11 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
     const worldParticipants = isWorldCard
         ? [currentCharacterId, ...(character.characterIds || []).filter(id => characters[id])]
         : [currentCharacterId];
+    // New chats land in the group that is currently open, but never in a group
+    // left over from another character (e.g. after the random-chat button).
+    const targetGroupId = (openChatGroupId && getChatGroups(character)[openChatGroupId])
+        ? openChatGroupId
+        : null;
     character.chats[newChatId] = {
         id: newChatId,
         name: newName,
@@ -2663,7 +2885,8 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         memories: '',
         participants: worldParticipants,
         activePersonaId: null,
-        mood: normalizeMood(initialMood)
+        mood: normalizeMood(initialMood),
+        groupId: targetGroupId
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -6414,6 +6637,8 @@ personaEditorAvatarImg.onerror = () => {
         const newChar = characters[newCharId];
         if (!oldChar || !newChar || !oldChar.chats || !oldChar.chats[currentChatId]) return;
         const chatToMove = oldChar.chats[currentChatId];
+        // Groups belong to a single character, so the chat starts out ungrouped.
+        chatToMove.groupId = null;
         if (!newChar.chats) newChar.chats = {};
         newChar.chats[currentChatId] = chatToMove;
         delete oldChar.chats[currentChatId];
@@ -8297,6 +8522,13 @@ personaSelectionList.addEventListener('click', (event) => {
 
 backToSelectionBtn.addEventListener('click', showCharacterSelection);
     backToMainBtn.addEventListener('click', showMainScreen);
+
+if (newChatGroupBtn) newChatGroupBtn.addEventListener('click', handleCreateChatGroup);
+if (exitChatGroupBtn) exitChatGroupBtn.addEventListener('click', exitChatGroup);
+if (cancelMoveChatBtn) cancelMoveChatBtn.addEventListener('click', closeMoveChatModal);
+if (moveChatModal) moveChatModal.addEventListener('click', (e) => {
+    if (e.target === moveChatModal) closeMoveChatModal();
+});
 
 startNewChatBtn.addEventListener('click', async () => {
     const character = characters[currentCharacterId];
