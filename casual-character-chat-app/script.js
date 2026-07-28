@@ -2378,7 +2378,7 @@ function updatePersonaEditorTokenCount() {
             moveChatModalSubtitle.textContent = `Choose where "${chat.name}" should be filed.`;
         }
 
-        const targets = [{ id: null, name: 'Main chat list', icon: '💬' }].concat(
+        const targets = [{ id: null, name: 'Main Chat List', icon: '💬' }].concat(
             Object.values(groups)
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(g => ({ id: g.id, name: g.name, icon: '🗂️' }))
