@@ -5004,18 +5004,25 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    margin-bottom: 18px;
+    /* Spacing below is handled by the wrapper's 18px flex gap. */
+    margin-bottom: 0;
   }
 
   .chat-list-session-header h3 {
-    order: 2;
+    order: 1;
     text-align: left;
     width: 100%;
   }
 
+  /* Same footprint as the Edit/Copy Character buttons further up the screen.
+     max-width (not width) does the pinning, because a later 768px block
+     re-declares width: 100% on this button. */
   #start-new-chat-btn {
-    order: 1;
+    order: 2;
     width: 100%;
+    max-width: 260px;
+    min-width: 160px;
+    margin: 0 auto;
   }
 
   #chat-session-list {
@@ -5058,11 +5065,18 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
   }
 
   #chat-list-group-actions {
-    margin-bottom: 18px;
+    /* .chat-list-content-wrapper is a flex column with an 18px gap here, so
+       pull the row up by 8px to leave the same 10px the Edit/Copy Character
+       buttons use. The wrapper's gap then separates it from the chat list. */
+    margin-top: -8px;
+    margin-bottom: 0;
   }
 
   #new-chat-group-btn {
     width: 100%;
+    max-width: 260px;
+    min-width: 160px;
+    margin: 0 auto;
   }
 
   #chat-group-bar {
