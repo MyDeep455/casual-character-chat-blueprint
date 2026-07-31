@@ -278,11 +278,8 @@ const defaultSettings = {
     let currentCharacterId = null;
     let tempUploadedImages = {
   avatar: null,
-  avatarOriginal: null, 
   background: null,
-  backgroundOriginal: null, 
-  personaAvatar: null,
-  personaAvatarOriginal: null
+  personaAvatar: null
 };
     // Working copy of the open card's gallery — written back on save.
     let editorGallery = [];
@@ -7071,19 +7068,16 @@ function imageAdjustOptionsFor(targetId) {
 
 // Parks a freshly framed picture on the editor: the webp copy waits in
 // tempUploadedImages until save, the matching URL field shows a preview.
-function applyAdjustedCardImage(targetId, adjusted, originalDataURL) {
+function applyAdjustedCardImage(targetId, adjusted) {
     const { dataURL, blob } = adjusted;
     const objectURL = URL.createObjectURL(blob);
 
     if (targetId === 'char-avatar') {
         tempUploadedImages.avatar = dataURL;
-        tempUploadedImages.avatarOriginal = originalDataURL;
     } else if (targetId === 'char-background') {
         tempUploadedImages.background = dataURL;
-        tempUploadedImages.backgroundOriginal = originalDataURL;
     } else if (targetId === 'persona-avatar') {
         tempUploadedImages.personaAvatar = dataURL;
-        tempUploadedImages.personaAvatarOriginal = originalDataURL;
     }
 
     const targetInput = document.getElementById(targetId);
@@ -7111,7 +7105,7 @@ imageUploader.addEventListener('change', async (event) => {
             : await imageFileToWebp(file, 0.80);
         if (!adjusted) return;   // cancelled — leave the current image alone
 
-        applyAdjustedCardImage(targetId, adjusted, originalDataURL);
+        applyAdjustedCardImage(targetId, adjusted);
     } catch (error) {
         console.error("Error converting file to Data URL:", error);
         showCustomAlert("There was an error processing the image file.");
@@ -7232,6 +7226,7 @@ const galleryActionModal = document.getElementById('gallery-action-modal');
 const galleryActionImg = document.getElementById('gallery-action-img');
 const galleryActionAvatarBtn = document.getElementById('gallery-action-avatar-btn');
 const galleryActionBgBtn = document.getElementById('gallery-action-bg-btn');
+const galleryActionDownloadBtn = document.getElementById('gallery-action-download-btn');
 const galleryActionDeleteBtn = document.getElementById('gallery-action-delete-btn');
 const galleryActionCancelBtn = document.getElementById('gallery-action-cancel-btn');
 let galleryActionIndex = -1;
@@ -7274,16 +7269,73 @@ async function assignGalleryImageTo(targetId) {
     try {
         const adjusted = await openImageAdjuster(src, imageAdjustOptionsFor(targetId));
         if (!adjusted) return;   // cancelled — leave the current image alone
-        applyAdjustedCardImage(targetId, adjusted, src);
+        applyAdjustedCardImage(targetId, adjusted);
     } catch (error) {
         console.error('Error using the gallery image:', error);
         showCustomAlert('There was an error processing the image file.');
     }
 }
 
+// Names the saved file after the card it came from, so a folder of these
+// stays sortable. Anything a file system would refuse — and the trailing
+// dots and spaces Windows silently eats — comes out first.
+function galleryDownloadName(index, mimeType) {
+    const subtype = String(mimeType || '').split('/')[1] || '';
+    const format = subtype.split(';')[0].toLowerCase();
+    const extension = format === 'jpeg' ? 'jpg'
+        : format === 'svg+xml' ? 'svg'
+        : /^[a-z0-9]+$/.test(format) ? format
+        : 'webp';   // the format the gallery stores
+
+    const nameField = document.getElementById('card-name');
+    const base = String((nameField && nameField.value) || '')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+        .replace(/\s+/g, '_')
+        .slice(0, 60)
+        .replace(/^[._]+|[._]+$/g, '');
+
+    return `${base || 'gallery'}_image_${index + 1}.${extension}`;
+}
+
+// Hands the picture back to the device. Gallery entries are data URLs, so
+// the bytes are already here and fetch() only has to decode them. A card
+// imported with a remote image is fetched for real, and a host that blocks
+// the cross-origin read leaves a new tab as the way to save it by hand.
+async function downloadGalleryImage() {
+    const index = galleryActionIndex;
+    const src = editorGallery[index];
+    if (!src) return;
+    closeGalleryActionModal();
+
+    let blob;
+    try {
+        const response = await fetch(src);
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        blob = await response.blob();
+    } catch (error) {
+        console.error('Error reading the gallery image for download:', error);
+        if (/^https?:/i.test(src)) {
+            window.open(src, '_blank', 'noopener');
+        } else {
+            showCustomAlert('There was an error preparing the image for download.');
+        }
+        return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = galleryDownloadName(index, blob.type);
+    link.click();
+    // Revoked late: some browsers are still reading the blob after the click
+    // returns, and pulling the URL out from under the save cancels it.
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 if (galleryActionModal) {
     galleryActionAvatarBtn.addEventListener('click', () => assignGalleryImageTo('char-avatar'));
     galleryActionBgBtn.addEventListener('click', () => assignGalleryImageTo('char-background'));
+    galleryActionDownloadBtn.addEventListener('click', downloadGalleryImage);
 
     galleryActionDeleteBtn.addEventListener('click', async () => {
         const index = galleryActionIndex;
