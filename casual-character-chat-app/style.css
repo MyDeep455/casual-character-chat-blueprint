@@ -7123,6 +7123,29 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     border-color: rgba(196, 181, 255, 0.45);
 }
 
+/* Mirror toggle — icon only, lights up while the picture is flipped. */
+.image-crop-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 12px;
+    color: #dcddde;
+}
+
+.image-crop-icon-btn svg {
+    display: block;
+}
+
+.image-crop-icon-btn.is-active {
+    color: #fff;
+    background-color: rgba(108, 84, 200, 0.85);
+    border-color: rgba(196, 181, 255, 0.55);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 0 12px rgba(139, 108, 247, 0.35);
+}
+
 @media (max-width: 600px) {
     .image-crop-content {
         --crop-gutter: 88px;
@@ -7132,6 +7155,19 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 
     .image-crop-workspace {
         gap: 10px;
+    }
+
+    /* keeps mirror + Reset + Cancel + Apply on one row down to ~340px wide */
+    .image-crop-actions {
+        gap: 8px;
+    }
+
+    .image-crop-actions button {
+        padding: 8px 14px;
+    }
+
+    .image-crop-icon-btn {
+        padding: 7px 10px;
     }
 }
 
@@ -7173,6 +7209,10 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     .image-crop-actions button {
         padding: 5px 16px;
         font-size: 13px;
+    }
+
+    .image-crop-icon-btn {
+        padding: 4px 10px;
     }
 }
 

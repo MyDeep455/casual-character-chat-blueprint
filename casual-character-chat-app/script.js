@@ -6515,10 +6515,11 @@ const openImageAdjuster = (() => {
     const applyBtn = document.getElementById('image-crop-apply-btn');
     const cancelBtn = document.getElementById('image-crop-cancel-btn');
     const resetBtn = document.getElementById('image-crop-reset-btn');
+    const flipBtn = document.getElementById('image-crop-flip-btn');
 
     // Live session state. `null` whenever the modal is closed.
     // z = zoom where 1 exactly fills the frame, ox/oy = picture centre offset
-    // from the frame centre in CSS px.
+    // from the frame centre in CSS px, flip = -1 once mirrored horizontally.
     let st = null;
     let sourceImg = null;
     let settle = null;
@@ -6598,7 +6599,7 @@ const openImageAdjuster = (() => {
         const minCropPx = options.minCropPx || 96;
         const zMax = Math.max(1, Math.min(MAX_ZOOM, cropShort / Math.min(minCropPx, cropShort)));
 
-        return { nw, nh, layoutW, layoutH, frameW, frameH, zMin, zMax, z: 1, ox: 0, oy: 0 };
+        return { nw, nh, layoutW, layoutH, frameW, frameH, zMin, zMax, z: 1, ox: 0, oy: 0, flip: 1 };
     }
 
     // Keeps the picture glued to the frame: while it is larger than the frame
@@ -6640,9 +6641,21 @@ const openImageAdjuster = (() => {
 
     function render() {
         clampState();
+        // A negative x scale mirrors the picture about its own centre line.
         imgEl.style.transform =
-            `translate(-50%, -50%) translate(${st.ox}px, ${st.oy}px) scale(${st.z})`;
+            `translate(-50%, -50%) translate(${st.ox}px, ${st.oy}px) scale(${st.z * st.flip}, ${st.z})`;
+        flipBtn.classList.toggle('is-active', st.flip < 0);
+        flipBtn.setAttribute('aria-pressed', st.flip < 0 ? 'true' : 'false');
         renderZoomBar();
+    }
+
+    // Mirroring also mirrors the offset, so the framed cut-out keeps showing
+    // the same part of the picture — just the other way round.
+    function toggleFlip() {
+        if (!st) return;
+        st.flip = -st.flip;
+        st.ox = -st.ox;
+        render();
     }
 
     // Zooms around `anchor` (frame centre by default) so the picture point under
@@ -6832,6 +6845,11 @@ const openImageAdjuster = (() => {
         let sw = (right - left) / perSourcePx;
         let sh = (bottom - top) / perSourcePx;
 
+        // The maths above works in "what the user sees" space; on a mirrored
+        // picture that is the source read right to left, so flip the x origin
+        // back into source coordinates.
+        if (st.flip < 0) sx = st.nw - sx - sw;
+
         sx = Math.max(0, Math.min(st.nw - 1, sx));
         sy = Math.max(0, Math.min(st.nh - 1, sy));
         sw = Math.max(1, Math.min(sw, st.nw - sx));
@@ -6853,6 +6871,10 @@ const openImageAdjuster = (() => {
             const ctx = canvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
+            if (st.flip < 0) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
             ctx.drawImage(sourceImg, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
             const result = await canvasToWebp(canvas, 0.80);
@@ -6925,11 +6947,13 @@ const openImageAdjuster = (() => {
 
     applyBtn.addEventListener('click', applyCrop);
     cancelBtn.addEventListener('click', () => finish(null));
+    flipBtn.addEventListener('click', toggleFlip);
     resetBtn.addEventListener('click', () => {
         if (!st) return;
         st.z = 1;
         st.ox = 0;
         st.oy = 0;
+        st.flip = 1;
         render();
     });
 
