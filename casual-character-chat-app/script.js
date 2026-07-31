@@ -6471,42 +6471,52 @@ function restoreLastSession() {
 
 
 // =============================================================
-// AVATAR ADJUST — square crop frame with free zoom & pan
+// IMAGE ADJUST — crop frame with free zoom & pan
 // -------------------------------------------------------------
-// Opens right after a local avatar file is picked. The picture sits behind a
-// fixed square frame; everything spilling outside the square stays visible but
-// dimmed. The user pans (drag / one finger) and zooms (wheel / pinch / the zoom
-// bar on the right), "Apply" cuts out whatever overlaps the frame.
+// Opens right after a local image file is picked. The picture sits behind a
+// fixed frame; everything spilling outside it stays visible but dimmed. The
+// user pans (drag / one finger) and zooms (wheel / pinch / the zoom bar on the
+// right), "Apply" cuts out whatever overlaps the frame.
 //
-// Zooming out past "fills the square" is allowed on purpose: the cut-out is
-// then the intersection of picture and frame, i.e. narrower or shorter than a
-// square. Those non-square avatars keep working because every avatar surface
-// renders them contained on a blurred backdrop (.effect-container).
+// The frame shape depends on where the picture is headed:
+//
+//  * avatars — a square, and zooming out past "fills the square" is allowed on
+//    purpose. The cut-out is then the intersection of picture and frame, i.e.
+//    narrower or shorter than a square. Those non-square avatars keep working
+//    because every avatar surface renders them contained on a blurred backdrop
+//    (.effect-container).
+//
+//  * backgrounds — the current screen rectangle (landscape on desktop, tall on
+//    a phone), because a background is painted onto a full-viewport element
+//    with `background-size: cover`. That also means zooming out below "fills
+//    the frame" is pointless there: the browser would crop the empty margin
+//    straight back off, so the floor stays at cover and the preview is exactly
+//    what the screen will show.
 // =============================================================
-const openAvatarAdjuster = (() => {
-    const MAX_ZOOM = 5;              // hard ceiling relative to "fills the square"
-    const MIN_CROP_SOURCE_PX = 260;  // never cut out a region smaller than this
+const openImageAdjuster = (() => {
+    const MAX_ZOOM = 5;              // hard ceiling relative to "fills the frame"
     const NUDGE = 0.08;              // +/- button step, in zoom-bar ratio
+    const STAGE_MARGIN = 0.17;       // dimmed overflow margin around the frame
 
-    const modal = document.getElementById('avatar-crop-modal');
+    const modal = document.getElementById('image-crop-modal');
     if (!modal) return () => Promise.resolve(null);
 
-    const stage = document.getElementById('avatar-crop-stage');
-    const frameEl = document.getElementById('avatar-crop-frame');
-    const imgEl = document.getElementById('avatar-crop-img');
-    const titleEl = document.getElementById('avatar-crop-title');
-    const hintEl = document.getElementById('avatar-crop-hint');
-    const trackEl = document.getElementById('avatar-crop-zoom-track');
-    const fillEl = document.getElementById('avatar-crop-zoom-fill');
-    const thumbEl = document.getElementById('avatar-crop-zoom-thumb');
-    const zoomInBtn = document.getElementById('avatar-crop-zoom-in');
-    const zoomOutBtn = document.getElementById('avatar-crop-zoom-out');
-    const applyBtn = document.getElementById('avatar-crop-apply-btn');
-    const cancelBtn = document.getElementById('avatar-crop-cancel-btn');
-    const resetBtn = document.getElementById('avatar-crop-reset-btn');
+    const stage = document.getElementById('image-crop-stage');
+    const frameEl = document.getElementById('image-crop-frame');
+    const imgEl = document.getElementById('image-crop-img');
+    const titleEl = document.getElementById('image-crop-title');
+    const hintEl = document.getElementById('image-crop-hint');
+    const trackEl = document.getElementById('image-crop-zoom-track');
+    const fillEl = document.getElementById('image-crop-zoom-fill');
+    const thumbEl = document.getElementById('image-crop-zoom-thumb');
+    const zoomInBtn = document.getElementById('image-crop-zoom-in');
+    const zoomOutBtn = document.getElementById('image-crop-zoom-out');
+    const applyBtn = document.getElementById('image-crop-apply-btn');
+    const cancelBtn = document.getElementById('image-crop-cancel-btn');
+    const resetBtn = document.getElementById('image-crop-reset-btn');
 
     // Live session state. `null` whenever the modal is closed.
-    // z = zoom where 1 exactly fills the square, ox/oy = picture centre offset
+    // z = zoom where 1 exactly fills the frame, ox/oy = picture centre offset
     // from the frame centre in CSS px.
     let st = null;
     let sourceImg = null;
@@ -6518,8 +6528,24 @@ const openAvatarAdjuster = (() => {
 
     const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
-    function measureFrame() {
-        return frameEl.getBoundingClientRect().width;
+    // Largest frame of the requested shape that still leaves room for the
+    // dimmed margin, the zoom bar and the buttons. Driven from the viewport so
+    // it adapts to a phone in portrait just as well as to a desktop window.
+    function fitFrame(aspect) {
+        const grow = 1 + 2 * STAGE_MARGIN;
+        const boxW = Math.min(window.innerWidth - 96, 520) / grow;
+        const boxH = Math.min(window.innerHeight - 250, 470) / grow;
+        const cap = 360 / Math.max(aspect, 1);   // long side never over 360px
+        const h = Math.max(60, Math.min(boxW / aspect, boxH, cap));
+        return { w: h * aspect, h };
+    }
+
+    function applyFrameSize(frameW, frameH) {
+        const margin = Math.round(Math.min(frameW, frameH) * STAGE_MARGIN);
+        frameEl.style.width = frameW + 'px';
+        frameEl.style.height = frameH + 'px';
+        stage.style.width = (frameW + 2 * margin) + 'px';
+        stage.style.height = (frameH + 2 * margin) + 'px';
     }
 
     // Point relative to the centre of the crop frame.
@@ -6528,32 +6554,37 @@ const openAvatarAdjuster = (() => {
         return { x: clientX - (r.left + r.width / 2), y: clientY - (r.top + r.height / 2) };
     }
 
-    function buildState(nw, nh, frame) {
-        // At zoom 1 the picture exactly covers the square, so its layout size is
+    function buildState(nw, nh, frameW, frameH, options) {
+        // At zoom 1 the picture exactly covers the frame, so its layout size is
         // the natural size scaled by "cover".
-        const coverScale = Math.max(frame / nw, frame / nh);
+        const coverScale = Math.max(frameW / nw, frameH / nh);
         const layoutW = nw * coverScale;
         const layoutH = nh * coverScale;
-        const minSide = Math.min(nw, nh);
 
-        // Floor: the whole picture fits inside the square. Zooming out further
+        // Floor: the whole picture fits inside the frame. Zooming out further
         // would not reveal anything new, the cut-out stays the whole picture.
-        const zMin = Math.min(frame / layoutW, frame / layoutH);
+        // Callers that need a frame-filling result keep the floor at cover.
+        const zMin = options.allowZoomOut === false
+            ? 1
+            : Math.min(frameW / layoutW, frameH / layoutH);
 
-        // Ceiling: the cut-out region measures minSide / z source pixels, so
-        // cap the zoom where that would drop below MIN_CROP_SOURCE_PX. Pictures
-        // that are already smaller than that simply can't be zoomed in.
-        const zMax = Math.max(1, Math.min(MAX_ZOOM, minSide / Math.min(MIN_CROP_SOURCE_PX, minSide)));
+        // Ceiling: at zoom 1 the cut-out measures frame / coverScale source
+        // pixels, shrinking as the zoom grows. Cap the zoom where its short
+        // side would drop below minCropPx — pictures that are already smaller
+        // than that simply can't be zoomed in.
+        const cropShort = Math.min(frameW, frameH) / coverScale;
+        const minCropPx = options.minCropPx || 260;
+        const zMax = Math.max(1, Math.min(MAX_ZOOM, cropShort / Math.min(minCropPx, cropShort)));
 
-        return { nw, nh, layoutW, layoutH, frame, zMin, zMax, z: 1, ox: 0, oy: 0 };
+        return { nw, nh, layoutW, layoutH, frameW, frameH, zMin, zMax, z: 1, ox: 0, oy: 0 };
     }
 
-    // Keeps the picture glued to the frame: while it is larger than the square
+    // Keeps the picture glued to the frame: while it is larger than the frame
     // no gap can open up, while it is smaller it cannot be pushed outside.
     function clampState() {
         st.z = Math.min(st.zMax, Math.max(st.zMin, st.z));
-        const slackX = Math.abs(st.layoutW * st.z - st.frame) / 2;
-        const slackY = Math.abs(st.layoutH * st.z - st.frame) / 2;
+        const slackX = Math.abs(st.layoutW * st.z - st.frameW) / 2;
+        const slackY = Math.abs(st.layoutH * st.z - st.frameH) / 2;
         st.ox = Math.min(slackX, Math.max(-slackX, st.ox));
         st.oy = Math.min(slackY, Math.max(-slackY, st.oy));
     }
@@ -6766,12 +6797,13 @@ const openAvatarAdjuster = (() => {
         const perSourcePx = (st.layoutW * st.z) / st.nw;  // display px per source px
         const dispW = st.layoutW * st.z;
         const dispH = st.layoutH * st.z;
-        const half = st.frame / 2;
+        const halfW = st.frameW / 2;
+        const halfH = st.frameH / 2;
 
-        const left = Math.max(-half, st.ox - dispW / 2);
-        const right = Math.min(half, st.ox + dispW / 2);
-        const top = Math.max(-half, st.oy - dispH / 2);
-        const bottom = Math.min(half, st.oy + dispH / 2);
+        const left = Math.max(-halfW, st.ox - dispW / 2);
+        const right = Math.min(halfW, st.ox + dispW / 2);
+        const top = Math.max(-halfH, st.oy - dispH / 2);
+        const bottom = Math.min(halfH, st.oy + dispH / 2);
 
         let sx = (left - (st.ox - dispW / 2)) / perSourcePx;
         let sy = (top - (st.oy - dispH / 2)) / perSourcePx;
@@ -6827,19 +6859,22 @@ const openAvatarAdjuster = (() => {
         }
     }
 
-    // The frame is sized in CSS units, so a viewport change resizes it. Rescale
-    // the state along with it to keep the current framing.
+    // The frame is sized from the viewport, so a window change resizes it.
+    // Rescale the state along with it to keep the current framing. The frame
+    // shape stays as it was when the session opened.
     function onResize() {
         if (!st) return;
-        const frame = measureFrame();
-        if (!frame || Math.abs(frame - st.frame) < 0.5) return;
+        const next = fitFrame(st.frameW / st.frameH);
+        if (Math.abs(next.w - st.frameW) < 0.5) return;
 
-        const ratio = frame / st.frame;
+        const ratio = next.w / st.frameW;
         st.layoutW *= ratio;
         st.layoutH *= ratio;
         st.ox *= ratio;
         st.oy *= ratio;
-        st.frame = frame;
+        st.frameW = next.w;
+        st.frameH = next.h;
+        applyFrameSize(next.w, next.h);
         imgEl.style.width = st.layoutW + 'px';
         imgEl.style.height = st.layoutH + 'px';
         render();
@@ -6878,10 +6913,17 @@ const openAvatarAdjuster = (() => {
 
     /**
      * Shows the adjuster for `src`.
+     *
+     * options.aspect       frame width / height, defaults to 1 (square)
+     * options.allowZoomOut false keeps the floor at "fills the frame"
+     * options.minCropPx    smallest cut-out short side, in source pixels
+     * options.title        modal heading
+     * options.note         extra line under the heading
+     *
      * Resolves with { blob, dataURL } on apply, or null when cancelled.
      * Rejects when the image can't be decoded.
      */
-    return function openAvatarAdjuster(src, options = {}) {
+    return function openImageAdjuster(src, options = {}) {
         return new Promise((resolve, reject) => {
             const img = new Image();
 
@@ -6894,15 +6936,18 @@ const openAvatarAdjuster = (() => {
                 sourceImg = img;
                 settle = resolve;
                 titleEl.textContent = options.title || 'Adjust Image';
-                hintEl.textContent = isTouchOnly
+                hintEl.textContent = (isTouchOnly
                     ? 'Drag to reposition · pinch to zoom'
-                    : 'Drag to reposition · scroll to zoom';
+                    : 'Drag to reposition · scroll to zoom') + (options.note ? ' · ' + options.note : '');
+
+                const aspect = options.aspect > 0 ? options.aspect : 1;
+                const frame = fitFrame(aspect);
+                applyFrameSize(frame.w, frame.h);
 
                 imgEl.src = src;
                 modal.classList.remove('hidden');
 
-                // Measure only once the modal is laid out.
-                st = buildState(img.naturalWidth, img.naturalHeight, measureFrame());
+                st = buildState(img.naturalWidth, img.naturalHeight, frame.w, frame.h, options);
                 imgEl.style.width = st.layoutW + 'px';
                 imgEl.style.height = st.layoutH + 'px';
                 render();
@@ -6916,6 +6961,8 @@ const openAvatarAdjuster = (() => {
         });
     };
 })();
+
+
 
 let currentUploadTargetId = null;
 const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
@@ -6948,21 +6995,27 @@ imageUploader.addEventListener('change', async (event) => {
     if (!file) return;
 
     try {
-        const isAvatar = (targetId === 'char-avatar' || targetId === 'persona-avatar');
-        let dataURL, blob, originalDataURL;
+        // Let the user frame the picture before it is stored. Avatars crop to a
+        // square, backgrounds to the shape of the screen they will be painted on.
+        const adjustOptions = {
+            'char-avatar': { title: 'Adjust Character Image' },
+            'persona-avatar': { title: 'Adjust Persona Image' },
+            'char-background': {
+                title: 'Adjust Background Image',
+                aspect: (window.innerWidth || 1) / (window.innerHeight || 1),
+                allowZoomOut: false,      // backgrounds are painted with `cover`
+                minCropPx: 540,
+                note: 'the frame matches your screen'
+            }
+        }[targetId];
 
-        if (isAvatar) {
-            // Let the user frame the picture inside the square before it is stored.
-            originalDataURL = await fileToDataURL(file);
-            const adjusted = await openAvatarAdjuster(originalDataURL, {
-                title: targetId === 'persona-avatar' ? 'Adjust Persona Image' : 'Adjust Character Image'
-            });
-            if (!adjusted) return;   // cancelled — leave the current image alone
-            ({ dataURL, blob } = adjusted);
-        } else {
-            ({ dataURL, blob, originalDataURL } = await imageFileToWebp(file, 0.80));
-        }
+        const originalDataURL = await fileToDataURL(file);
+        const adjusted = adjustOptions
+            ? await openImageAdjuster(originalDataURL, adjustOptions)
+            : await imageFileToWebp(file, 0.80);
+        if (!adjusted) return;   // cancelled — leave the current image alone
 
+        const { dataURL, blob } = adjusted;
         const objectURL = URL.createObjectURL(blob);
 
         if (targetId === 'char-avatar') {

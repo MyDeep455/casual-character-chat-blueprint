@@ -6846,13 +6846,16 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     font-size: 13px;
 }
 
-/* ===================== AVATAR ADJUST (crop / zoom / pan) =====================
-   Fixed square frame, image freely zoomable + draggable behind it. Everything
+/* ===================== IMAGE ADJUST (crop / zoom / pan) ======================
+   Fixed crop frame, image freely zoomable + draggable behind it. Everything
    outside the frame stays visible but dimmed, so the user sees what is being
    cut away. Sits above the character/persona editors (z-index 2000).
+
+   The stage and frame are sized inline by openImageAdjuster(): a square for
+   avatars, the shape of the viewport for backgrounds.
    ========================================================================== */
 
-#avatar-crop-modal {
+#image-crop-modal {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.72);
@@ -6863,7 +6866,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     z-index: 5000;
 }
 
-.avatar-crop-content {
+.image-crop-content {
     background-color: rgba(12, 14, 20, 0.96);
     color: #dcddde;
     padding: 22px 24px 20px;
@@ -6881,7 +6884,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     gap: 4px;
 }
 
-.avatar-crop-content h2 {
+.image-crop-content h2 {
     margin: 0;
     font-size: 1.35em;
     color: #fff;
@@ -6890,26 +6893,24 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
 }
 
-.avatar-crop-hint {
+.image-crop-hint {
     margin: 0 0 12px;
     font-size: 12.5px;
     color: #9aa0a6;
     text-align: center;
 }
 
-.avatar-crop-workspace {
+.image-crop-workspace {
     display: flex;
     align-items: stretch;
     gap: 14px;
 }
 
 /* The stage is deliberately larger than the crop frame so the parts of the
-   picture that fall outside the square stay visible (dimmed) while dragging. */
-.avatar-crop-stage {
-    --crop-frame: min(66vw, 42vh, 320px);
+   picture that fall outside it stay visible (dimmed) while dragging. Both are
+   given their pixel size by the script. */
+.image-crop-stage {
     position: relative;
-    width: calc(var(--crop-frame) * 1.34);
-    height: calc(var(--crop-frame) * 1.34);
     overflow: hidden;
     border-radius: 12px;
     background-color: #0a0b10;
@@ -6925,11 +6926,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     -webkit-tap-highlight-color: transparent;
 }
 
-.avatar-crop-stage.is-dragging {
+.image-crop-stage.is-dragging {
     cursor: grabbing;
 }
 
-#avatar-crop-img {
+#image-crop-img {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -6943,13 +6944,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     will-change: transform;
 }
 
-/* The huge spread shadow is what dims everything outside the square. */
-.avatar-crop-frame {
+/* The huge spread shadow is what dims everything outside the frame. */
+.image-crop-frame {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: var(--crop-frame);
-    height: var(--crop-frame);
     transform: translate(-50%, -50%);
     box-sizing: border-box;
     border: 1px solid rgba(255, 255, 255, 0.85);
@@ -6960,11 +6959,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     z-index: 2;
 }
 
-/* Corner brackets — make the fixed square read as a crop frame. Two overlays
-   of four gradient bars each: ::before draws the top corners, ::after the
-   bottom ones. */
-.avatar-crop-frame::before,
-.avatar-crop-frame::after {
+/* Corner brackets — make the fixed rectangle read as a crop frame. Two
+   overlays of four gradient bars each: ::before draws the top corners,
+   ::after the bottom ones. */
+.image-crop-frame::before,
+.image-crop-frame::after {
     --tick: linear-gradient(rgba(196, 181, 255, 0.95), rgba(196, 181, 255, 0.95));
     content: '';
     position: absolute;
@@ -6974,16 +6973,16 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px;
 }
 
-.avatar-crop-frame::before {
+.image-crop-frame::before {
     background-position: left top, left top, right top, right top;
 }
 
-.avatar-crop-frame::after {
+.image-crop-frame::after {
     background-position: left bottom, left bottom, right bottom, right bottom;
 }
 
 /* ---- zoom bar (right side of the modal) ---- */
-.avatar-crop-zoom {
+.image-crop-zoom {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -6991,7 +6990,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     padding: 2px 0;
 }
 
-.avatar-crop-zoom-btn {
+.image-crop-zoom-btn {
     flex: 0 0 auto;
     width: 26px;
     height: 26px;
@@ -7012,17 +7011,17 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     -webkit-tap-highlight-color: transparent;
 }
 
-.avatar-crop-zoom-btn:hover:not(:disabled) {
+.image-crop-zoom-btn:hover:not(:disabled) {
     filter: brightness(1.25);
     border-color: rgba(255, 255, 255, 0.35);
 }
 
-.avatar-crop-zoom-btn:disabled {
+.image-crop-zoom-btn:disabled {
     opacity: 0.35;
     cursor: default;
 }
 
-.avatar-crop-zoom-track {
+.image-crop-zoom-track {
     position: relative;
     flex: 1 1 auto;
     width: 6px;
@@ -7035,17 +7034,17 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     -webkit-tap-highlight-color: transparent;
 }
 
-.avatar-crop-zoom-track.is-disabled {
+.image-crop-zoom-track.is-disabled {
     opacity: 0.35;
     cursor: default;
 }
 
-.avatar-crop-zoom-track:focus-visible {
+.image-crop-zoom-track:focus-visible {
     outline: 2px solid rgba(139, 108, 247, 0.9);
     outline-offset: 3px;
 }
 
-.avatar-crop-zoom-fill {
+.image-crop-zoom-fill {
     position: absolute;
     left: 0;
     right: 0;
@@ -7056,7 +7055,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     pointer-events: none;
 }
 
-.avatar-crop-zoom-thumb {
+.image-crop-zoom-thumb {
     position: absolute;
     left: 50%;
     bottom: 0;
@@ -7071,7 +7070,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 }
 
 /* ---- actions ---- */
-.avatar-crop-actions {
+.image-crop-actions {
     display: flex;
     justify-content: center;
     gap: 10px;
@@ -7079,7 +7078,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     flex-wrap: wrap;
 }
 
-.avatar-crop-actions button {
+.image-crop-actions button {
     color: #fff;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
@@ -7096,33 +7095,29 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     -webkit-tap-highlight-color: transparent;
 }
 
-.avatar-crop-actions button:hover {
+.image-crop-actions button:hover {
     filter: brightness(1.12) saturate(1.12);
     transform: translateY(-1px);
     border-color: rgba(255, 255, 255, 0.32);
 }
 
-.avatar-crop-actions button:active {
+.image-crop-actions button:active {
     filter: brightness(0.92);
     transform: translateY(1px);
 }
 
-#avatar-crop-apply-btn {
+#image-crop-apply-btn {
     background-color: rgba(108, 84, 200, 0.9);
     border-color: rgba(196, 181, 255, 0.45);
 }
 
 @media (max-width: 600px) {
-    .avatar-crop-content {
+    .image-crop-content {
         padding: 18px 14px 16px;
         max-width: 96vw;
     }
 
-    .avatar-crop-stage {
-        --crop-frame: min(64vw, 38vh, 300px);
-    }
-
-    .avatar-crop-workspace {
+    .image-crop-workspace {
         gap: 10px;
     }
 }
@@ -7130,11 +7125,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 /* Touch devices: no grab cursor, and no live blur layer behind the modal —
    mobile GPUs are already tight on this app (see the card backdrop note). */
 @media (hover: none) and (pointer: coarse) {
-    .avatar-crop-stage {
+    .image-crop-stage {
         cursor: default;
     }
 
-    #avatar-crop-modal {
+    #image-crop-modal {
         backdrop-filter: none;
         background-color: rgba(0, 0, 0, 0.82);
     }

@@ -692,29 +692,29 @@
 </div>
 
 <!-- ===================== AVATAR ADJUST (crop / zoom / pan) ===================== -->
-<div id="avatar-crop-modal" class="hidden">
-    <div class="avatar-crop-content" role="dialog" aria-modal="true" aria-labelledby="avatar-crop-title">
-        <h2 id="avatar-crop-title">Adjust Image</h2>
-        <p class="avatar-crop-hint" id="avatar-crop-hint">Drag to reposition &middot; scroll to zoom</p>
-        <div class="avatar-crop-workspace">
-            <div class="avatar-crop-stage" id="avatar-crop-stage">
-                <img id="avatar-crop-img" src="" alt="Image being adjusted" draggable="false">
-                <div class="avatar-crop-frame" id="avatar-crop-frame"></div>
+<div id="image-crop-modal" class="hidden">
+    <div class="image-crop-content" role="dialog" aria-modal="true" aria-labelledby="image-crop-title">
+        <h2 id="image-crop-title">Adjust Image</h2>
+        <p class="image-crop-hint" id="image-crop-hint">Drag to reposition &middot; scroll to zoom</p>
+        <div class="image-crop-workspace">
+            <div class="image-crop-stage" id="image-crop-stage">
+                <img id="image-crop-img" src="" alt="Image being adjusted" draggable="false">
+                <div class="image-crop-frame" id="image-crop-frame"></div>
             </div>
-            <div class="avatar-crop-zoom">
-                <button type="button" class="avatar-crop-zoom-btn" id="avatar-crop-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
-                <div class="avatar-crop-zoom-track" id="avatar-crop-zoom-track" role="slider" tabindex="0"
+            <div class="image-crop-zoom">
+                <button type="button" class="image-crop-zoom-btn" id="image-crop-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+                <div class="image-crop-zoom-track" id="image-crop-zoom-track" role="slider" tabindex="0"
                      aria-label="Zoom" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                    <div class="avatar-crop-zoom-fill" id="avatar-crop-zoom-fill"></div>
-                    <div class="avatar-crop-zoom-thumb" id="avatar-crop-zoom-thumb"></div>
+                    <div class="image-crop-zoom-fill" id="image-crop-zoom-fill"></div>
+                    <div class="image-crop-zoom-thumb" id="image-crop-zoom-thumb"></div>
                 </div>
-                <button type="button" class="avatar-crop-zoom-btn" id="avatar-crop-zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="image-crop-zoom-btn" id="image-crop-zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
             </div>
         </div>
-        <div class="avatar-crop-actions">
-            <button type="button" id="avatar-crop-reset-btn">Reset</button>
-            <button type="button" id="avatar-crop-cancel-btn">Cancel</button>
-            <button type="button" id="avatar-crop-apply-btn">Apply</button>
+        <div class="image-crop-actions">
+            <button type="button" id="image-crop-reset-btn">Reset</button>
+            <button type="button" id="image-crop-cancel-btn">Cancel</button>
+            <button type="button" id="image-crop-apply-btn">Apply</button>
         </div>
     </div>
 </div>
