@@ -6494,13 +6494,14 @@ function restoreLastSession() {
 //    what the screen will show.
 // =============================================================
 const openImageAdjuster = (() => {
-    const MAX_ZOOM = 5;              // hard ceiling relative to "fills the frame"
+    const MAX_ZOOM = 10;             // hard ceiling relative to "fills the frame"
     const NUDGE = 0.08;              // +/- button step, in zoom-bar ratio
     const STAGE_MARGIN = 0.17;       // dimmed overflow margin around the frame
 
     const modal = document.getElementById('image-crop-modal');
     if (!modal) return () => Promise.resolve(null);
 
+    const contentEl = modal.querySelector('.image-crop-content');
     const stage = document.getElementById('image-crop-stage');
     const frameEl = document.getElementById('image-crop-frame');
     const imgEl = document.getElementById('image-crop-img');
@@ -6528,24 +6529,44 @@ const openImageAdjuster = (() => {
 
     const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+    // Space budget for the stage. The four --crop-* custom properties live on
+    // .image-crop-content so the breakpoints (portrait phone, landscape phone,
+    // desktop) can retune the layout without touching this math.
+    function budget(name, fallback) {
+        const raw = parseFloat(getComputedStyle(contentEl).getPropertyValue(name));
+        return Number.isFinite(raw) ? raw : fallback;
+    }
+
     // Largest frame of the requested shape that still leaves room for the
     // dimmed margin, the zoom bar and the buttons. Driven from the viewport so
-    // it adapts to a phone in portrait just as well as to a desktop window.
+    // it adapts to a phone in portrait or landscape just as well as to a
+    // desktop window.
     function fitFrame(aspect) {
         const grow = 1 + 2 * STAGE_MARGIN;
-        const boxW = Math.min(window.innerWidth - 96, 520) / grow;
-        const boxH = Math.min(window.innerHeight - 250, 470) / grow;
-        const cap = 360 / Math.max(aspect, 1);   // long side never over 360px
+        const boxW = Math.min(window.innerWidth - budget('--crop-gutter', 96),
+                              budget('--crop-stage-max-w', 520)) / grow;
+        const boxH = Math.min(window.innerHeight - budget('--crop-chrome', 250),
+                              budget('--crop-stage-max-h', 470)) / grow;
+        const cap = budget('--crop-cap', 360) / Math.max(aspect, 1);   // longest frame side
         const h = Math.max(60, Math.min(boxW / aspect, boxH, cap));
         return { w: h * aspect, h };
     }
 
     function applyFrameSize(frameW, frameH) {
-        const margin = Math.round(Math.min(frameW, frameH) * STAGE_MARGIN);
+        const margin = Math.min(frameW, frameH) * STAGE_MARGIN;
+
+        // Sideways phones have width to spare while the frame is capped by the
+        // screen height, so --crop-margin-x widens the dimmed band instead of
+        // leaving the space empty — more of the picture stays in view and the
+        // zoom bar moves out to the right.
+        const roomX = Math.min(window.innerWidth - budget('--crop-gutter', 96),
+                               budget('--crop-stage-max-w', 520)) - frameW;
+        const marginX = Math.round(Math.max(margin, Math.min(margin * budget('--crop-margin-x', 1), roomX / 2)));
+
         frameEl.style.width = frameW + 'px';
         frameEl.style.height = frameH + 'px';
-        stage.style.width = (frameW + 2 * margin) + 'px';
-        stage.style.height = (frameH + 2 * margin) + 'px';
+        stage.style.width = (frameW + 2 * marginX) + 'px';
+        stage.style.height = (frameH + 2 * Math.round(margin)) + 'px';
     }
 
     // Point relative to the centre of the crop frame.
@@ -6570,10 +6591,11 @@ const openImageAdjuster = (() => {
 
         // Ceiling: at zoom 1 the cut-out measures frame / coverScale source
         // pixels, shrinking as the zoom grows. Cap the zoom where its short
-        // side would drop below minCropPx — pictures that are already smaller
-        // than that simply can't be zoomed in.
+        // side would drop below minCropPx. The floor is deliberately low —
+        // framing beats sharpness, so a soft close-up is the user's call to
+        // make; it only stops the crop from collapsing into a few pixels.
         const cropShort = Math.min(frameW, frameH) / coverScale;
-        const minCropPx = options.minCropPx || 260;
+        const minCropPx = options.minCropPx || 96;
         const zMax = Math.max(1, Math.min(MAX_ZOOM, cropShort / Math.min(minCropPx, cropShort)));
 
         return { nw, nh, layoutW, layoutH, frameW, frameH, zMin, zMax, z: 1, ox: 0, oy: 0 };
@@ -7004,7 +7026,7 @@ imageUploader.addEventListener('change', async (event) => {
                 title: 'Adjust Background Image',
                 aspect: (window.innerWidth || 1) / (window.innerHeight || 1),
                 allowZoomOut: false,      // backgrounds are painted with `cover`
-                minCropPx: 540,
+                minCropPx: 120,
                 note: 'the frame matches your screen'
             }
         }[targetId];
