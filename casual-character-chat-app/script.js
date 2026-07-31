@@ -2675,6 +2675,27 @@ function fileToDataURL(file) {
 
 
 
+// Encodes a canvas as webp, falling back to jpeg where webp isn't available.
+async function canvasToWebp(canvas, quality = 0.80) {
+  let blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/webp', quality)
+  );
+
+  if (!blob) {
+    blob = await new Promise((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Conversion failed'))), 'image/jpeg', 0.80)
+    );
+  }
+
+  const dataURL = await new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.readAsDataURL(blob);
+  });
+
+  return { blob, dataURL };
+}
+
 async function imageFileToWebp(file, quality = 0.80) {
   const originalDataURL = await fileToDataURL(file);
 
@@ -2700,25 +2721,7 @@ async function imageFileToWebp(file, quality = 0.80) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(source, 0, 0, width, height);
 
-  let blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, 'image/webp', quality)
-  );
-
-  let dataURL;
-  if (blob) {
-    dataURL = await new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(blob);
-    });
-    if (typeof source.close === 'function') source.close();
-    return { blob, dataURL, originalDataURL };
-  }
-
-  blob = await new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Conversion failed'))), 'image/jpeg', 0.80)
-  );
-  dataURL = canvas.toDataURL('image/jpeg', 0.80);
+  const { blob, dataURL } = await canvasToWebp(canvas, quality);
   if (typeof source.close === 'function') source.close();
   return { blob, dataURL, originalDataURL };
 }
@@ -6467,6 +6470,453 @@ function restoreLastSession() {
 
 
 
+// =============================================================
+// AVATAR ADJUST — square crop frame with free zoom & pan
+// -------------------------------------------------------------
+// Opens right after a local avatar file is picked. The picture sits behind a
+// fixed square frame; everything spilling outside the square stays visible but
+// dimmed. The user pans (drag / one finger) and zooms (wheel / pinch / the zoom
+// bar on the right), "Apply" cuts out whatever overlaps the frame.
+//
+// Zooming out past "fills the square" is allowed on purpose: the cut-out is
+// then the intersection of picture and frame, i.e. narrower or shorter than a
+// square. Those non-square avatars keep working because every avatar surface
+// renders them contained on a blurred backdrop (.effect-container).
+// =============================================================
+const openAvatarAdjuster = (() => {
+    const MAX_ZOOM = 5;              // hard ceiling relative to "fills the square"
+    const MIN_CROP_SOURCE_PX = 260;  // never cut out a region smaller than this
+    const NUDGE = 0.08;              // +/- button step, in zoom-bar ratio
+
+    const modal = document.getElementById('avatar-crop-modal');
+    if (!modal) return () => Promise.resolve(null);
+
+    const stage = document.getElementById('avatar-crop-stage');
+    const frameEl = document.getElementById('avatar-crop-frame');
+    const imgEl = document.getElementById('avatar-crop-img');
+    const titleEl = document.getElementById('avatar-crop-title');
+    const hintEl = document.getElementById('avatar-crop-hint');
+    const trackEl = document.getElementById('avatar-crop-zoom-track');
+    const fillEl = document.getElementById('avatar-crop-zoom-fill');
+    const thumbEl = document.getElementById('avatar-crop-zoom-thumb');
+    const zoomInBtn = document.getElementById('avatar-crop-zoom-in');
+    const zoomOutBtn = document.getElementById('avatar-crop-zoom-out');
+    const applyBtn = document.getElementById('avatar-crop-apply-btn');
+    const cancelBtn = document.getElementById('avatar-crop-cancel-btn');
+    const resetBtn = document.getElementById('avatar-crop-reset-btn');
+
+    // Live session state. `null` whenever the modal is closed.
+    // z = zoom where 1 exactly fills the square, ox/oy = picture centre offset
+    // from the frame centre in CSS px.
+    let st = null;
+    let sourceImg = null;
+    let settle = null;
+    const pointers = new Map();
+    let pinchStart = null;
+    let dragLast = null;
+    let sliderPointerId = null;
+
+    const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+    function measureFrame() {
+        return frameEl.getBoundingClientRect().width;
+    }
+
+    // Point relative to the centre of the crop frame.
+    function framePoint(clientX, clientY) {
+        const r = frameEl.getBoundingClientRect();
+        return { x: clientX - (r.left + r.width / 2), y: clientY - (r.top + r.height / 2) };
+    }
+
+    function buildState(nw, nh, frame) {
+        // At zoom 1 the picture exactly covers the square, so its layout size is
+        // the natural size scaled by "cover".
+        const coverScale = Math.max(frame / nw, frame / nh);
+        const layoutW = nw * coverScale;
+        const layoutH = nh * coverScale;
+        const minSide = Math.min(nw, nh);
+
+        // Floor: the whole picture fits inside the square. Zooming out further
+        // would not reveal anything new, the cut-out stays the whole picture.
+        const zMin = Math.min(frame / layoutW, frame / layoutH);
+
+        // Ceiling: the cut-out region measures minSide / z source pixels, so
+        // cap the zoom where that would drop below MIN_CROP_SOURCE_PX. Pictures
+        // that are already smaller than that simply can't be zoomed in.
+        const zMax = Math.max(1, Math.min(MAX_ZOOM, minSide / Math.min(MIN_CROP_SOURCE_PX, minSide)));
+
+        return { nw, nh, layoutW, layoutH, frame, zMin, zMax, z: 1, ox: 0, oy: 0 };
+    }
+
+    // Keeps the picture glued to the frame: while it is larger than the square
+    // no gap can open up, while it is smaller it cannot be pushed outside.
+    function clampState() {
+        st.z = Math.min(st.zMax, Math.max(st.zMin, st.z));
+        const slackX = Math.abs(st.layoutW * st.z - st.frame) / 2;
+        const slackY = Math.abs(st.layoutH * st.z - st.frame) / 2;
+        st.ox = Math.min(slackX, Math.max(-slackX, st.ox));
+        st.oy = Math.min(slackY, Math.max(-slackY, st.oy));
+    }
+
+    function zoomToRatio(z) {
+        if (st.zMax - st.zMin < 1e-6) return 0;
+        return Math.log(z / st.zMin) / Math.log(st.zMax / st.zMin);
+    }
+
+    function ratioToZoom(t) {
+        if (st.zMax - st.zMin < 1e-6) return st.zMin;
+        return st.zMin * Math.pow(st.zMax / st.zMin, Math.min(1, Math.max(0, t)));
+    }
+
+    function renderZoomBar() {
+        const radius = (thumbEl.offsetHeight || 17) / 2;
+        const usable = Math.max(1, trackEl.clientHeight - 2 * radius);
+        const ratio = zoomToRatio(st.z);
+        const pos = radius + ratio * usable;
+
+        thumbEl.style.bottom = pos + 'px';
+        fillEl.style.height = pos + 'px';
+
+        const locked = st.zMax - st.zMin < 1e-6;
+        trackEl.classList.toggle('is-disabled', locked);
+        trackEl.setAttribute('aria-valuenow', Math.round(ratio * 100));
+        trackEl.setAttribute('aria-valuetext', st.z.toFixed(2) + '×');
+        zoomInBtn.disabled = locked || st.z >= st.zMax - 1e-4;
+        zoomOutBtn.disabled = locked || st.z <= st.zMin + 1e-4;
+    }
+
+    function render() {
+        clampState();
+        imgEl.style.transform =
+            `translate(-50%, -50%) translate(${st.ox}px, ${st.oy}px) scale(${st.z})`;
+        renderZoomBar();
+    }
+
+    // Zooms around `anchor` (frame centre by default) so the picture point under
+    // the cursor / pinch centre stays put.
+    function setZoom(z, anchor) {
+        const next = Math.min(st.zMax, Math.max(st.zMin, z));
+        const a = anchor || { x: 0, y: 0 };
+        const k = next / st.z;
+        st.ox = a.x + (st.ox - a.x) * k;
+        st.oy = a.y + (st.oy - a.y) * k;
+        st.z = next;
+        render();
+    }
+
+    function nudgeZoom(delta) {
+        if (!st) return;
+        setZoom(ratioToZoom(zoomToRatio(st.z) + delta));
+    }
+
+    // --- dragging & pinching -------------------------------------------------
+
+    function pointerPair() {
+        const list = [...pointers.values()];
+        return [list[0], list[1]];
+    }
+
+    function beginPinch() {
+        const [a, b] = pointerPair();
+        if (!a || !b) return;
+        pinchStart = {
+            dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+            mid: framePoint((a.x + b.x) / 2, (a.y + b.y) / 2),
+            z: st.z,
+            ox: st.ox,
+            oy: st.oy
+        };
+        dragLast = null;
+    }
+
+    function updatePinch() {
+        if (!pinchStart) { beginPinch(); return; }
+        const [a, b] = pointerPair();
+        if (!a || !b) return;
+
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const mid = framePoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+        const target = Math.min(st.zMax, Math.max(st.zMin, pinchStart.z * (dist / pinchStart.dist)));
+        const k = target / pinchStart.z;
+
+        // Scale around the original pinch centre, then follow that centre as the
+        // fingers travel — pinch and drag in one gesture.
+        st.ox = pinchStart.mid.x + (pinchStart.ox - pinchStart.mid.x) * k + (mid.x - pinchStart.mid.x);
+        st.oy = pinchStart.mid.y + (pinchStart.oy - pinchStart.mid.y) * k + (mid.y - pinchStart.mid.y);
+        st.z = target;
+        render();
+    }
+
+    stage.addEventListener('pointerdown', (e) => {
+        if (!st) return;
+        e.preventDefault();
+        try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2) {
+            beginPinch();
+        } else if (pointers.size === 1) {
+            dragLast = { x: e.clientX, y: e.clientY };
+            stage.classList.add('is-dragging');
+        }
+    });
+
+    stage.addEventListener('pointermove', (e) => {
+        if (!st || !pointers.has(e.pointerId)) return;
+        e.preventDefault();
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size >= 2) {
+            updatePinch();
+        } else if (dragLast) {
+            st.ox += e.clientX - dragLast.x;
+            st.oy += e.clientY - dragLast.y;
+            dragLast = { x: e.clientX, y: e.clientY };
+            render();
+        }
+    });
+
+    function releasePointer(e) {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.delete(e.pointerId);
+        try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        if (pointers.size < 2) pinchStart = null;
+        if (pointers.size === 1) {
+            // Second finger lifted — keep dragging with the one still down.
+            const [p] = pointers.values();
+            dragLast = { x: p.x, y: p.y };
+        } else {
+            dragLast = null;
+            stage.classList.remove('is-dragging');
+        }
+    }
+
+    stage.addEventListener('pointerup', releasePointer);
+    stage.addEventListener('pointercancel', releasePointer);
+
+    stage.addEventListener('wheel', (e) => {
+        if (!st) return;
+        e.preventDefault();
+        const unit = e.deltaMode === 1 ? 0.05 : (e.deltaMode === 2 ? 0.5 : 0.0022);
+        setZoom(st.z * Math.exp(-e.deltaY * unit), framePoint(e.clientX, e.clientY));
+    }, { passive: false });
+
+    stage.addEventListener('dblclick', () => {
+        if (!st) return;
+        // Toggle between "whole picture visible" and "fills the square".
+        setZoom(st.z > st.zMin + 1e-4 ? st.zMin : 1);
+    });
+
+    // --- zoom bar ------------------------------------------------------------
+
+    function ratioFromClientY(clientY) {
+        const r = trackEl.getBoundingClientRect();
+        const radius = (thumbEl.offsetHeight || 17) / 2;
+        const usable = Math.max(1, r.height - 2 * radius);
+        return Math.min(1, Math.max(0, (r.bottom - radius - clientY) / usable));
+    }
+
+    trackEl.addEventListener('pointerdown', (e) => {
+        if (!st || trackEl.classList.contains('is-disabled')) return;
+        e.preventDefault();
+        sliderPointerId = e.pointerId;
+        try { trackEl.setPointerCapture(e.pointerId); } catch (_) {}
+        setZoom(ratioToZoom(ratioFromClientY(e.clientY)));
+    });
+
+    trackEl.addEventListener('pointermove', (e) => {
+        if (!st || sliderPointerId !== e.pointerId) return;
+        e.preventDefault();
+        setZoom(ratioToZoom(ratioFromClientY(e.clientY)));
+    });
+
+    function releaseSlider(e) {
+        if (sliderPointerId !== e.pointerId) return;
+        try { trackEl.releasePointerCapture(e.pointerId); } catch (_) {}
+        sliderPointerId = null;
+    }
+
+    trackEl.addEventListener('pointerup', releaseSlider);
+    trackEl.addEventListener('pointercancel', releaseSlider);
+
+    trackEl.addEventListener('keydown', (e) => {
+        if (!st) return;
+        const steps = {
+            ArrowUp: NUDGE, ArrowRight: NUDGE,
+            ArrowDown: -NUDGE, ArrowLeft: -NUDGE
+        };
+        if (e.key in steps) nudgeZoom(steps[e.key]);
+        else if (e.key === 'Home') setZoom(st.zMin);
+        else if (e.key === 'End') setZoom(st.zMax);
+        else return;
+
+        // Arrow keys elsewhere in the app flip message variants.
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    zoomInBtn.addEventListener('click', () => nudgeZoom(NUDGE));
+    zoomOutBtn.addEventListener('click', () => nudgeZoom(-NUDGE));
+
+    // --- cropping ------------------------------------------------------------
+
+    // Intersection of picture and frame, expressed in source pixels.
+    function computeCrop() {
+        const perSourcePx = (st.layoutW * st.z) / st.nw;  // display px per source px
+        const dispW = st.layoutW * st.z;
+        const dispH = st.layoutH * st.z;
+        const half = st.frame / 2;
+
+        const left = Math.max(-half, st.ox - dispW / 2);
+        const right = Math.min(half, st.ox + dispW / 2);
+        const top = Math.max(-half, st.oy - dispH / 2);
+        const bottom = Math.min(half, st.oy + dispH / 2);
+
+        let sx = (left - (st.ox - dispW / 2)) / perSourcePx;
+        let sy = (top - (st.oy - dispH / 2)) / perSourcePx;
+        let sw = (right - left) / perSourcePx;
+        let sh = (bottom - top) / perSourcePx;
+
+        sx = Math.max(0, Math.min(st.nw - 1, sx));
+        sy = Math.max(0, Math.min(st.nh - 1, sy));
+        sw = Math.max(1, Math.min(sw, st.nw - sx));
+        sh = Math.max(1, Math.min(sh, st.nh - sy));
+
+        return { sx, sy, sw, sh };
+    }
+
+    async function applyCrop() {
+        if (!st || !sourceImg) return;
+        applyBtn.disabled = true;
+
+        try {
+            const { sx, sy, sw, sh } = computeCrop();
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(sw));
+            canvas.height = Math.max(1, Math.round(sh));
+
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(sourceImg, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+            const result = await canvasToWebp(canvas, 0.80);
+            finish(result);
+        } catch (error) {
+            console.error('Error cropping image:', error);
+            finish(null);
+            showCustomAlert('There was an error processing the image file.');
+        } finally {
+            applyBtn.disabled = false;
+        }
+    }
+
+    // --- open / close --------------------------------------------------------
+
+    function onKeyDown(e) {
+        if (!st) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            finish(null);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            applyCrop();
+        }
+    }
+
+    // The frame is sized in CSS units, so a viewport change resizes it. Rescale
+    // the state along with it to keep the current framing.
+    function onResize() {
+        if (!st) return;
+        const frame = measureFrame();
+        if (!frame || Math.abs(frame - st.frame) < 0.5) return;
+
+        const ratio = frame / st.frame;
+        st.layoutW *= ratio;
+        st.layoutH *= ratio;
+        st.ox *= ratio;
+        st.oy *= ratio;
+        st.frame = frame;
+        imgEl.style.width = st.layoutW + 'px';
+        imgEl.style.height = st.layoutH + 'px';
+        render();
+    }
+
+    function close() {
+        modal.classList.add('hidden');
+        document.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('resize', onResize);
+        stage.classList.remove('is-dragging');
+        pointers.clear();
+        pinchStart = null;
+        dragLast = null;
+        sliderPointerId = null;
+        st = null;
+        sourceImg = null;
+        imgEl.removeAttribute('src');
+    }
+
+    function finish(result) {
+        const done = settle;
+        settle = null;
+        close();
+        if (done) done(result);
+    }
+
+    applyBtn.addEventListener('click', applyCrop);
+    cancelBtn.addEventListener('click', () => finish(null));
+    resetBtn.addEventListener('click', () => {
+        if (!st) return;
+        st.z = 1;
+        st.ox = 0;
+        st.oy = 0;
+        render();
+    });
+
+    /**
+     * Shows the adjuster for `src`.
+     * Resolves with { blob, dataURL } on apply, or null when cancelled.
+     * Rejects when the image can't be decoded.
+     */
+    return function openAvatarAdjuster(src, options = {}) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+
+            img.onload = () => {
+                if (!img.naturalWidth || !img.naturalHeight) {
+                    reject(new Error('Image has no dimensions'));
+                    return;
+                }
+
+                sourceImg = img;
+                settle = resolve;
+                titleEl.textContent = options.title || 'Adjust Image';
+                hintEl.textContent = isTouchOnly
+                    ? 'Drag to reposition · pinch to zoom'
+                    : 'Drag to reposition · scroll to zoom';
+
+                imgEl.src = src;
+                modal.classList.remove('hidden');
+
+                // Measure only once the modal is laid out.
+                st = buildState(img.naturalWidth, img.naturalHeight, measureFrame());
+                imgEl.style.width = st.layoutW + 'px';
+                imgEl.style.height = st.layoutH + 'px';
+                render();
+
+                document.addEventListener('keydown', onKeyDown, true);
+                window.addEventListener('resize', onResize);
+            };
+
+            img.onerror = () => reject(new Error('Could not load the selected image'));
+            img.src = src;
+        });
+    };
+})();
+
 let currentUploadTargetId = null;
 const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
 const uploadBgBtn = document.getElementById('upload-bg-btn');
@@ -6490,36 +6940,51 @@ uploadPersonaAvatarBtn.addEventListener('click', () => {
 
 imageUploader.addEventListener('change', async (event) => {
     if (!currentUploadTargetId) return;
+    const targetId = currentUploadTargetId;
     const file = event.target.files[0];
+
+    imageUploader.value = '';
+    currentUploadTargetId = null;
     if (!file) return;
 
     try {
-        const { dataURL, blob, originalDataURL } = await imageFileToWebp(file, 0.80);
+        const isAvatar = (targetId === 'char-avatar' || targetId === 'persona-avatar');
+        let dataURL, blob, originalDataURL;
+
+        if (isAvatar) {
+            // Let the user frame the picture inside the square before it is stored.
+            originalDataURL = await fileToDataURL(file);
+            const adjusted = await openAvatarAdjuster(originalDataURL, {
+                title: targetId === 'persona-avatar' ? 'Adjust Persona Image' : 'Adjust Character Image'
+            });
+            if (!adjusted) return;   // cancelled — leave the current image alone
+            ({ dataURL, blob } = adjusted);
+        } else {
+            ({ dataURL, blob, originalDataURL } = await imageFileToWebp(file, 0.80));
+        }
+
         const objectURL = URL.createObjectURL(blob);
 
-        if (currentUploadTargetId === 'char-avatar') {
+        if (targetId === 'char-avatar') {
             tempUploadedImages.avatar = dataURL;
             tempUploadedImages.avatarOriginal = originalDataURL;
-        } else if (currentUploadTargetId === 'char-background') {
+        } else if (targetId === 'char-background') {
             tempUploadedImages.background = dataURL;
             tempUploadedImages.backgroundOriginal = originalDataURL;
-        } else if (currentUploadTargetId === 'persona-avatar') {
+        } else if (targetId === 'persona-avatar') {
             tempUploadedImages.personaAvatar = dataURL;
             tempUploadedImages.personaAvatarOriginal = originalDataURL;
         }
 
-        const targetInput = document.getElementById(currentUploadTargetId);
+        const targetInput = document.getElementById(targetId);
         if (targetInput) {
-            targetInput.value = objectURL; 
+            targetInput.value = objectURL;
             targetInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
     } catch (error) {
         console.error("Error converting file to Data URL:", error);
         showCustomAlert("There was an error processing the image file.");
     }
-
-    imageUploader.value = '';
-    currentUploadTargetId = null;
 });
 
 

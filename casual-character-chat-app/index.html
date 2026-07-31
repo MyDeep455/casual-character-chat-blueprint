@@ -691,6 +691,35 @@
     </div>
 </div>
 
+<!-- ===================== AVATAR ADJUST (crop / zoom / pan) ===================== -->
+<div id="avatar-crop-modal" class="hidden">
+    <div class="avatar-crop-content" role="dialog" aria-modal="true" aria-labelledby="avatar-crop-title">
+        <h2 id="avatar-crop-title">Adjust Image</h2>
+        <p class="avatar-crop-hint" id="avatar-crop-hint">Drag to reposition &middot; scroll to zoom</p>
+        <div class="avatar-crop-workspace">
+            <div class="avatar-crop-stage" id="avatar-crop-stage">
+                <img id="avatar-crop-img" src="" alt="Image being adjusted" draggable="false">
+                <div class="avatar-crop-frame" id="avatar-crop-frame"></div>
+            </div>
+            <div class="avatar-crop-zoom">
+                <button type="button" class="avatar-crop-zoom-btn" id="avatar-crop-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+                <div class="avatar-crop-zoom-track" id="avatar-crop-zoom-track" role="slider" tabindex="0"
+                     aria-label="Zoom" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div class="avatar-crop-zoom-fill" id="avatar-crop-zoom-fill"></div>
+                    <div class="avatar-crop-zoom-thumb" id="avatar-crop-zoom-thumb"></div>
+                </div>
+                <button type="button" class="avatar-crop-zoom-btn" id="avatar-crop-zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
+            </div>
+        </div>
+        <div class="avatar-crop-actions">
+            <button type="button" id="avatar-crop-reset-btn">Reset</button>
+            <button type="button" id="avatar-crop-cancel-btn">Cancel</button>
+            <button type="button" id="avatar-crop-apply-btn">Apply</button>
+        </div>
+    </div>
+</div>
+<!-- =================== END AVATAR ADJUST =================== -->
+
     <script src="starter_pack_data.js"></script>
     <script src="script.js"></script>
     <script>

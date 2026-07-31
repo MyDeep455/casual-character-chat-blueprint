@@ -6845,3 +6845,298 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     color: #9aa0a6;
     font-size: 13px;
 }
+
+/* ===================== AVATAR ADJUST (crop / zoom / pan) =====================
+   Fixed square frame, image freely zoomable + draggable behind it. Everything
+   outside the frame stays visible but dimmed, so the user sees what is being
+   cut away. Sits above the character/persona editors (z-index 2000).
+   ========================================================================== */
+
+#avatar-crop-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(3px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5000;
+}
+
+.avatar-crop-content {
+    background-color: rgba(12, 14, 20, 0.96);
+    color: #dcddde;
+    padding: 22px 24px 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(196, 181, 255, 0.22);
+    box-shadow:
+        0 18px 48px rgba(0, 0, 0, 0.6),
+        0 0 24px rgba(139, 108, 247, 0.12);
+    box-sizing: border-box;
+    max-width: min(560px, 94vw);
+    max-height: 94vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.avatar-crop-content h2 {
+    margin: 0;
+    font-size: 1.35em;
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.avatar-crop-hint {
+    margin: 0 0 12px;
+    font-size: 12.5px;
+    color: #9aa0a6;
+    text-align: center;
+}
+
+.avatar-crop-workspace {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+}
+
+/* The stage is deliberately larger than the crop frame so the parts of the
+   picture that fall outside the square stay visible (dimmed) while dragging. */
+.avatar-crop-stage {
+    --crop-frame: min(66vw, 42vh, 320px);
+    position: relative;
+    width: calc(var(--crop-frame) * 1.34);
+    height: calc(var(--crop-frame) * 1.34);
+    overflow: hidden;
+    border-radius: 12px;
+    background-color: #0a0b10;
+    background-image:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%),
+        linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 9px 9px;
+    touch-action: none;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.avatar-crop-stage.is-dragging {
+    cursor: grabbing;
+}
+
+#avatar-crop-img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: center center;
+    transform: translate(-50%, -50%);
+    max-width: none;
+    max-height: none;
+    -webkit-user-drag: none;
+    user-select: none;
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* The huge spread shadow is what dims everything outside the square. */
+.avatar-crop-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--crop-frame);
+    height: var(--crop-frame);
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 0 0 9999px rgba(6, 7, 12, 0.66),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Corner brackets — make the fixed square read as a crop frame. Two overlays
+   of four gradient bars each: ::before draws the top corners, ::after the
+   bottom ones. */
+.avatar-crop-frame::before,
+.avatar-crop-frame::after {
+    --tick: linear-gradient(rgba(196, 181, 255, 0.95), rgba(196, 181, 255, 0.95));
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background-repeat: no-repeat;
+    background-image: var(--tick), var(--tick), var(--tick), var(--tick);
+    background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px;
+}
+
+.avatar-crop-frame::before {
+    background-position: left top, left top, right top, right top;
+}
+
+.avatar-crop-frame::after {
+    background-position: left bottom, left bottom, right bottom, right bottom;
+}
+
+/* ---- zoom bar (right side of the modal) ---- */
+.avatar-crop-zoom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    padding: 2px 0;
+}
+
+.avatar-crop-zoom-btn {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 48%, rgba(0, 0, 0, 0.12) 100%);
+    background-color: rgba(40, 40, 55, 0.7);
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: filter 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.avatar-crop-zoom-btn:hover:not(:disabled) {
+    filter: brightness(1.25);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.avatar-crop-zoom-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.avatar-crop-zoom-track {
+    position: relative;
+    flex: 1 1 auto;
+    width: 6px;
+    min-height: 90px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.avatar-crop-zoom-track.is-disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.avatar-crop-zoom-track:focus-visible {
+    outline: 2px solid rgba(139, 108, 247, 0.9);
+    outline-offset: 3px;
+}
+
+.avatar-crop-zoom-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #a78bfa 0%, #7c5cf0 100%);
+    pointer-events: none;
+}
+
+.avatar-crop-zoom-thumb {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: #efeaff;
+    border: 1px solid rgba(90, 70, 160, 0.6);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 10px rgba(139, 108, 247, 0.35);
+    transform: translate(-50%, 50%);
+    pointer-events: none;
+}
+
+/* ---- actions ---- */
+.avatar-crop-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.avatar-crop-actions button {
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 8px 18px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 8px;
+    background-color: rgba(45, 45, 60, 0.8);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 48%, rgba(0, 0, 0, 0.12) 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    transition: filter 0.16s ease, transform 0.12s ease-out, border-color 0.16s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.avatar-crop-actions button:hover {
+    filter: brightness(1.12) saturate(1.12);
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.32);
+}
+
+.avatar-crop-actions button:active {
+    filter: brightness(0.92);
+    transform: translateY(1px);
+}
+
+#avatar-crop-apply-btn {
+    background-color: rgba(108, 84, 200, 0.9);
+    border-color: rgba(196, 181, 255, 0.45);
+}
+
+@media (max-width: 600px) {
+    .avatar-crop-content {
+        padding: 18px 14px 16px;
+        max-width: 96vw;
+    }
+
+    .avatar-crop-stage {
+        --crop-frame: min(64vw, 38vh, 300px);
+    }
+
+    .avatar-crop-workspace {
+        gap: 10px;
+    }
+}
+
+/* Touch devices: no grab cursor, and no live blur layer behind the modal —
+   mobile GPUs are already tight on this app (see the card backdrop note). */
+@media (hover: none) and (pointer: coarse) {
+    .avatar-crop-stage {
+        cursor: default;
+    }
+
+    #avatar-crop-modal {
+        backdrop-filter: none;
+        background-color: rgba(0, 0, 0, 0.82);
+    }
+}
+
