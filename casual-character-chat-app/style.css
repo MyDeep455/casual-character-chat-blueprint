@@ -6424,7 +6424,12 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 .card-type-toggle {
     display: flex;
     gap: 8px;
-    margin-bottom: 14px;
+    margin: 6px 0 0;
+}
+/* These pills are <label>s, so #character-form label was padding the row out
+   by its generic 20px/4px headline margins. Needs the id to outrank it. */
+#character-form .card-type-option {
+    margin: 0;
 }
 .card-type-option {
     display: flex;
@@ -7277,4 +7282,257 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
         margin-bottom: 8px;
     }
 }
+
+
+/* ====================== CHARACTER GALLERY =============================
+   A row of small previews in the editor, sitting between the two image
+   URL fields and the description. Every picture the card owns is visible
+   at once, so the strip scrolls sideways instead of wrapping into a wall
+   of thumbnails. The trailing "+" tile is always the last item, which is
+   also the only thing on show while the gallery is still empty.
+   ===================================================================== */
+/* The section keeps the form's own rhythm. Its headline is not a direct flex
+   child of #character-form, so it stays inline and would drop the 20px/4px
+   margins every other editor headline has — display:block brings them back.
+   The strip then adds the 14px the form's own gap contributes between a
+   label and its field, which leaves headline-to-strip and section-to-section
+   exactly as wide as around the fields above and below. */
+#editor-gallery-label {
+    display: block;
+}
+
+.editor-gallery-strip {
+    margin-top: 18px;   /* collapses with the label's 4px — same 18px as label-to-field elsewhere */
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.editor-gallery-strip::-webkit-scrollbar {
+    height: 7px;
+}
+
+.editor-gallery-strip::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+}
+
+.editor-gallery-thumb {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 62px;
+    height: 62px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 7px;
+    background-color: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.14s ease-out, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.editor-gallery-thumb:hover {
+    transform: translateY(-2px);
+    border-color: rgba(196, 181, 255, 0.55);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.editor-gallery-thumb:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
+}
+
+.editor-gallery-add {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 62px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    line-height: 1;
+    color: rgba(216, 203, 255, 0.65);
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.28);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.editor-gallery-add:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+    border-color: rgba(196, 181, 255, 0.6);
+    color: rgba(226, 216, 255, 0.95);
+}
+
+.editor-gallery-add:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
+}
+
+.editor-gallery-hint {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.38);
+    font-style: italic;
+}
+
+
+/* --- the three-way picker that opens on a thumbnail ------------------- */
+#gallery-action-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5000;
+}
+
+.gallery-action-content {
+    background-color: rgba(12, 14, 20, 0.96);
+    color: #dcddde;
+    padding: 22px 24px 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(196, 181, 255, 0.22);
+    box-shadow:
+        0 18px 48px rgba(0, 0, 0, 0.6),
+        0 0 24px rgba(139, 108, 247, 0.12);
+    box-sizing: border-box;
+    width: min(360px, 92vw);
+    max-height: 94vh;
+    /* overflow-y alone would compute overflow-x to `auto` too and hang a
+       stray horizontal scrollbar under the buttons — nothing here ever
+       needs to scroll sideways. */
+    overflow: hidden auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.gallery-action-content h2 {
+    margin: 0;
+    font-size: 1.15em;
+}
+
+.gallery-action-preview {
+    box-sizing: border-box;
+    width: 100%;
+    height: 178px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.gallery-action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    width: 100%;
+}
+
+.gallery-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 11px 14px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    background-color: rgba(25, 104, 196, 0.90);
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 9px;
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 48%, rgba(0,0,0,0.12) 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.16);
+    cursor: pointer;
+    transition: filter 0.16s ease, transform 0.12s ease-out, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.gallery-action-btn.is-danger {
+    background-color: rgba(217, 83, 26, 0.90);
+}
+
+.gallery-action-btn:hover {
+    filter: brightness(1.12) saturate(1.12);
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.32);
+}
+
+.gallery-action-btn:active {
+    filter: brightness(0.92);
+    transform: translateY(1px);
+}
+
+.gallery-action-btn:focus-visible,
+.gallery-action-cancel:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
+}
+
+.gallery-action-btn-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.gallery-action-cancel {
+    padding: 8px 20px;
+    color: #dcddde;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.gallery-action-cancel:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.32);
+}
+
+@media (max-width: 768px) {
+    .editor-gallery-thumb,
+    .editor-gallery-add {
+        width: 56px;
+        height: 56px;
+    }
+
+    .editor-gallery-add {
+        font-size: 25px;
+    }
+}
+
+/* Phone held sideways: the picker has to stay inside a very short screen. */
+@media (orientation: landscape) and (max-height: 560px) {
+    .gallery-action-content {
+        width: min(440px, 94vw);
+        padding: 14px 16px 12px;
+        gap: 10px;
+    }
+
+    .gallery-action-preview {
+        height: 96px;
+    }
+
+    .gallery-action-btn {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+
 

@@ -377,6 +377,7 @@
             
             <form id="character-form">
                 <input type="file" id="image-uploader" class="visually-hidden" accept="image/*">
+                <input type="file" id="gallery-uploader" class="visually-hidden" accept="image/*" multiple>
                 <input type="hidden" id="editing-char-id">
 
                 <button type="button" id="ai-generate-char-btn" class="settings-action-btn ai-generate-btn">✨ AI Generate Character</button>
@@ -418,6 +419,14 @@
       <button type="button" id="upload-bg-btn" class="upload-btn" title="Upload local image">📁</button>
     </div>
   </div>
+</div>
+
+                <div id="editor-gallery-section">
+    <label id="editor-gallery-label">Gallery:</label>
+    <div id="editor-gallery-strip" class="editor-gallery-strip">
+        <button type="button" id="editor-gallery-add-btn" class="editor-gallery-add" title="Add images to the gallery" aria-label="Add images to the gallery">+</button>
+    </div>
+    <p class="editor-gallery-hint" id="editor-gallery-hint">Tap an image to set it as avatar or background.</p>
 </div>
 
                 <div id="world-char-picker-section" class="hidden">
@@ -727,6 +736,32 @@
     </div>
 </div>
 <!-- =================== END IMAGE ADJUST =================== -->
+
+<!-- =================== GALLERY IMAGE ACTIONS =================== -->
+<div id="gallery-action-modal" class="hidden">
+    <div class="gallery-action-content" role="dialog" aria-modal="true" aria-labelledby="gallery-action-title">
+        <h2 id="gallery-action-title">Use This Image</h2>
+        <div class="gallery-action-preview effect-container">
+            <img id="gallery-action-img" src="" alt="Selected gallery image">
+        </div>
+        <div class="gallery-action-buttons">
+            <button type="button" id="gallery-action-avatar-btn" class="gallery-action-btn">
+                <span class="gallery-action-btn-icon" aria-hidden="true">👤</span>
+                <span>Set as Avatar</span>
+            </button>
+            <button type="button" id="gallery-action-bg-btn" class="gallery-action-btn">
+                <span class="gallery-action-btn-icon" aria-hidden="true">🖼️</span>
+                <span>Set as Background</span>
+            </button>
+            <button type="button" id="gallery-action-delete-btn" class="gallery-action-btn is-danger">
+                <span class="gallery-action-btn-icon" aria-hidden="true">🗑️</span>
+                <span>Delete from Gallery</span>
+            </button>
+        </div>
+        <button type="button" id="gallery-action-cancel-btn" class="gallery-action-cancel">Cancel</button>
+    </div>
+</div>
+<!-- ================= END GALLERY IMAGE ACTIONS ================= -->
 
     <script src="starter_pack_data.js"></script>
     <script src="script.js"></script>

@@ -282,8 +282,10 @@ const defaultSettings = {
   background: null,
   backgroundOriginal: null, 
   personaAvatar: null,
-  personaAvatarOriginal: null 
+  personaAvatarOriginal: null
 };
+    // Working copy of the open card's gallery — written back on save.
+    let editorGallery = [];
     let currentChatId = null;
     let worldCharSelectedIds = new Set();
     let worldCharPickerTempIds = new Set();
@@ -2696,7 +2698,9 @@ async function canvasToWebp(canvas, quality = 0.80) {
   return { blob, dataURL };
 }
 
-async function imageFileToWebp(file, quality = 0.80) {
+// `maxSide` caps the longest edge of the result, shrinking oversized pictures
+// before they are encoded. 0 (the default) stores them at their own size.
+async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
   const originalDataURL = await fileToDataURL(file);
 
   let source;
@@ -2712,13 +2716,18 @@ async function imageFileToWebp(file, quality = 0.80) {
     });
   }
 
-  const width = source.width || source.naturalWidth;
-  const height = source.height || source.naturalHeight;
+  const sourceW = source.width || source.naturalWidth;
+  const sourceH = source.height || source.naturalHeight;
+  const scale = maxSide > 0 ? Math.min(1, maxSide / Math.max(sourceW, sourceH)) : 1;
+  const width = Math.max(1, Math.round(sourceW * scale));
+  const height = Math.max(1, Math.round(sourceH * scale));
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(source, 0, 0, width, height);
 
   const { blob, dataURL } = await canvasToWebp(canvas, quality);
@@ -5020,6 +5029,7 @@ function updateSingleMessageView(messageId) {
     if (genBtn) { genBtn.textContent = cardTypeWorldRadio.checked ? '✨ AI Generate World' : '✨ AI Generate Character'; genBtn.disabled = false; }
     document.getElementById('card-name').style.height = 'auto';
     tempUploadedImages = {};
+    resetEditorGallery([]);
     hideTagSuggestions();
     characterEditorModalContent.scrollTop = 0;
     characterEditorModal.classList.add('hidden');
@@ -5038,6 +5048,10 @@ function updateSingleMessageView(messageId) {
     document.getElementById('save-edit-btn-top').textContent = isWorld ? 'Save World' : 'Save Character';
     document.getElementById('save-edit-btn-bottom').textContent = isWorld ? 'Save World' : 'Save Character';
     document.getElementById('char-reminder-label').textContent = isWorld ? 'World Rules:' : 'Character Reminder:';
+    const galleryHintEl = document.getElementById('editor-gallery-hint');
+    if (galleryHintEl) galleryHintEl.textContent = isWorld
+        ? 'Tap an image to set it as background.'
+        : 'Tap an image to set it as avatar or background.';
     document.getElementById('char-description-label').textContent = isWorld ? 'World Description:' : 'Character Description:';
     const genBtn = document.getElementById('ai-generate-char-btn');
     if (genBtn) genBtn.textContent = isWorld ? '✨ AI Generate World' : '✨ AI Generate Character';
@@ -5433,6 +5447,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
 
     function openEditorForNew() {
     tempUploadedImages = {};
+    resetEditorGallery([]);
     characterForm.reset();
     refreshTagEditorFromField();
     cardTypeCharacterRadio.checked = true;
@@ -5485,6 +5500,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
       cardTypeCharacterRadio.checked = true;
   }
   worldCharSelectedIds = new Set(character.characterIds || []);
+  resetEditorGallery(normalizeGallery(character.gallery));
   updateEditorForType(charType);
 
   const avatarUrl = getImageUrl(character.avatar);
@@ -6044,6 +6060,8 @@ async function setActivePersonaForChat(personaId) {
   const chatName = cardType === 'world' ? '' : document.getElementById('chat-name').value;
   const avatarValue = document.getElementById('char-avatar').value;
   const backgroundValue = document.getElementById('char-background').value;
+  // Read before closeEditor() drops the working copy further down.
+  const gallery = editorGallery.slice();
 
     let finalAvatar = avatarValue;
     let finalBackground = backgroundValue;
@@ -6105,6 +6123,7 @@ async function setActivePersonaForChat(personaId) {
     character.chatName = chatName;
     character.avatar = cardType === 'world' ? '' : finalAvatar;
     character.background = finalBackground;
+    character.gallery = gallery;
     character.instructions = instructions;
     character.description = description;
     character.lore = lore;
@@ -6125,6 +6144,7 @@ async function setActivePersonaForChat(personaId) {
       chatName: chatName,
       avatar: cardType === 'world' ? '' : finalAvatar,
       background: finalBackground,
+      gallery: gallery,
       instructions: instructions,
       description: description,
       lore: lore,
@@ -7031,6 +7051,48 @@ uploadPersonaAvatarBtn.addEventListener('click', () => {
   imageUploader.click();
 });
 
+// Let the user frame the picture before it is stored. Avatars crop to a
+// square, backgrounds to the shape of the screen they will be painted on.
+// Shared with the gallery, so a picture handed over from there is framed
+// exactly like a freshly uploaded one.
+function imageAdjustOptionsFor(targetId) {
+    return {
+        'char-avatar': { title: 'Adjust Character Image' },
+        'persona-avatar': { title: 'Adjust Persona Image' },
+        'char-background': {
+            title: 'Adjust Background Image',
+            aspect: (window.innerWidth || 1) / (window.innerHeight || 1),
+            allowZoomOut: false,      // backgrounds are painted with `cover`
+            minCropPx: 120,
+            note: 'the frame matches your screen'
+        }
+    }[targetId];
+}
+
+// Parks a freshly framed picture on the editor: the webp copy waits in
+// tempUploadedImages until save, the matching URL field shows a preview.
+function applyAdjustedCardImage(targetId, adjusted, originalDataURL) {
+    const { dataURL, blob } = adjusted;
+    const objectURL = URL.createObjectURL(blob);
+
+    if (targetId === 'char-avatar') {
+        tempUploadedImages.avatar = dataURL;
+        tempUploadedImages.avatarOriginal = originalDataURL;
+    } else if (targetId === 'char-background') {
+        tempUploadedImages.background = dataURL;
+        tempUploadedImages.backgroundOriginal = originalDataURL;
+    } else if (targetId === 'persona-avatar') {
+        tempUploadedImages.personaAvatar = dataURL;
+        tempUploadedImages.personaAvatarOriginal = originalDataURL;
+    }
+
+    const targetInput = document.getElementById(targetId);
+    if (targetInput) {
+        targetInput.value = objectURL;
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
 imageUploader.addEventListener('change', async (event) => {
     if (!currentUploadTargetId) return;
     const targetId = currentUploadTargetId;
@@ -7041,19 +7103,7 @@ imageUploader.addEventListener('change', async (event) => {
     if (!file) return;
 
     try {
-        // Let the user frame the picture before it is stored. Avatars crop to a
-        // square, backgrounds to the shape of the screen they will be painted on.
-        const adjustOptions = {
-            'char-avatar': { title: 'Adjust Character Image' },
-            'persona-avatar': { title: 'Adjust Persona Image' },
-            'char-background': {
-                title: 'Adjust Background Image',
-                aspect: (window.innerWidth || 1) / (window.innerHeight || 1),
-                allowZoomOut: false,      // backgrounds are painted with `cover`
-                minCropPx: 120,
-                note: 'the frame matches your screen'
-            }
-        }[targetId];
+        const adjustOptions = imageAdjustOptionsFor(targetId);
 
         const originalDataURL = await fileToDataURL(file);
         const adjusted = adjustOptions
@@ -7061,30 +7111,194 @@ imageUploader.addEventListener('change', async (event) => {
             : await imageFileToWebp(file, 0.80);
         if (!adjusted) return;   // cancelled — leave the current image alone
 
-        const { dataURL, blob } = adjusted;
-        const objectURL = URL.createObjectURL(blob);
-
-        if (targetId === 'char-avatar') {
-            tempUploadedImages.avatar = dataURL;
-            tempUploadedImages.avatarOriginal = originalDataURL;
-        } else if (targetId === 'char-background') {
-            tempUploadedImages.background = dataURL;
-            tempUploadedImages.backgroundOriginal = originalDataURL;
-        } else if (targetId === 'persona-avatar') {
-            tempUploadedImages.personaAvatar = dataURL;
-            tempUploadedImages.personaAvatarOriginal = originalDataURL;
-        }
-
-        const targetInput = document.getElementById(targetId);
-        if (targetInput) {
-            targetInput.value = objectURL;
-            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+        applyAdjustedCardImage(targetId, adjusted, originalDataURL);
     } catch (error) {
         console.error("Error converting file to Data URL:", error);
         showCustomAlert("There was an error processing the image file.");
     }
 });
+
+
+
+// =============================================================
+// CHARACTER GALLERY — spare pictures kept on the card
+// -------------------------------------------------------------
+// The strip between the image URL fields and the description holds every
+// picture a card owns. Uploads land there downscaled and webp-encoded,
+// the same treatment the avatar and background copies get, so a card with
+// a dozen pictures still costs a few hundred KB in IndexedDB.
+//
+// Clicking a thumbnail opens a small chooser: hand the picture to the
+// avatar, hand it to the background, or drop it. Either hand-off runs it
+// through the usual crop frame first — the gallery keeps the whole
+// picture, each surface takes the cut-out it needs.
+//
+// Edits go into `editorGallery`, a working copy that only reaches the
+// character on save, so cancelling the editor discards them along with
+// every other unsaved change.
+// =============================================================
+const GALLERY_MAX_SIDE = 1600;   // longest edge of a stored gallery picture
+
+// Tolerates both shapes a card may carry: bare data URL strings and the
+// { src } records an older/other build might have written.
+function normalizeGallery(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(entry => (typeof entry === 'string' ? entry : entry && entry.src)).filter(Boolean);
+}
+
+// Bumped every time the strip changes hands. An upload batch that is still
+// encoding when the editor closes or moves to another card carries the old
+// number and drops its remaining pictures instead of filing them elsewhere.
+let editorGallerySession = 0;
+
+function resetEditorGallery(images) {
+    editorGallery = images;
+    editorGallerySession++;
+    renderEditorGallery();
+}
+
+function renderEditorGallery() {
+    const strip = document.getElementById('editor-gallery-strip');
+    const addBtn = document.getElementById('editor-gallery-add-btn');
+    if (!strip || !addBtn) return;
+
+    strip.querySelectorAll('.editor-gallery-thumb').forEach(el => el.remove());
+
+    editorGallery.forEach((src, index) => {
+        const thumb = document.createElement('button');
+        thumb.type = 'button';
+        thumb.className = 'editor-gallery-thumb effect-container';
+        thumb.title = 'Use this image';
+        thumb.setAttribute('aria-label', `Gallery image ${index + 1}`);
+        thumb.style.backgroundImage = `url('${src}')`;
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        thumb.appendChild(img);
+
+        thumb.addEventListener('click', () => openGalleryActionModal(index));
+        // Appended, so the "+" tile stays first and in view no matter how far
+        // the strip has grown.
+        strip.appendChild(thumb);
+    });
+
+    // Nothing to tap yet — the hint would only be in the way.
+    const hint = document.getElementById('editor-gallery-hint');
+    if (hint) hint.classList.toggle('hidden', editorGallery.length === 0);
+}
+
+const galleryUploader = document.getElementById('gallery-uploader');
+const galleryAddBtn = document.getElementById('editor-gallery-add-btn');
+
+if (galleryAddBtn && galleryUploader) {
+    galleryAddBtn.addEventListener('click', () => galleryUploader.click());
+
+    galleryUploader.addEventListener('change', async (event) => {
+        const files = Array.from(event.target.files || []);
+        galleryUploader.value = '';
+        if (files.length === 0) return;
+
+        // One at a time: a batch of full-size photos decoded in parallel is
+        // enough to stall a phone. Each one shows up as soon as it is ready.
+        const session = editorGallerySession;
+        galleryAddBtn.disabled = true;
+        let failed = 0;
+        try {
+            for (const file of files) {
+                try {
+                    const { dataURL } = await imageFileToWebp(file, 0.80, GALLERY_MAX_SIDE);
+                    if (session !== editorGallerySession) return;   // the editor moved on
+                    editorGallery.push(dataURL);
+                    renderEditorGallery();
+                } catch (error) {
+                    console.error('Error adding an image to the gallery:', error);
+                    failed++;
+                }
+            }
+        } finally {
+            galleryAddBtn.disabled = false;
+        }
+
+        if (failed > 0) {
+            showCustomAlert(failed === 1
+                ? 'One image could not be processed and was skipped.'
+                : `${failed} images could not be processed and were skipped.`);
+        }
+    });
+}
+
+const galleryActionModal = document.getElementById('gallery-action-modal');
+const galleryActionImg = document.getElementById('gallery-action-img');
+const galleryActionAvatarBtn = document.getElementById('gallery-action-avatar-btn');
+const galleryActionBgBtn = document.getElementById('gallery-action-bg-btn');
+const galleryActionDeleteBtn = document.getElementById('gallery-action-delete-btn');
+const galleryActionCancelBtn = document.getElementById('gallery-action-cancel-btn');
+let galleryActionIndex = -1;
+
+function onGalleryActionKeyDown(e) {
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeGalleryActionModal();
+    }
+}
+
+function closeGalleryActionModal() {
+    galleryActionIndex = -1;
+    document.removeEventListener('keydown', onGalleryActionKeyDown, true);
+    if (!galleryActionModal) return;
+    galleryActionModal.classList.add('hidden');
+    galleryActionImg.removeAttribute('src');
+    galleryActionImg.parentElement.style.backgroundImage = 'none';
+}
+
+function openGalleryActionModal(index) {
+    const src = editorGallery[index];
+    if (!galleryActionModal || !src) return;
+
+    galleryActionIndex = index;
+    galleryActionImg.src = src;
+    galleryActionImg.parentElement.style.backgroundImage = `url('${src}')`;
+    // A world card has no avatar of its own — its tile shows the background.
+    galleryActionAvatarBtn.classList.toggle('hidden', cardTypeWorldRadio.checked);
+    galleryActionModal.classList.remove('hidden');
+    document.addEventListener('keydown', onGalleryActionKeyDown, true);
+}
+
+async function assignGalleryImageTo(targetId) {
+    const src = editorGallery[galleryActionIndex];
+    if (!src) return;
+    closeGalleryActionModal();
+
+    try {
+        const adjusted = await openImageAdjuster(src, imageAdjustOptionsFor(targetId));
+        if (!adjusted) return;   // cancelled — leave the current image alone
+        applyAdjustedCardImage(targetId, adjusted, src);
+    } catch (error) {
+        console.error('Error using the gallery image:', error);
+        showCustomAlert('There was an error processing the image file.');
+    }
+}
+
+if (galleryActionModal) {
+    galleryActionAvatarBtn.addEventListener('click', () => assignGalleryImageTo('char-avatar'));
+    galleryActionBgBtn.addEventListener('click', () => assignGalleryImageTo('char-background'));
+
+    galleryActionDeleteBtn.addEventListener('click', async () => {
+        const index = galleryActionIndex;
+        closeGalleryActionModal();
+        if (!editorGallery[index]) return;
+        if (!await showCustomConfirm('Remove this image from the gallery?', true)) return;
+        editorGallery.splice(index, 1);
+        renderEditorGallery();
+    });
+
+    galleryActionCancelBtn.addEventListener('click', closeGalleryActionModal);
+    galleryActionModal.addEventListener('click', (e) => {
+        if (e.target === galleryActionModal) closeGalleryActionModal();
+    });
+}
 
 
 
