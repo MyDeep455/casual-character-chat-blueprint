@@ -5137,7 +5137,7 @@ function openWorldCharPickerModal() {
         panel.className = 'modal-content';
         panel.style.cssText = 'max-width:600px;width:min(600px,92vw);';
         panel.innerHTML = `
-          <h2>Add/Remove Characters</h2>
+          <h2>Add / Remove Characters</h2>
           <p>Choose the characters for this world:</p>
           <div class="modal-search-container" style="display:flex;align-items:center;gap:10px;">
             <input type="search" id="worldCharPickerSearch" class="modal-search-input" placeholder="🔎 Search Character…">
@@ -7739,8 +7739,19 @@ personaEditorAvatarImg.onerror = () => {
             })();
 
         } else if (effect === 'sakura') {
-            const BASE = 35;
-            const spawnSakura = () => ({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*10+7, s: Math.random()*0.7+0.25, drift: (Math.random()-0.5)*1.5, wobble: Math.random()*Math.PI*2, wobbleSpeed: Math.random()*0.03+0.01, rotation: Math.random()*Math.PI*2, rotSpeed: (Math.random()-0.5)*0.04, opacity: Math.random()*0.2+0.78 });
+            const BASE = 48;
+            const spawnSakura = () => {
+                const depth=Math.random()*0.55+0.45;
+                return {
+                    x:Math.random()*W, y:Math.random()*H, r:(Math.random()*6+6.5)*depth,
+                    vy:(Math.random()*0.48+0.3)*depth, vx:(Math.random()*0.42+0.12)*(Math.random()<0.82?1:-1),
+                    sway:Math.random()*0.95+0.35, wobble:Math.random()*Math.PI*2,
+                    wobbleSpeed:Math.random()*0.025+0.009, rotation:Math.random()*Math.PI*2,
+                    rotSpeed:(Math.random()-0.5)*0.052, flip:Math.random()*Math.PI*2,
+                    flipSpeed:Math.random()*0.065+0.025, opacity:Math.random()*0.24+0.68,
+                    hue:Math.random()*10+338, depth
+                };
+            };
             for (let i = 0; i < Math.round(BASE * intensityFactor); i++) particlesList.push(spawnSakura());
             (function drawSakura() {
                 if (currentParticleEffect !== 'sakura') return;
@@ -7749,36 +7760,42 @@ personaEditorAvatarImg.onerror = () => {
                 if (particlesList.length > target) particlesList.length = target;
                 particleCtx.clearRect(0,0,W,H);
                 particlesList.forEach(p => {
-                    p.wobble+=p.wobbleSpeed; p.rotation+=p.rotSpeed;
+                    p.wobble+=p.wobbleSpeed;
+                    p.rotation+=p.rotSpeed;
+                    p.flip+=p.flipSpeed;
+                    p.x+=p.vx+Math.sin(p.wobble)*p.sway;
+                    p.y+=p.vy;
+                    const flipScale=0.16+Math.abs(Math.cos(p.flip))*0.84;
                     particleCtx.save();
-                    particleCtx.translate(p.x,p.y); particleCtx.rotate(p.rotation);
+                    particleCtx.translate(p.x,p.y);
+                    particleCtx.rotate(p.rotation+Math.sin(p.wobble)*0.16);
+                    particleCtx.scale(0.8,flipScale);
                     const baseOpacity = Math.min(p.opacity * (0.5 + intensityFactor * 0.5), 1);
-                    for (let k=0;k<5;k++){
-                        particleCtx.save();
-                        particleCtx.rotate(k*Math.PI*2/5);
-                        const pg = particleCtx.createRadialGradient(0,-p.r*0.4,0,0,-p.r*0.4,p.r*0.85);
-                        pg.addColorStop(0,`rgba(255,235,245,${baseOpacity})`);
-                        pg.addColorStop(0.55,`rgba(255,185,215,${baseOpacity})`);
-                        pg.addColorStop(1,`rgba(230,140,180,${baseOpacity*0.5})`);
-                        particleCtx.fillStyle=pg;
-                        particleCtx.strokeStyle=`rgba(210,120,155,${baseOpacity*0.55})`;
-                        particleCtx.lineWidth=0.8;
-                        particleCtx.beginPath();
-                        const pr=p.r;
-                        particleCtx.moveTo(0,0);
-                        particleCtx.bezierCurveTo(-pr*0.5,-pr*0.15,-pr*0.48,-pr*0.65,-pr*0.18,-pr);
-                        particleCtx.quadraticCurveTo(0,-pr*0.68,pr*0.18,-pr);
-                        particleCtx.bezierCurveTo(pr*0.48,-pr*0.65,pr*0.5,-pr*0.15,0,0);
-                        particleCtx.closePath();
-                        particleCtx.fill();
-                        particleCtx.stroke();
-                        particleCtx.restore();
-                    }
-                    particleCtx.fillStyle=`rgba(255,150,180,${baseOpacity})`;
-                    particleCtx.beginPath(); particleCtx.arc(0,0,p.r*0.15,0,Math.PI*2); particleCtx.fill();
+                    const front=Math.cos(p.flip)>0;
+                    const pg=particleCtx.createLinearGradient(0,-p.r,0,p.r*0.8);
+                    pg.addColorStop(0,`hsla(${p.hue},80%,${front?88:76}%,${baseOpacity})`);
+                    pg.addColorStop(0.58,`hsla(${p.hue+5},72%,${front?81:70}%,${baseOpacity})`);
+                    pg.addColorStop(1,`hsla(${p.hue+9},68%,65%,${baseOpacity*0.82})`);
+                    particleCtx.fillStyle=pg;
+                    particleCtx.strokeStyle=`hsla(${p.hue+4},55%,58%,${baseOpacity*0.42})`;
+                    particleCtx.lineWidth=0.55;
+                    particleCtx.beginPath();
+                    particleCtx.moveTo(0,p.r*0.78);
+                    particleCtx.bezierCurveTo(-p.r*0.68,p.r*0.35,-p.r*0.76,-p.r*0.35,-p.r*0.2,-p.r);
+                    particleCtx.quadraticCurveTo(0,-p.r*0.72,p.r*0.2,-p.r);
+                    particleCtx.bezierCurveTo(p.r*0.76,-p.r*0.35,p.r*0.68,p.r*0.35,0,p.r*0.78);
+                    particleCtx.closePath();
+                    particleCtx.fill();
+                    particleCtx.stroke();
+                    particleCtx.strokeStyle=`hsla(${p.hue+5},62%,62%,${baseOpacity*0.32})`;
+                    particleCtx.beginPath();
+                    particleCtx.moveTo(0,p.r*0.6);
+                    particleCtx.quadraticCurveTo(-p.r*0.08,0,0,-p.r*0.62);
+                    particleCtx.stroke();
                     particleCtx.restore();
-                    p.y+=p.s; p.x+=Math.sin(p.wobble)*p.drift;
-                    if (p.y>H+15){p.y=-15;p.x=Math.random()*W;}
+                    if (p.y>H+p.r*2){p.y=-p.r*2;p.x=Math.random()*W;}
+                    if (p.x>W+p.r*2) p.x=-p.r*2;
+                    if (p.x<-p.r*2) p.x=W+p.r*2;
                 });
                 particleAnimId = requestAnimationFrame(drawSakura);
             })();
@@ -9778,9 +9795,11 @@ function adjustCardImageFit() {
             if (isPortrait) {
                 imageElement.style.objectFit = 'contain';
                 imageElement.parentElement.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                imageElement.parentElement.classList.add('has-contain-img');
             } else {
                 imageElement.style.objectFit = 'cover';
-                imageElement.parentElement.style.backgroundColor = ''; 
+                imageElement.parentElement.style.backgroundColor = '';
+                imageElement.parentElement.classList.remove('has-contain-img');
             }
         };
 

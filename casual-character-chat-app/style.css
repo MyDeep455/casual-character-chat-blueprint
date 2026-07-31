@@ -420,7 +420,7 @@ h1 {
     position: relative;
     z-index: 1;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-    border-radius: 0;
+    border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: transparent;
     /* Permanent compositing layer for the whole card: frame, image and name
@@ -458,6 +458,31 @@ h1 {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
+/* Desktop: the blurred side fill is only visible behind portrait imgs
+   (object-fit: contain, set by adjustCardImageFit which tags them
+   has-contain-img) — skip its GPU blur surface for landscape imgs, which
+   cover the frame */
+.card-image-container.effect-container::before {
+    content: none;
+}
+.card-image-container.effect-container.has-contain-img::before {
+    content: '';
+}
+
+/* Touch devices: one live GPU blur layer per card overwhelms mobile GPUs,
+   so there the backdrop is a tiny pre-blurred canvas thumbnail set as
+   background-image by setBlurredCardBackdrop(). has-live-blur re-enables
+   the blur surface only when a backdrop can't be generated (e.g. a
+   cross-origin avatar would taint the canvas). */
+@media (hover: none) and (pointer: coarse) {
+    .card-image-container.effect-container.has-contain-img::before {
+        content: none;
+    }
+    .card-image-container.effect-container.has-live-blur::before {
+        content: '';
+    }
+}
+
 .card-image-container::after {
     content: '';
     position: absolute;
@@ -468,21 +493,6 @@ h1 {
     background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.62));
     pointer-events: none;
     z-index: 2;
-}
-
-/* Touch devices: one live GPU blur layer per card (from the generic
-   .effect-container::before) overwhelms mobile GPUs, so there the backdrop
-   is a tiny pre-blurred canvas thumbnail set as background-image by
-   setBlurredCardBackdrop(). has-live-blur re-enables the blur surface only
-   when a backdrop can't be generated (e.g. a cross-origin avatar would
-   taint the canvas). Desktop keeps the live blur. */
-@media (hover: none) and (pointer: coarse) {
-    .card-image-container.effect-container::before {
-        content: none;
-    }
-    .card-image-container.effect-container.has-live-blur::before {
-        content: '';
-    }
 }
 
 .card-image-container img {
@@ -500,10 +510,51 @@ h1 {
     align-items: center;
     font-size: 63px;
     line-height: 1;
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(216, 203, 255, 0.3);
+    background-color: rgba(139, 108, 247, 0.08);
     user-select: none;
     position: relative;
     z-index: 1;
+}
+
+/* Character cards without an avatar get the same shiny frame as the character
+   editor: dark base + diagonal purple wash, glass sheen layered on by ::after. */
+.card-image-container > .placeholder-icon,
+.card-image-container > .world-card-placeholder {
+    background-color: #14121f;
+    background-image:
+        linear-gradient(0deg, rgba(139, 108, 247, 0.08), rgba(139, 108, 247, 0.08)),
+        linear-gradient(165deg, rgba(139, 108, 247, 0.18), rgba(20, 18, 31, 0) 60%);
+}
+
+/* World cards keep their blue identity — same sheen, cooler wash. */
+.card-image-container > .world-card-placeholder {
+    position: relative;
+    z-index: 1;
+    background-color: #101623;
+    background-image:
+        linear-gradient(0deg, rgba(108, 158, 247, 0.08), rgba(108, 158, 247, 0.08)),
+        linear-gradient(165deg, rgba(108, 158, 247, 0.20), rgba(16, 22, 35, 0) 60%);
+}
+
+.card-image-container > .placeholder-icon::after,
+.card-image-container > .world-card-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 2;
+    transition: background 0.2s ease;
+}
+
+/* Parity with the hover brighten applied to real card images. */
+.character-card:hover .card-image-container > .placeholder-icon::after,
+.character-card:hover .card-image-container > .world-card-placeholder::after {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 30%);
 }
 
 .card-name-container {
@@ -522,16 +573,18 @@ h1 {
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    /* faint light-gray wash layered over the glass — keeps the transparency */
-    background: linear-gradient(rgba(228, 228, 234, 0.07), rgba(228, 228, 234, 0.07)), rgba(59, 59, 59, 0.473);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-left: 2px solid rgba(255, 255, 255, 0.35);
+    /* faint light-gray wash layered over the glass gradient — keeps the transparency */
+    background: linear-gradient(rgba(228, 228, 234, 0.07), rgba(228, 228, 234, 0.07)),
+                linear-gradient(180deg, rgba(70, 66, 92, 0.5), rgba(24, 22, 36, 0.55));
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 2px solid rgba(196, 181, 255, 0.45);
 }
 
 /* World cards: same glass, but the wash leans subtly bluish to set them apart */
 .card--world .card-name-container {
-    background: linear-gradient(rgba(178, 202, 244, 0.09), rgba(178, 202, 244, 0.09)), rgba(59, 59, 59, 0.473);
-    border-left-color: rgba(186, 210, 255, 0.4);
+    background: linear-gradient(rgba(114, 159, 238, 0.09), rgba(114, 159, 238, 0.09)),
+                linear-gradient(180deg, rgba(70, 66, 92, 0.5), rgba(24, 22, 36, 0.55));
+    border-left-color: rgba(168, 198, 255, 0.45);
 }
 
 .card-name-container span {
@@ -620,13 +673,41 @@ h1 {
 }
 
 #chat-list-avatar-container {
+  position: relative;
   width: 216px;
   height: 216px;
-  border-radius: 0;
+  border-radius: 18px;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.30);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(196, 181, 255, 0.35);
+  box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.55),
+      0 2px 8px rgba(0, 0, 0, 0.45),
+      0 0 22px rgba(139, 108, 247, 0.15);
+  box-sizing: border-box;
   flex-shrink: 0;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+#chat-list-avatar-container:hover {
+  border-color: rgba(216, 203, 255, 0.6);
+  box-shadow:
+      0 12px 34px rgba(0, 0, 0, 0.6),
+      0 2px 8px rgba(0, 0, 0, 0.45),
+      0 0 32px rgba(139, 108, 247, 0.3);
+}
+
+/* ID selector outranks the later .effect-container::after { content: none } */
+#chat-list-avatar-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+  box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 2;
 }
 
 #chat-list-avatar {
@@ -640,20 +721,54 @@ h1 {
   filter: contrast(1.05) saturate(1.04);
 }
 
+/* Mirrors the character editor's avatar frame: dark base + diagonal purple
+   wash, with the glass sheen layered on top by ::after. */
 #chat-list-avatar-placeholder {
+    position: relative;
     width: 216px;
     height: 216px;
-    border-radius: 0;
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+    border: 1px solid rgba(196, 181, 255, 0.35);
+    background-color: #14121f;
+    background-image:
+        linear-gradient(0deg, rgba(139, 108, 247, 0.08), rgba(139, 108, 247, 0.08)),
+        linear-gradient(165deg, rgba(139, 108, 247, 0.18), rgba(20, 18, 31, 0) 60%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 81px;
-    color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    line-height: 1;
+    color: rgba(216, 203, 255, 0.3);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.55),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 22px rgba(139, 108, 247, 0.15);
     user-select: none;
     flex-shrink: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+#chat-list-avatar-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 2;
+}
+
+#chat-list-avatar-placeholder:hover {
+    border-color: rgba(216, 203, 255, 0.6);
+    box-shadow:
+        0 12px 34px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 32px rgba(139, 108, 247, 0.3);
 }
 
 .chat-list-character-header h2 {
@@ -1161,20 +1276,46 @@ h1 {
 .message-avatar {
     width: var(--ai-avatar-size, 180px);
     height: var(--ai-avatar-size, 180px);
-    border-radius: 14px;
+    border-radius: min(18px, 12%);
     box-shadow: 0 2px 5px rgb(0, 0, 0, 0.5);
     flex-shrink: 0;
     margin-bottom: 9px;
-    border: none; 
-    overflow: hidden; 
-    background-color: rgba(255, 255, 255, 0.1); 
-    position: relative; 
+    border: none;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+/* Frame only on the outer container — the nested placeholder div also carries .message-avatar */
+.ai-message-container > .message-avatar,
+.user-message-container > .message-avatar {
+    border: 1px solid rgba(196, 181, 255, 0.35);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(139, 108, 247, 0.14);
+    box-sizing: border-box;
+    background-color: #14121f;
+    background-image: linear-gradient(165deg, rgba(139, 108, 247, 0.18), rgba(20, 18, 31, 0) 60%);
+}
+
+/* Two-class specificity outranks the later .effect-container::after { content: none } */
+.ai-message-container > .message-avatar::after,
+.user-message-container > .message-avatar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0) 16%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .message-avatar.placeholder-icon {
     font-size: var(--ai-placeholder-icon-size, 108px);
     line-height: var(--ai-avatar-size, 180px);
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(216, 203, 255, 0.3);
+    background-color: transparent;
 }
 
 .ai-message,
@@ -1497,15 +1638,43 @@ h1 {
 
 
 .editor-avatar-container {
+    position: relative;
     width: 216px;
     height: 216px;
-    border-radius: 0;
-    border: 2px solid rgba(255, 255, 255, 0.30);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    border: 1px solid rgba(196, 181, 255, 0.35);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.55),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 22px rgba(139, 108, 247, 0.15);
     box-sizing: border-box;
     flex-shrink: 0;
     overflow: hidden;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #14121f;
+    background-image: linear-gradient(165deg, rgba(139, 108, 247, 0.18), rgba(20, 18, 31, 0) 60%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.editor-avatar-container:hover {
+    border-color: rgba(216, 203, 255, 0.6);
+    box-shadow:
+        0 12px 34px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.45),
+        0 0 32px rgba(139, 108, 247, 0.3);
+}
+
+/* .modal-content prefix outranks the later .effect-container::after { content: none } */
+.modal-content .editor-avatar-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 28%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        inset 0 -22px 28px -20px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 2;
 }
 
 #persona-editor-avatar-container {
@@ -1531,12 +1700,12 @@ h1 {
 #editor-avatar-placeholder, #persona-editor-avatar-placeholder {
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.1);
+    background: rgba(139, 108, 247, 0.08);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 81px;
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(216, 203, 255, 0.3);
     user-select: none;
 }
 
@@ -3416,19 +3585,20 @@ max-height: 27em;
 }
 
 .avatar-container {
-  position: relative; 
+  position: relative;
   width: 90px;
   height: 90px;
-  border-radius: 50%; 
-  overflow: hidden; 
-  border: 1px solid rgba(125, 125, 125, 0.5);
-  transition: transform 0.2s;
-  background-color: rgba(0, 0, 0, 0.5); 
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(196, 181, 255, 0.35);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(139, 108, 247, 0.14);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  background-color: #14121f;
 }
 
 .favorite-item:hover .avatar-container {
-  transform: scale(1.1); 
-  z-index: 100;
+  transform: translateY(-3px);
+  border-color: rgba(216, 203, 255, 0.6);
 }
 
 
@@ -3481,33 +3651,34 @@ max-height: 27em;
 
 
 .favorite-item .placeholder-icon {
-    width: 90px; 
-    height: 90px; 
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    font-size: 45px; 
+    border: none;
+    font-size: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.4);
-    background-color: rgba(0,0,0,0.2);
-    transition: transform 0.2s;
-}
-
-.favorite-item:hover img,
-.favorite-item:hover .placeholder-icon {
-    transform: scale(1.1);
+    color: rgba(216, 203, 255, 0.3);
 }
 
 .favorite-item span {
-    color: #ffffffc5;
-    font-size: 14px; 
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
     font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     text-align: center;
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 3px 10px rgba(0, 0, 0, 0.35);
+    transition: color 0.2s ease;
+}
+
+.favorite-item:hover span {
+    color: #fff;
 }
 
 .favorite-btn {
@@ -6532,7 +6703,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     align-items: center;
     justify-content: center;
     font-size: 52px;
-    color: rgba(255, 255, 255, 0.18);
+    color: rgba(190, 210, 255, 0.35);
     background: linear-gradient(160deg, rgba(40, 60, 100, 0.4) 0%, rgba(20, 30, 60, 0.6) 100%);
 }
 .world-badge {
@@ -6850,6 +7021,7 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
     color: #9aa0a6;
     font-size: 13px;
 }
+
 
 /* ===================== IMAGE ADJUST (crop / zoom / pan) ======================
    Fixed crop frame, image freely zoomable + draggable behind it. Everything
@@ -7534,5 +7706,3 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
         font-size: 14px;
     }
 }
-
-
