@@ -794,140 +794,131 @@ try {
 
 
 
-function sanitizeCardNotes(raw) {
-  const str = String(raw || "");
-  const imageUrlRegex = /https?:\/\/[^\s"'()<>]+?\.(?:png|jpe?g|gif|webp|svg)/gi;
-  const imageUrls = Array.from(str.matchAll(imageUrlRegex)).map(m => m[0]);
+// Card lorebooks arrive in several shapes: a V3 `character_book` object with an
+// entries array, a bare string, or one of the older flat fields. Everything
+// funnels through here into { pieces, entries } - `pieces` feeds the always-on
+// lorebook text, `entries` the keyword-triggered list the editor can drive.
+function extractCardLorebook(data) {
+  const pieces = [];
+  const entries = [];
+  const push = (value) => {
+    const t = typeof value === "string" ? value.trim() : "";
+    if (t) pieces.push(t);
+  };
 
-  let cleaned = str
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "");
+  const book = data.character_book || data.embedded_lorebook || null;
+  if (typeof book === "string") push(book);
 
-  cleaned = cleaned
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p\s*>/gi, "\n\n")
-    .replace(/<\/div\s*>/gi, "\n")
-    .replace(/<\/li\s*>/gi, "\n")
-    .replace(/<li[^>]*>/gi, "- ")
-    .replace(/<\/h[1-6]\s*>/gi, "\n")
-    .replace(/<h[1-6][^>]*>/gi, "");
+  const list = Array.isArray(book) ? book
+             : (book && Array.isArray(book.entries) ? book.entries : null);
 
-  cleaned = cleaned.replace(/<\/?[^>]+>/g, "");
+  if (list) {
+    list.forEach((e) => {
+      if (!e) return;
+      const rawKeys = Array.isArray(e.keys) ? e.keys
+                    : Array.isArray(e.key) ? e.key
+                    : (e.keys || e.key || e.keyword || "");
+      const keywords = (Array.isArray(rawKeys) ? rawKeys.join(", ") : String(rawKeys || "")).trim();
+      const content = String(e.content || e.value || e.entry || "").trim();
+      if (!content) return;
 
-  const ta = document.createElement("textarea");
-  ta.innerHTML = cleaned;
-  cleaned = ta.value;
-  cleaned = cleaned.replace(/\r\n?/g, "\n"); 
-  cleaned = cleaned
-    .split("\n")
-    .map(line => line.replace(/[ \t\f\v]+/g, " ").trimEnd()) 
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")   
-    .trim();
-
-  if (imageUrls.length) {
-    const list = Array.from(new Set(imageUrls)).join("\n");
-    cleaned = `${cleaned}${cleaned ? "\n\n" : ""}Image links:\n${list}`;
+      entries.push({ keywords: keywords, text: content });
+      pieces.push([keywords ? `[${keywords}]` : "", content].filter(Boolean).join("\n").trim());
+    });
   }
-  return cleaned;
+
+  push(data.lorebook);
+  push(data.lore);
+  push(data.world_scenario);
+
+  return { pieces: pieces, entries: entries };
 }
-
-
 
 
 function convertExternalCardToCCC(externalCard, imageBlob = null) {
-  const data = externalCard.data || externalCard; 
-  console.log('[IMPORT MAP]', {
-    has_card_description: !!data.card_description,
-    has_tagline: !!data.tagline,
-    has_lore: !!data.lore,
-    has_lorebook: !!data.lorebook,
-    has_character_book: !!data.character_book,
-    has_creator_notes: !!(data.creator_notes || data.card_notes || data.creator_note || data.notes)
-  });
-    const cardDescription = data.card_description || data.tagline || "";
-    const allDescriptions = [
-        cardDescription,
-        "\n--- CHARACTER DESCRIPTION ---",
-        data.personality || "",
-        data.description || "",
-        "\n--- EXAMPLE MESSAGES ---",
-        data.mes_example || ""
-    ].filter(s => s.trim() !== "").join("\n\n").trim();
+  const data = externalCard.data || externalCard;
+  const txt = (v) => (typeof v === "string" ? v.trim() : "");
 
-    const cardNotes =
-  data.card_notes ||
-  data.creator_notes ||
-  data.creator_note || 
-  data.notes ||  
-  "";
-  const cleanCardNotes = sanitizeCardNotes(cardNotes);
-const cardDescOrTagline = (data.card_description || data.tagline || "").trim();
+  // A section is only written when it has something in it, so a card with no
+  // example dialogue no longer imports with an empty "--- EXAMPLE MESSAGES ---"
+  // heading dangling off the end of its description.
+  const joinSections = (sections) => sections
+    .filter(s => txt(s.body))
+    .map(s => (s.header ? `${s.header}\n${txt(s.body)}` : txt(s.body)))
+    .join("\n\n")
+    .trim();
 
-const lorePieces = [];
+  const tagline     = txt(data.card_description || data.tagline);
+  const personality = txt(data.personality || data.tavern_personality);
+  const description = txt(data.description);
+  const mesExample  = txt(data.mes_example || data.example_dialogs);
 
-if (typeof data.character_book === "string" && data.character_book.trim()) {
-  lorePieces.push(data.character_book.trim());
-}
+  const allDescriptions = joinSections([
+    { header: "", body: tagline },
+    { header: "--- CHARACTER DESCRIPTION ---", body: [personality, description].filter(Boolean).join("\n\n") },
+    { header: "--- EXAMPLE MESSAGES ---", body: mesExample }
+  ]);
 
-if (data.character_book && Array.isArray(data.character_book.entries)) {
-  data.character_book.entries.forEach((e) => {
-    const keys = Array.isArray(e.keys) ? e.keys.join(", ") : (e.key || "");
-    const val  = e.content || e.value || "";
-    const entryText = [keys ? `[${keys}]` : "", val].filter(Boolean).join("\n").trim();
-    if (entryText) lorePieces.push(entryText);
-  });
-}
+  // Creator notes are deliberately not imported. They are a message from the
+  // card's author to whoever downloads it - changelogs, credits, "use this
+  // preset", links - and not anything the character is. In the description
+  // they read as part of the persona, in the lorebook as world facts. Both
+  // are wrong, so they are left behind.
 
-if (typeof data.lorebook === "string" && data.lorebook.trim()) {
-  lorePieces.push(data.lorebook.trim());
-}
-if (typeof data.lore === "string" && data.lore.trim()) {
-  lorePieces.push(data.lore.trim());
-}
-if (typeof data.world_scenario === "string" && data.world_scenario.trim()) {
-  lorePieces.push(data.world_scenario.trim());
-}
+  const book = extractCardLorebook(data);
+  const flatLore = book.pieces.filter(p => p && p !== tagline).join("\n\n").trim();
 
-const filteredLorePieces = lorePieces.filter(p => p.trim() && p.trim() !== cardDescOrTagline);
+  // Which lore mode the card actually wants. Always-on lore is prepended to
+  // every prompt, which is fine for a few paragraphs and ruinous for a real
+  // lorebook - cards routinely carry 150+ entries running to hundreds of KB.
+  // When most entries came with trigger keywords, that is the author saying
+  // "inject these on demand", so the card opens keyword-triggered and the bulk
+  // lives in loreEntries only. With no keywords nothing would ever fire, so
+  // those stay always-on. Either way the entries are filled in, so switching
+  // the toggle in the editor just works.
+  const keyed = book.entries.filter(e => e.keywords).length;
+  const useKeyword = book.entries.length > 0 && keyed >= book.entries.length / 2;
+  const allLore = useKeyword ? "" : flatLore;
 
-const allLore = [
-  ...filteredLorePieces,
-  cleanCardNotes ? `\n\n--- CARD NOTES ---\n${cleanCardNotes}` : ""
-].filter(s => s.trim() !== "").join("\n\n").trim();
+  const allScenarios = [];
+  const mainScenarioText = [txt(data.scenario), txt(data.first_mes)].filter(Boolean).join("\n\n").trim();
+  if (mainScenarioText) {
+    allScenarios.push({ name: 'Main Greeting', text: mainScenarioText });
+  }
+  if (Array.isArray(data.alternate_greetings)) {
+    data.alternate_greetings.forEach((greeting, index) => {
+      const t = txt(greeting);
+      if (t) allScenarios.push({ name: `Alternate Greeting ${index + 1}`, text: t });
+    });
+  }
 
+  // V2 cards conventionally write the literal string "none" when they carry no
+  // picture, which would otherwise be handed to an <img> as a src and render
+  // as a broken image.
+  const cardAvatar = /^(data:|https?:|blob:)/i.test(txt(data.avatar)) ? txt(data.avatar) : "";
 
-    const allScenarios = [];
-    const mainScenarioText = [data.scenario || "", data.first_mes || ""].join("\n\n").trim();
-    if (mainScenarioText) {
-        allScenarios.push({ name: 'Main Greeting', text: mainScenarioText });
-    }
-    if (Array.isArray(data.alternate_greetings)) {
-        data.alternate_greetings.forEach((greeting, index) => {
-            if (typeof greeting === 'string' && greeting.trim() !== '') {
-                allScenarios.push({
-                    name: `Alternate Greeting ${index + 1}`,
-                    text: greeting.trim()
-                });
-            }
-        });
-    }
-
-    const newChar = {
-        id: 'char-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        name: data.name || 'Unnamed Import',
-        avatar: imageBlob || data.avatar || "",
-        background: '',
-        description: allDescriptions,
-        lore: allLore,
-        tags: (Array.isArray(data.tags) ? data.tags.join(', ') : ''),
-        instructions: data.system_prompt || '',
-        reminder: data.post_history_instructions || '',
-        narratorReminder: '',
-        scenarios: allScenarios,
-        chats: {}
-    };
-    return newChar;
+  const newChar = {
+    id: 'char-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+    name: txt(data.name) || 'Unnamed Import',
+    chatName: txt(data.nickname) || txt(data.name) || '',
+    avatar: imageBlob || cardAvatar,
+    background: '',
+    gallery: [],
+    description: allDescriptions,
+    lore: allLore,
+    loreMode: useKeyword ? 'keyword' : 'flat',
+    loreEntries: book.entries,
+    tags: (Array.isArray(data.tags) ? data.tags.join(', ') : ''),
+    instructions: txt(data.system_prompt),
+    reminder: txt(data.post_history_instructions),
+    narratorReminder: '',
+    musicUrl: '',
+    scenarios: allScenarios,
+    type: 'character',
+    characterIds: [],
+    chats: {}
+  };
+  return newChar;
 }
 
 
