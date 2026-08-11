@@ -9406,23 +9406,12 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
 });
 
     exportBtn.addEventListener('click', handleExport);
-    importBtn.addEventListener('click', async () => {
-  const choice = await showChoiceDialog(
-    "What do you want to import?",
-    [
-      { label: "Backup (.json)", value: "json", primary: true },
-      { label: "Character Card (.png/.json)", value: "card", extraClass: "violet-btn" },
-      { label: "Cancel", value: null }
-    ]
-  );
-  if (!choice) return;
-  if (choice === "json") {
-    fileInput.setAttribute('accept', '.json,application/json');
-  } else {
-    fileInput.setAttribute('accept', '.json,application/json,image/png');
-  }
-  fileInput.click();
-});
+    importBtn.addEventListener('click', () => {
+        // No format picker: handleFileImport sniffs the file itself and routes
+        // backups, Character Card JSON and Character Card PNG on its own.
+        fileInput.setAttribute('accept', '.json,application/json,image/png');
+        fileInput.click();
+    });
     fileInput.addEventListener('change', handleFileImport);
     messageInput.addEventListener('input', autoResizeTextarea);
     messageInput.addEventListener('keydown', handleTextareaEnter);
