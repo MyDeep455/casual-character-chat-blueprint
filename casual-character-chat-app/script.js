@@ -3369,6 +3369,17 @@ function setBubbleLoading(mainContentEl, isLoading, options = {}) {
 
 
 
+// Message elements are updated in place (streaming, variant swipes, edits), so the
+// read-aloud button must pull the text from the live history entry when it is clicked
+// instead of the snapshot that existed when the element was built. Otherwise a freshly
+// streamed reply is still read as the '...' placeholder it started out as.
+function getMessageSpeechText(message) {
+    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    const liveMessage = chat?.history?.find(m => m.id === message.id) || message;
+    if (liveMessage.sender === 'user') return liveMessage.main || '';
+    return liveMessage.variations?.[liveMessage.activeVariant]?.main || '';
+}
+
 function displayMessage(message) {
     let messageWrapper = document.createElement('div');
     const messageElement = document.createElement('div');
@@ -3531,7 +3542,7 @@ messageWrapper.appendChild(avatarContainer);
                 speechSynthesis.cancel();
                 ttsBtn.textContent = '🔊';
             } else {
-                speakText(mainText, message.id);
+                speakText(getMessageSpeechText(message), message.id);
             }
         });
         actionGroup.appendChild(ttsBtn);
@@ -8499,7 +8510,8 @@ personaEditorAvatarImg.onerror = () => {
     function speakText(text, messageId) {
         if (!('speechSynthesis' in window)) return;
         speechSynthesis.cancel();
-        if (!text) return;
+        // '...' is the streaming placeholder, never real reply text worth reading out.
+        if (!text || !text.trim() || text.trim() === '...') return;
         const utter = new SpeechSynthesisUtterance(text);
         const sel = document.getElementById('tts-voice-select');
         const voiceURI = sel?.value || ttsCurrentVoiceURI;
@@ -8510,6 +8522,8 @@ personaEditorAvatarImg.onerror = () => {
         const btn = messageId ? document.querySelector(`[data-message-id="${messageId}"] .tts-btn`) : null;
         if (btn) btn.textContent = '⏹';
         utter.onend = () => { if (btn) btn.textContent = '🔊'; };
+        // Cancelled/interrupted utterances report onerror instead of onend in some browsers.
+        utter.onerror = () => { if (btn) btn.textContent = '🔊'; };
         speechSynthesis.speak(utter);
     }
 
