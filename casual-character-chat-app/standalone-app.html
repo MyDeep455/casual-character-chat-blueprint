@@ -17011,6 +17011,12 @@ const defaultSettings = {
     let replyOptionsLoading = false;
     let pendingReplyOptions = null;
     let replyOptionsReqId = 0;
+    // Aborts the suggestion round still in flight, so a reply the user has
+    // already moved past cannot arrive over a newer one.
+    let replyOptionsController = null;
+    // The reply the current round was asked for, so a failed round is not
+    // repeated every time the message box takes focus.
+    let replyOptionsForMessageId = null;
     let ttsEnabled = false;
     let ttsCurrentVoiceURI = '';
     let replyLength = 'default';
@@ -18005,10 +18011,7 @@ async function resetAppSettings() {
             }
             case 'replyOptionsEnabled':
                 replyOptionsEnabled = (value === 'true' || value === true);
-                if (!replyOptionsEnabled) {
-                    pendingReplyOptions = null;
-                    hideReplyOptionsDropdown();
-                }
+                if (!replyOptionsEnabled) cancelReplyOptions();
                 break;
             case 'suggestionModelId':
                 suggestionModelId = value || null;
@@ -19550,9 +19553,7 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     if (charId !== currentCharacterId || chatId !== currentChatId) {
         clearActiveGroupParticipant();
     }
-    pendingReplyOptions = null;
-    ++replyOptionsReqId;
-    hideReplyOptionsDropdown();
+    cancelReplyOptions();
     starsContainer.classList.remove('visible');
     currentCharacterId = charId;
     currentChatId = chatId;
@@ -20333,8 +20334,10 @@ async function handleChatSubmit(type) {
     // handler that requests reply suggestions.
     chatTurnInProgress = true;
     hideUndoDeleteFab();
-    pendingReplyOptions = null;
-    hideReplyOptionsDropdown();
+    // Suggestions for the reply being answered are now stale. Dropping the
+    // round in flight matters as much as hiding the bar: its answer used to
+    // arrive mid-stream and reopen the bar over the reply being written.
+    cancelReplyOptions();
     const userMessageRaw = messageInput.value.trim();
     messageInput.value = '';
     autoResizeTextarea({ target: messageInput });
@@ -20885,7 +20888,9 @@ if (elapsedTime > 20000) {
     stopStreamBtn.classList.add('hidden');
     currentStreamController = null;
     chatTurnInProgress = false;
-    if (!streamAbortedByUser) generateReplyOptionsInBackground();
+    // Not after a stop, and not after a failure either: the bubble then holds
+    // the "did not respond" notice, and suggesting replies to that is noise.
+    if (!streamAbortedByUser && hasAnyReplyContent) generateReplyOptionsInBackground();
 }
 
 
@@ -20898,6 +20903,8 @@ async function handleRegenerate(messageId) {
     // Only after the bail-outs above, or an early return would leave the flag
     // stuck on and suppress reply suggestions for the rest of the session.
     chatTurnInProgress = true;
+    // The reply they belong to is about to be rewritten.
+    cancelReplyOptions();
 
 let mainContentEl = null;
 let thinkBlockEl = null;
@@ -21432,7 +21439,9 @@ continue;
     storyBtn.disabled = false;
     currentStreamController = null;
     chatTurnInProgress = false;
-    generateReplyOptionsInBackground();
+    // newVariant is only set once a reply actually arrived; without it the
+    // variant holds an error notice, which is nothing to suggest replies to.
+    if (!streamAbortedByUser && newVariant) generateReplyOptionsInBackground();
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateSingleMessageView(messageId);
 }
@@ -21447,6 +21456,11 @@ async function handleContinue(messageId) {
     // Only after the bail-outs above, or an early return would leave the flag
     // stuck on and suppress reply suggestions for the rest of the session.
     chatTurnInProgress = true;
+    // The reply they belong to is about to grow a new ending.
+    cancelReplyOptions();
+    // Declared here rather than assigned into the global scope by accident,
+    // which is what the abort branch below used to do.
+    let streamAbortedByUser = false;
 
 let mainContentEl = null;
 let thinkBlockEl = null;
@@ -21882,6 +21896,7 @@ if (!finalThink) {
             clearStreamTimers();
             if (error.name === 'AbortError') {
                 console.log('Fetch aborted (Continue).');
+                streamAbortedByUser = true;
                 break;
     }
     console.error(`Error during continue (Attempt ${attempt}):`, error.message);
@@ -21917,7 +21932,7 @@ if (!finalThink) {
     storyBtn.disabled = false;
     currentStreamController = null;
     chatTurnInProgress = false;
-    generateReplyOptionsInBackground();
+    if (!streamAbortedByUser) generateReplyOptionsInBackground();
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateSingleMessageView(messageId);
 
@@ -25332,6 +25347,11 @@ personaEditorAvatarImg.onerror = () => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let reasoningText = '';
+        // Providers report a mid-stream failure as an error object inside an
+        // otherwise fine 200. Without this the callers only saw an empty
+        // answer and had to guess at the cause.
+        let streamError = '';
         let sseBuffer = '';
         while (true) {
             const { value, done } = await reader.read();
@@ -25346,11 +25366,21 @@ personaEditorAvatarImg.onerror = () => {
                 if (dataContent === '[DONE]') break;
                 try {
                     const parsed = JSON.parse(dataContent);
+                    if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
                     const delta = parsed.choices?.[0]?.delta;
                     if (delta?.content) fullText += delta.content;
+                    reasoningText += extractReasoningDelta(delta);
                 } catch (_) {}
             }
         }
+        // A thinking model can spend its whole answer in the reasoning channel
+        // and return no content at all, which reached the callers as an empty
+        // string. The chat stream already falls back to that text rather than
+        // showing nothing, and the same is better than nothing here.
+        if (!fullText.trim() && reasoningText.trim()) {
+            fullText = extractMainFromReasoning(reasoningText);
+        }
+        if (!fullText.trim() && streamError) throw new Error(streamError);
         return fullText.trim();
     }
 
@@ -25847,51 +25877,346 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
     // ── Reply Suggestions helpers ──
 
+    // A round of suggestions is two short lines, but models package them in
+    // every shape imaginable: inside a reasoning block, fenced as code, behind
+    // a "Sure, here you go:", numbered, quoted with typographic quotes, or cut
+    // off mid-sentence. Refusing any of those shapes costs the user the whole
+    // round and surfaces as "Could not parse", so each one is read instead.
+    // Strict JSON is tried first and wins outright, so a well-formed answer
+    // never goes near the repairs further down.
+    const REPLY_OPTION_MAX_CHARS = 400;
+    const REPLY_OPTION_MIN_CHARS = 6;
+    const REPLY_REASONING_TAGS = 'think|thinking|reason|reasoning|analysis|scratchpad';
+    const REPLY_FANCY_QUOTES = '‘’‚‛“”„‟«»';
+    // The prompt carries this example pair, and a model that only echoes it has
+    // not answered — "Option one." offered as a reply reads as a broken app.
+    const REPLY_OPTION_EXAMPLE = ['option one.', 'option two.'];
+    // Suggestions are optional garnish, so a provider that has stopped
+    // answering may not hold the bar on its spinner indefinitely.
+    const REPLY_OPTION_TIMEOUT_MS = 45000;
+
+    // Reasoning has to be dropped with its content, not just its tags. Removing
+    // the tags alone left the model's deliberation in the text, where a stray
+    // bracket ("two directions: [1] closer, [2] away") was read as the start of
+    // the JSON array, and an example quoted back inside it was returned as the
+    // answer.
+    function stripSuggestionWrapping(raw) {
+        let text = sanitizeModelOutput(raw);
+        if (!text.trim()) return '';
+
+        text = text.replace(new RegExp(`<\\s*(${REPLY_REASONING_TAGS})\\s*>[\\s\\S]*?<\\s*/\\s*\\1\\s*>`, 'gi'), '\n');
+        // A closing tag with no opening one: everything before it was thinking.
+        const headless = text.search(new RegExp(`<\\s*/\\s*(${REPLY_REASONING_TAGS})\\s*>`, 'i'));
+        if (headless !== -1) {
+            const tagEnd = text.indexOf('>', headless);
+            text = tagEnd === -1 ? '' : text.slice(tagEnd + 1);
+        }
+        // An opening tag that never closed: the rest is thinking, and the model
+        // never got as far as an answer.
+        const unclosed = text.search(new RegExp(`<\\s*(${REPLY_REASONING_TAGS})\\s*>`, 'i'));
+        if (unclosed !== -1) text = text.slice(0, unclosed);
+
+        const fenced = text.match(/```[a-z]*\s*([\s\S]*?)```/i);
+        if (fenced && fenced[1].trim()) text = fenced[1];
+        else text = text.replace(/```[a-z]*/gi, '\n');
+
+        return text.trim();
+    }
+
+    function cleanReplyOption(value) {
+        let s = sanitizeModelOutput(value == null ? '' : String(value)).replace(/\s+/g, ' ').trim();
+        if (!s) return '';
+        // Quotation marks around spoken words are wanted and kept. A lone one is
+        // a leftover from a repaired answer and reads as a typo, so it goes.
+        const quoteCount = (s.match(new RegExp(`["${REPLY_FANCY_QUOTES}]`, 'g')) || []).length;
+        if (quoteCount % 2 === 1) {
+            s = s.replace(new RegExp(`^["${REPLY_FANCY_QUOTES}]`), '')
+                 .replace(new RegExp(`["${REPLY_FANCY_QUOTES}]$`), '')
+                 .trim();
+        }
+        if (s.length > REPLY_OPTION_MAX_CHARS) {
+            const cut = s.slice(0, REPLY_OPTION_MAX_CHARS);
+            const lastSpace = cut.lastIndexOf(' ');
+            s = (lastSpace > REPLY_OPTION_MAX_CHARS * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + '…';
+        }
+        return s.length >= REPLY_OPTION_MIN_CHARS ? s : '';
+    }
+
+    // Only ever reached once strict parsing has already failed, so it may be
+    // heavy-handed: valid JSON is never put through it.
+    function repairJsonish(text) {
+        let s = text;
+        // Typographic or single quotes used as the string delimiters. Only the
+        // ones in delimiter position are touched, so an apostrophe in "don't"
+        // and a quoted word inside a sentence both survive.
+        s = s.replace(new RegExp(`([\\[{,:]\\s*)['${REPLY_FANCY_QUOTES}]`, 'g'), '$1"');
+        s = s.replace(new RegExp(`['${REPLY_FANCY_QUOTES}](\\s*[,\\]}])`, 'g'), '"$1');
+        s = s.replace(new RegExp(`^\\s*\\[\\s*['${REPLY_FANCY_QUOTES}]`), '["');
+        // ""Doubled"" delimiters, from a model asked for quotation marks inside
+        // a quoted string.
+        s = s.replace(/""([^"]*)""/g, '"$1"');
+        // Bare newlines and tabs inside string values, same as the card generator.
+        s = s.replace(/"(?:[^"\\]|\\.)*"/gs, m => m.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'));
+        s = s.replace(/,\s*([\]}])/g, '$1');
+
+        let inStr = false, esc = false, depth = 0, openQuote = -1;
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (esc) { esc = false; continue; }
+            if (ch === '\\' && inStr) { esc = true; continue; }
+            if (ch === '"') { if (!inStr) openQuote = i; inStr = !inStr; continue; }
+            if (!inStr) { if (ch === '[') depth++; else if (ch === ']') depth--; }
+        }
+        // An answer cut off mid-sentence: the half-written option is dropped
+        // rather than closed, so "I turn awa" never reaches the user.
+        if (inStr && openQuote !== -1) s = s.slice(0, openQuote).replace(/[\s,]+$/, '');
+        while (depth-- > 0) s += ']';
+        return s;
+    }
+
+    function parseLooseJson(text) {
+        if (!text || !text.trim()) return null;
+        for (const attempt of [text, repairJsonish(text)]) {
+            try { return JSON.parse(attempt); } catch (_) {}
+        }
+        return null;
+    }
+
+    function toReplyOptions(value) {
+        if (!value) return [];
+        let list = null;
+        if (Array.isArray(value)) list = value;
+        else if (typeof value === 'object') {
+            // {"options": [...]} and {"option1": "...", "option2": "..."} are
+            // both common answers to "output a JSON array".
+            const values = Object.values(value);
+            list = values.find(v => Array.isArray(v)) || values.filter(v => typeof v === 'string');
+        }
+        if (!Array.isArray(list)) return [];
+        return list
+            .map(item => {
+                if (typeof item === 'string') return item;
+                if (item && typeof item === 'object') {
+                    return Object.values(item).find(v => typeof v === 'string') || '';
+                }
+                return '';
+            })
+            .map(cleanReplyOption)
+            .filter(Boolean)
+            .slice(0, 2);
+    }
+
+    function replyOptionsFromJson(text) {
+        const candidates = [text];
+        // Every '[' is a possible start. Scanning from the first one only, as
+        // this used to, let a bracket in prose above the array hide it.
+        let starts = 0;
+        for (let i = 0; i < text.length && starts < 12; i++) {
+            if (text[i] !== '[') continue;
+            starts++;
+            let ends = 0;
+            for (let end = text.indexOf(']', i); end !== -1 && ends < 12; end = text.indexOf(']', end + 1)) {
+                candidates.push(text.slice(i, end + 1));
+                ends++;
+            }
+            candidates.push(text.slice(i)); // no closing bracket: cut off
+        }
+        let best = [];
+        for (const candidate of candidates) {
+            const options = toReplyOptions(parseLooseJson(candidate));
+            if (options.length >= 2) return options;
+            if (options.length > best.length) best = options;
+        }
+        return best;
+    }
+
+    // Last resort for an answer that is not JSON at all: numbered lines,
+    // bullets, or simply the two lines that were asked for.
+    function replyOptionsFromLines(text) {
+        const out = [];
+        for (const rawLine of text.split('\n')) {
+            let line = rawLine.trim();
+            if (!line) continue;
+            line = line.replace(/^[[\s]+/, '').replace(/[\],\s]+$/, '').trim();
+            line = line.replace(/^(?:option|reply|choice)?\s*\d+\s*[.):\]-]\s*/i, '')
+                       .replace(/^[-*•–—]\s+/, '')
+                       .replace(/^(?:option|reply|choice)\s*[a-z0-9]?\s*[:.\-]\s*/i, '')
+                       .trim();
+            if (!line) continue;
+            // A lead-in ("Here are two options:") is not one of the options.
+            if (/[:：]$/.test(line) && line.length < 80) continue;
+            // "…" — why this option: the note afterwards is not part of the reply.
+            const quoted = line.match(new RegExp(`^["${REPLY_FANCY_QUOTES}][\\s\\S]*["${REPLY_FANCY_QUOTES}]`));
+            if (quoted && quoted[0].length < line.length && /^[-–—(:,]/.test(line.slice(quoted[0].length).trim())) {
+                line = quoted[0];
+            }
+            const cleaned = cleanReplyOption(line);
+            if (cleaned.length < 8) continue;
+            out.push(cleaned);
+            if (out.length === 2) break;
+        }
+        return out;
+    }
+
+    function usableReplyOptions(options) {
+        const out = [];
+        for (const option of options) {
+            const key = option.toLowerCase();
+            if (REPLY_OPTION_EXAMPLE.includes(key)) continue;
+            if (out.some(kept => kept.toLowerCase() === key)) continue;
+            out.push(option);
+        }
+        return out;
+    }
+
+    // Returns 0, 1 or 2 options. A single one still beats a warning bar, but
+    // only when it came from a structured answer — a one-line refusal must not
+    // be dressed up as a suggestion, so the line reader needs two lines to
+    // count as an answer at all.
+    function parseReplyOptions(raw) {
+        const text = stripSuggestionWrapping(raw);
+        if (!text) return [];
+        const fromJson = usableReplyOptions(replyOptionsFromJson(text));
+        if (fromJson.length >= 2) return fromJson;
+        const fromLines = usableReplyOptions(replyOptionsFromLines(text));
+        if (fromLines.length >= 2) return fromLines;
+        return fromJson.slice(0, 1);
+    }
+
+    function replyOptionsDropdownEl() {
+        return document.getElementById('reply-options-dropdown');
+    }
+
+    // The bar sits between the chat and the message box, so opening it shortens
+    // the chat window. A reader sitting at the newest message stays there
+    // instead of having it pushed out of view.
+    function revealReplyOptionsDropdown(dropdown) {
+        const wasHidden = dropdown.classList.contains('hidden');
+        dropdown.classList.remove('hidden');
+        if (wasHidden && chatWindow && chatWindow._autoScroll !== false) {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    }
+
     function showReplyOptionsDropdown() {
         if (!replyOptionsEnabled) return;
-        const dropdown = document.getElementById('reply-options-dropdown');
+        // Nothing belonging to the previous reply may sit over a reply still
+        // being written. Sending a message focuses the message box on its first
+        // lines, and that focus used to reopen the bar in the middle of the
+        // stream that followed.
+        if (chatTurnInProgress || currentStreamController) return;
+        const dropdown = replyOptionsDropdownEl();
         if (!dropdown) return;
-        if (!pendingReplyOptions && !replyOptionsLoading) return;
-        if (replyOptionsLoading) {
-            dropdown.classList.remove('hidden');
-            return;
-        }
-        const [opt1El, opt2El] = dropdown.querySelectorAll('.reply-option-btn');
-        if (opt1El) { opt1El.textContent = pendingReplyOptions[0]; opt1El.className = 'reply-option-btn'; opt1El.style.display = ''; }
-        if (opt2El) { opt2El.textContent = pendingReplyOptions[1]; opt2El.className = 'reply-option-btn'; opt2El.style.display = ''; }
-        dropdown.classList.remove('hidden');
+        if (replyOptionsLoading) { revealReplyOptionsDropdown(dropdown); return; }
+        if (!pendingReplyOptions || !pendingReplyOptions.length) return;
+        _setReplyDropdownOptions(pendingReplyOptions);
     }
 
     function hideReplyOptionsDropdown() {
-        const dropdown = document.getElementById('reply-options-dropdown');
+        const dropdown = replyOptionsDropdownEl();
         if (dropdown) dropdown.classList.add('hidden');
     }
 
+    // Opens the bar on its spinner the moment a reply has finished streaming,
+    // so the wait is visible instead of the bar appearing from nowhere whenever
+    // the suggestions happen to land.
     function _setReplyDropdownLoading() {
-        const dropdown = document.getElementById('reply-options-dropdown');
+        const dropdown = replyOptionsDropdownEl();
         if (!dropdown) return;
-        const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
-        if (btn1) { btn1.textContent = ''; btn1.className = 'reply-option-btn reply-option-loading'; btn1.style.display = ''; }
-        if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn reply-option-loading'; btn2.style.display = ''; }
+        dropdown.querySelectorAll('.reply-option-btn').forEach(btn => {
+            btn.textContent = '';
+            btn.className = 'reply-option-btn reply-option-loading';
+            btn.style.display = '';
+        });
+        revealReplyOptionsDropdown(dropdown);
     }
 
-    function _setReplyDropdownOptions(opt1, opt2) {
-        const dropdown = document.getElementById('reply-options-dropdown');
+    function _setReplyDropdownOptions(options) {
+        const dropdown = replyOptionsDropdownEl();
         if (!dropdown) return;
-        const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
-        if (btn1) { btn1.textContent = opt1; btn1.className = 'reply-option-btn'; btn1.style.display = ''; }
-        if (btn2) { btn2.textContent = opt2; btn2.className = 'reply-option-btn'; btn2.style.display = ''; }
-        dropdown.classList.remove('hidden');
+        // One usable option beats an error, so the second button steps aside
+        // when only one survived.
+        dropdown.querySelectorAll('.reply-option-btn').forEach((btn, index) => {
+            const text = options[index] || '';
+            btn.textContent = text;
+            btn.className = 'reply-option-btn';
+            btn.style.display = text ? '' : 'none';
+        });
+        revealReplyOptionsDropdown(dropdown);
     }
 
     function _setReplyDropdownError(msg) {
-        const dropdown = document.getElementById('reply-options-dropdown');
+        const dropdown = replyOptionsDropdownEl();
         if (!dropdown) return;
         const [btn1, btn2] = dropdown.querySelectorAll('.reply-option-btn');
-        const shortMsg = msg.length > 90 ? msg.substring(0, 87) + '…' : msg;
+        const shortMsg = msg.length > 160 ? msg.substring(0, 157) + '…' : msg;
         if (btn1) { btn1.textContent = `⚠ ${shortMsg}`; btn1.className = 'reply-option-btn reply-option-error'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn'; btn2.style.display = 'none'; }
-        dropdown.classList.remove('hidden');
+        revealReplyOptionsDropdown(dropdown);
+    }
+
+    // Drops a round nobody is waiting for any more. Bumping the id alone was
+    // not enough: a round only clears the loading flag when the id still
+    // matches, so a superseded one used to leave the flag set for good, which
+    // pinned the bar on its spinner and stopped the message box from ever
+    // asking for suggestions again.
+    function cancelReplyOptions({ hide = true } = {}) {
+        replyOptionsReqId++;
+        replyOptionsLoading = false;
+        pendingReplyOptions = null;
+        replyOptionsForMessageId = null;
+        if (replyOptionsController) {
+            replyOptionsController.abort();
+            replyOptionsController = null;
+        }
+        if (hide) hideReplyOptionsDropdown();
+    }
+
+    // Separates "the request failed" from "the request worked, the answer was
+    // not usable", so the second is reported in its own words instead of being
+    // run through the transport wording, which would blame the connection for
+    // what the model wrote.
+    class ReplyOptionsError extends Error {
+        constructor(message) {
+            super(message);
+            this.name = 'ReplyOptionsError';
+        }
+    }
+
+    async function requestReplyOptions(attempts, modelId, reqId) {
+        let lastFailure = 'The model did not return any reply options.';
+        for (const attempt of attempts) {
+            const controller = new AbortController();
+            replyOptionsController = controller;
+            let timedOut = false;
+            const timer = setTimeout(() => { timedOut = true; controller.abort(); }, REPLY_OPTION_TIMEOUT_MS);
+            let raw = '';
+            try {
+                // Suggestions appear while the user is deciding what to type, so
+                // speed matters more than deliberation. Reasoning is switched off
+                // where the model allows it, as with the image prompt builder.
+                raw = await callAISimple(attempt.system, attempt.user, modelId, controller.signal, 'none');
+            } catch (err) {
+                if (timedOut) {
+                    throw new ReplyOptionsError(`No answer within ${Math.round(REPLY_OPTION_TIMEOUT_MS / 1000)} seconds. A faster Suggestions Model in App Settings will do better.`);
+                }
+                throw err;
+            } finally {
+                clearTimeout(timer);
+                if (replyOptionsController === controller) replyOptionsController = null;
+            }
+            // Superseded while the answer was on its way.
+            if (replyOptionsReqId !== reqId) return null;
+
+            const options = parseReplyOptions(raw);
+            if (options.length) return options;
+
+            console.warn('Reply suggestions: no usable options in this response.', raw);
+            lastFailure = raw.trim()
+                ? `The model answered with something else: "${raw.trim().replace(/\s+/g, ' ').substring(0, 80)}"`
+                : 'The model returned an empty response. Another Suggestions Model in App Settings may work better.';
+        }
+        throw new ReplyOptionsError(lastFailure);
     }
 
     async function generateReplyOptionsInBackground() {
@@ -25906,14 +26231,17 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         // again once the reply is done, so bailing out here loses nothing.
         if (chatTurnInProgress || currentStreamController) return;
 
-        const lastAIMsg = [...chat.history].reverse().find(m => m.sender !== 'user');
-        if (!lastAIMsg) return;
-        if (lastAIMsg.isStreaming) return;
-        const lastAIText = (lastAIMsg.variations?.[lastAIMsg.activeVariant ?? 0]?.main || '').trim();
+        // The reply to answer is the last message in the chat. An AI message
+        // further up has already been answered, and suggesting replies to that
+        // one would talk past the conversation.
+        const lastMsg = chat.history[chat.history.length - 1];
+        if (!lastMsg || lastMsg.sender === 'user' || lastMsg.isStreaming) return;
+        const lastAIText = (lastMsg.variations?.[lastMsg.activeVariant ?? 0]?.main || '').trim();
         if (!lastAIText || lastAIText.length < 5) return;
 
-        pendingReplyOptions = null;
+        cancelReplyOptions({ hide: false });
         replyOptionsLoading = true;
+        replyOptionsForMessageId = lastMsg.id;
         const reqId = ++replyOptionsReqId;
 
         _setReplyDropdownLoading();
@@ -25925,44 +26253,35 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             ? ` The user is playing as "${persona.chatName || persona.name}" (${(persona.description || '').substring(0, 200)}).`
             : '';
         const modelId = suggestionModelId || modelSelect?.value || defaultSettings.model;
+        const scene = lastAIText.substring(0, 600);
 
-        const systemPrompt = `You are a creative assistant for a character roleplay chat. Generate exactly 2 reply options that the USER can send to the AI character. Each option must be one full line in first-person voice and in quotation marks. Make them plot-relevant and scene-specific, offering two distinct directions the scene could take. If the user is directly involved in the scene, then the reply options should be what the user says or does in response to the character's latest message. If the user is NOT directly involved in the scene, then the reply options should instead be what the central character says or does in response to the latest scene.${personaContext} Output ONLY a JSON array with exactly 2 strings, like: ["Option one.", "Option two."]`;
-        const userMsg = `${charName} just said: "${lastAIText.substring(0, 600)}"\n\nNow provide 2 fitting reply options for the user (in quotation marks!). Each one must be one whole line in length.`;
+        // The second attempt asks for the same two lines in a shape that has
+        // nothing to malform, for a model that cannot hold a JSON array
+        // together. It only runs when the first answer carried no options.
+        const attempts = [
+            {
+                system: `You are a creative assistant for a character roleplay chat. Generate exactly 2 reply options that the USER can send to the AI character. Each option must be one full line in first-person voice and in quotation marks. Make them plot-relevant and scene-specific, offering two distinct directions the scene could take. If the user is directly involved in the scene, then the reply options should be what the user says or does in response to the character's latest message. If the user is NOT directly involved in the scene, then the reply options should instead be what the central character says or does in response to the latest scene.${personaContext} Output ONLY a JSON array with exactly 2 strings and nothing else — no code fence, no commentary, no explanation. Example: ["Option one.", "Option two."]`,
+                user: `${charName} just said: "${scene}"\n\nNow provide 2 fitting reply options for the user (in quotation marks!). Each one must be one whole line in length.`
+            },
+            {
+                system: `You are a creative assistant for a character roleplay chat. Write exactly 2 reply options that the USER can send to the AI character, offering two distinct directions the scene could take. Each is one full line in the user's first-person voice, in quotation marks.${personaContext} Answer with exactly two lines of plain text: the first option on line 1, the second on line 2. No numbering, no labels, no explanation, no JSON, nothing else.`,
+                user: `${charName} just said: "${scene}"\n\nWrite the two reply option lines now.`
+            }
+        ];
 
         try {
-            // Suggestions appear while the user is deciding what to type, so
-            // speed matters more than deliberation. Reasoning is switched off
-            // where the model allows it, as with the image prompt builder.
-            const result = await callAISimple(systemPrompt, userMsg, modelId, null, 'none');
-            if (replyOptionsReqId !== reqId) return;
-            const cleaned = stripThinkTags(result).trim();
-            let parsed = null;
-            try { parsed = JSON.parse(cleaned); } catch (_) {}
-            if (!Array.isArray(parsed)) {
-                const start = cleaned.indexOf('[');
-                if (start !== -1) {
-                    let pos = start;
-                    while (pos < cleaned.length) {
-                        const end = cleaned.indexOf(']', pos);
-                        if (end === -1) break;
-                        try {
-                            const candidate = JSON.parse(cleaned.slice(start, end + 1));
-                            if (Array.isArray(candidate)) { parsed = candidate; break; }
-                        } catch (_) {}
-                        pos = end + 1;
-                    }
-                }
-            }
-            if (Array.isArray(parsed) && parsed.length >= 2 && typeof parsed[0] === 'string' && typeof parsed[1] === 'string') {
-                pendingReplyOptions = [String(parsed[0]).trim(), String(parsed[1]).trim()];
-                _setReplyDropdownOptions(pendingReplyOptions[0], pendingReplyOptions[1]);
-            } else {
-                throw new Error('Could not parse reply suggestions from AI response.');
-            }
+            const options = await requestReplyOptions(attempts, modelId, reqId);
+            if (replyOptionsReqId !== reqId || !options) return;
+            pendingReplyOptions = options;
+            _setReplyDropdownOptions(options);
         } catch (err) {
             if (replyOptionsReqId !== reqId) return;
+            // A round dropped on purpose is not a failure and leaves no warning.
+            if (err && err.name === 'AbortError') { hideReplyOptionsDropdown(); return; }
             pendingReplyOptions = null;
-            _setReplyDropdownError(_formatAIError(err, 'Suggestions'));
+            _setReplyDropdownError(err instanceof ReplyOptionsError
+                ? `Suggestions failed: ${err.message}`
+                : _formatAIError(err, 'Suggestions'));
         } finally {
             if (replyOptionsReqId === reqId) replyOptionsLoading = false;
         }
@@ -26762,13 +27081,15 @@ participantSelectionList.addEventListener('click', (event) => {
 messageInput.addEventListener('focus', () => {
     showGroupCharDropdown();
     showReplyOptionsDropdown();
-    if (!pendingReplyOptions && !replyOptionsLoading && replyOptionsEnabled) {
-        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-        const lastMsg = chat?.history?.[chat.history.length - 1];
-        if (lastMsg && lastMsg.sender !== 'user') {
-            generateReplyOptionsInBackground();
-        }
-    }
+    if (pendingReplyOptions || replyOptionsLoading || !replyOptionsEnabled) return;
+    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    const lastMsg = chat?.history?.[chat.history.length - 1];
+    if (!lastMsg || lastMsg.sender === 'user') return;
+    // A reply that has already had its round is not asked again on every
+    // focus. The message box is focused constantly, so a provider that is down
+    // would otherwise be retried on each one, silently burning the user's quota.
+    if (replyOptionsForMessageId === lastMsg.id) return;
+    generateReplyOptionsInBackground();
 });
 
 messageInput.addEventListener('click', () => {
@@ -27146,6 +27467,11 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
             await saveSingleCharacterToDB(characters[currentCharacterId]);
             updateTokenCount();
             updateSingleMessageView(messageId);
+            // Another variant is a different reply, so suggestions written for
+            // the old one no longer fit. They are dropped rather than reordered
+            // right away: focusing the message box asks for a fitting pair, and
+            // browsing variants should not cost a request per click.
+            if (messageId === chat.history[chat.history.length - 1]?.id) cancelReplyOptions();
         }
     }
     });
