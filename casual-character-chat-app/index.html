@@ -253,20 +253,6 @@
                             </select>
                         </div>
                         <div class="setting">
-                            <label for="reply-options-toggle">
-                                <span>Reply Suggestions:</span>
-                                <input type="checkbox" id="reply-options-toggle" class="toggle-switch">
-                            </label>
-                        </div>
-                        <div class="setting" id="suggestion-model-setting">
-                            <label for="suggestion-model-select">
-                                <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose any AI model for generating reply suggestions and for writing image prompts. Lower-quality models are sufficient for this, and a fast one keeps both quick. Ideally use a free model here to avoid unnecessary API costs.">ℹ️</span></span>
-                            </label>
-                            <select id="suggestion-model-select">
-                                <option value="">(same as chat model)</option>
-                            </select>
-                        </div>
-                        <div class="setting">
                             <label for="reasoning-effort-select">
                                 <span>Reasoning Effort: <span class="setting-info-icon" data-tooltip="Controls how much OpenRouter models think before replying. 'Off' works only for supported models. Auto uses the model default.">ℹ️</span></span>
                             </label>
@@ -281,6 +267,20 @@
                                 <option value="max">Maximum</option>
                             </select>
                         </div>
+                        <div class="setting">
+                            <label for="reply-options-toggle">
+                                <span>Reply Suggestions:</span>
+                                <input type="checkbox" id="reply-options-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                        <div class="setting" id="suggestion-model-setting">
+                            <label for="suggestion-model-select">
+                                <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose any AI model for generating reply suggestions and for writing image prompts. Lower-quality models are sufficient for this, and a fast one keeps both quick. Ideally use a free model here to avoid unnecessary API costs.">ℹ️</span></span>
+                            </label>
+                            <select id="suggestion-model-select">
+                                <option value="">(same as chat model)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -293,6 +293,12 @@
                 <div class="accordion-content">
                     <div class="accordion-inner">
                         <div class="setting">
+                            <label for="sound-toggle">
+                                <span>Notification Sound:</span>
+                                <input type="checkbox" id="sound-toggle" class="toggle-switch">
+                            </label>
+                        </div>
+                        <div class="setting">
                             <label for="tts-voice-select">TTS Voice (EN / DE / JP):</label>
                             <select id="tts-voice-select"><option value="">(Default voice)</option></select>
                         </div>
@@ -300,12 +306,6 @@
                             <label for="tts-toggle">
                                 <span>Auto-read AI Responses (TTS):</span>
                                 <input type="checkbox" id="tts-toggle" class="toggle-switch">
-                            </label>
-                        </div>
-                        <div class="setting">
-                            <label for="sound-toggle">
-                                <span>Notification Sound:</span>
-                                <input type="checkbox" id="sound-toggle" class="toggle-switch">
                             </label>
                         </div>
                         <div id="image-gen-settings" class="hidden">
