@@ -6701,7 +6701,10 @@ body.image-gen-off .generate-image-btn {
     height: 100%;
     pointer-events: none;
     opacity: 1;
-    z-index: 0;
+    /* Negative z-index keeps particles above #chat-screen's background image but
+       below every in-flow child (chat window, reply suggestions, input bar). At 0
+       the canvas painted over any non-positioned content. */
+    z-index: -1;
 }
 
 /* ── Feature E: Particle Picker Modal ── */
