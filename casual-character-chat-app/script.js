@@ -9440,11 +9440,17 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
     function hideReplyOptionsDropdown() {
         const dropdown = replyOptionsDropdownEl();
         if (dropdown) dropdown.classList.add('hidden');
+        // A bar that closes on a dropped round must not come back still spinning.
+        _setReplyRegenBusy(false);
     }
 
     // Opens the bar on its spinner the moment a reply has finished streaming,
     // so the wait is visible instead of the bar appearing from nowhere whenever
     // the suggestions happen to land.
+    function _setReplyRegenBusy(busy) {
+        document.getElementById('reply-options-regen-btn')?.classList.toggle('is-busy', busy);
+    }
+
     function _setReplyDropdownLoading() {
         const dropdown = replyOptionsDropdownEl();
         if (!dropdown) return;
@@ -9453,6 +9459,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             btn.className = 'reply-option-btn reply-option-loading';
             btn.style.display = '';
         });
+        _setReplyRegenBusy(true);
         revealReplyOptionsDropdown(dropdown);
     }
 
@@ -9467,6 +9474,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             btn.className = 'reply-option-btn';
             btn.style.display = text ? '' : 'none';
         });
+        _setReplyRegenBusy(false);
         revealReplyOptionsDropdown(dropdown);
     }
 
@@ -9477,6 +9485,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         const shortMsg = msg.length > 160 ? msg.substring(0, 157) + '…' : msg;
         if (btn1) { btn1.textContent = `⚠ ${shortMsg}`; btn1.className = 'reply-option-btn reply-option-error'; btn1.style.display = ''; }
         if (btn2) { btn2.textContent = ''; btn2.className = 'reply-option-btn'; btn2.style.display = 'none'; }
+        // The error stays on screen with the button live next to it, so a round
+        // lost to a hiccup can be retried without touching the message box.
+        _setReplyRegenBusy(false);
         revealReplyOptionsDropdown(dropdown);
     }
 
@@ -9544,7 +9555,10 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         throw new ReplyOptionsError(lastFailure);
     }
 
-    async function generateReplyOptionsInBackground() {
+    // `avoid` carries the suggestions the user just turned down. A second round
+    // asked in the same words tends to answer in the same words, so the ones on
+    // screen are named in the prompt and ruled out.
+    async function generateReplyOptionsInBackground({ avoid = null } = {}) {
         if (!replyOptionsEnabled) return;
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || !chat.history || chat.history.length === 0) return;
@@ -9580,16 +9594,24 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         const modelId = suggestionModelId || modelSelect?.value || defaultSettings.model;
         const scene = lastAIText.substring(0, 600);
 
+        const rejected = (Array.isArray(avoid) ? avoid : [])
+            .filter(o => typeof o === 'string' && o.trim())
+            .slice(0, 2)
+            .map(o => `"${o.trim().substring(0, 200)}"`);
+        const avoidClause = rejected.length
+            ? ` The user has already seen and rejected these suggestions: ${rejected.join(' ')} — write two fresh options that take clearly different directions, not rewordings of those.`
+            : '';
+
         // The second attempt asks for the same two lines in a shape that has
         // nothing to malform, for a model that cannot hold a JSON array
         // together. It only runs when the first answer carried no options.
         const attempts = [
             {
-                system: `You are a creative assistant for a character roleplay chat. Generate exactly 2 reply options that the USER can send to the AI character. Each option must be one full line in first-person voice and in quotation marks. Make them plot-relevant and scene-specific, offering two distinct directions the scene could take. If the user is directly involved in the scene, then the reply options should be what the user says or does in response to the character's latest message. If the user is NOT directly involved in the scene, then the reply options should instead be what the central character says or does in response to the latest scene.${personaContext} Output ONLY a JSON array with exactly 2 strings and nothing else — no code fence, no commentary, no explanation. Example: ["Option one.", "Option two."]`,
+                system: `You are a creative assistant for a character roleplay chat. Generate exactly 2 reply options that the USER can send to the AI character. Each option must be one full line in first-person voice and in quotation marks. Make them plot-relevant and scene-specific, offering two distinct directions the scene could take. If the user is directly involved in the scene, then the reply options should be what the user says or does in response to the character's latest message. If the user is NOT directly involved in the scene, then the reply options should instead be what the central character says or does in response to the latest scene.${personaContext}${avoidClause} Output ONLY a JSON array with exactly 2 strings and nothing else — no code fence, no commentary, no explanation. Example: ["Option one.", "Option two."]`,
                 user: `${charName} just said: "${scene}"\n\nNow provide 2 fitting reply options for the user (in quotation marks!). Each one must be one whole line in length.`
             },
             {
-                system: `You are a creative assistant for a character roleplay chat. Write exactly 2 reply options that the USER can send to the AI character, offering two distinct directions the scene could take. Each is one full line in the user's first-person voice, in quotation marks.${personaContext} Answer with exactly two lines of plain text: the first option on line 1, the second on line 2. No numbering, no labels, no explanation, no JSON, nothing else.`,
+                system: `You are a creative assistant for a character roleplay chat. Write exactly 2 reply options that the USER can send to the AI character, offering two distinct directions the scene could take. Each is one full line in the user's first-person voice, in quotation marks.${personaContext}${avoidClause} Answer with exactly two lines of plain text: the first option on line 1, the second on line 2. No numbering, no labels, no explanation, no JSON, nothing else.`,
                 user: `${charName} just said: "${scene}"\n\nWrite the two reply option lines now.`
             }
         ];
@@ -9613,6 +9635,15 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
     }
 
     document.getElementById('reply-options-dropdown')?.addEventListener('mousedown', (e) => {
+        // mousedown rather than click throughout, so the press never takes focus
+        // off the message box - a blur there closes the bar out from under it.
+        if (e.target.closest('#reply-options-regen-btn')) {
+            e.preventDefault();
+            if (replyOptionsLoading) return;
+            const rejected = pendingReplyOptions ? [...pendingReplyOptions] : null;
+            generateReplyOptionsInBackground({ avoid: rejected });
+            return;
+        }
         const btn = e.target.closest('.reply-option-btn');
         if (!btn) return;
         e.preventDefault();

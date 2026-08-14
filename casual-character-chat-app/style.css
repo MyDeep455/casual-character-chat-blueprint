@@ -6401,12 +6401,66 @@ body.image-gen-off .generate-image-btn {
     to   { opacity: 1; transform: translateY(0); }
 }
 
+.reply-options-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 3px 1px;
+}
+
 .reply-options-label {
     font-size: 0.72em;
     color: rgba(255, 255, 255, 0.38);
-    padding: 0 3px 1px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+.reply-options-regen-btn {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95em;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.reply-options-regen-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.24);
+    color: #e0e0e0;
+}
+
+.reply-regen-icon {
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.reply-options-regen-btn:hover .reply-regen-icon {
+    transform: rotate(180deg);
+}
+
+/* While a round is in flight the button is its own progress indicator, so a
+   second click cannot stack another request on top of it. */
+.reply-options-regen-btn.is-busy {
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.reply-options-regen-btn.is-busy .reply-regen-icon {
+    animation: btn-spin 0.7s linear infinite;
+    transition: none;
 }
 
 .reply-option-btn {
