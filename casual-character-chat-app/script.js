@@ -1011,7 +1011,7 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
 
   function adjustFontSizeToFit(element) {
     const MIN_FONT_SIZE = 8;
-    const inner = element.querySelector('span') || element;
+    const inner = element.querySelector('.card-title-lines') || element.querySelector('span') || element;
 
     element.style.fontSize = '';
 
@@ -1936,6 +1936,20 @@ async function loadPersonasFromDB() {
 
 
 
+function formatCardTitle(name) {
+    const fullName = String(name || '').trim();
+    const seriesMatch = fullName.match(/^(.+?)\s+(\([^()\n]+\))$/);
+    const characterName = seriesMatch ? seriesMatch[1].trim() : fullName;
+    const seriesName = seriesMatch ? seriesMatch[2] : '';
+
+    return `<span class="card-title-lines">
+        <span class="card-title-character">${escapeHtml(characterName)}</span>
+        ${seriesName ? `<span class="card-title-series">${escapeHtml(seriesName)}</span>` : ''}
+    </span>`;
+}
+
+
+
 function renderCharacterList(searchTerm = '') {
     const favoritesBar = document.getElementById('favorites-bar');
     const favoritesContainer = document.getElementById('favorites-bar-container');
@@ -2026,7 +2040,7 @@ const filteredCharacters = allSortedCharacters.filter(char => {
     ${worldCharCountHtml}
 </div>
             <div class="card-name-container">
-                <span>${character.name}</span>
+                ${formatCardTitle(character.name)}
             </div>`;
 
             if (cardImageSource) {
