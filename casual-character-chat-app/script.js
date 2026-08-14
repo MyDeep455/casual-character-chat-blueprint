@@ -95,6 +95,45 @@ const APP_VERSION = 1.0;
 
 
 const DEFAULT_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+// --- Image generation -------------------------------------------------------
+// Released. Set this back to false to withdraw the feature from users
+// without removing the code; it then shows only on localhost, or to
+// anyone who sets localStorage.cccImageGenBeta = '1'.
+const IMAGE_GEN_PUBLIC_LAUNCH = true;
+
+function isImageGenUnlocked() {
+    if (IMAGE_GEN_PUBLIC_LAUNCH) return true;
+    const host = location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1') return true;
+    try {
+        return localStorage.getItem('cccImageGenBeta') === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+const OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images";
+const POLLINATIONS_IMAGE_URL = "https://image.pollinations.ai/prompt/";
+// The free tier queues anonymous requests; measured waits reached ~45s under
+// load, so a short timeout would report failures for images that do arrive.
+const IMAGE_GEN_TIMEOUT_MS = 120000;
+const IMAGE_GEN_SIZE = 768;
+// Stored base64 images ride along in the character record on every save, so the
+// paid path is capped per chat. The free path stores a URL and is not counted.
+const IMAGE_GEN_STORED_LIMIT = 6;
+// How much of the scene is read when distilling a prompt. Generous on purpose:
+// the telling detail is often in the last lines of a long reply, and cutting
+// early loses it. A full "very long" reply is roughly 3000 characters.
+const IMAGE_PROMPT_SCENE_CHARS = 4000;
+const IMAGE_PROMPT_APPEARANCE_CHARS = 1200;
+// Used only when no text model is available to distil, so the raw scene text
+// becomes the prompt. Still bounded, since image models ignore long tails.
+const IMAGE_PROMPT_FALLBACK_CHARS = 800;
+// Pollinations carries the prompt in the URL path, where percent-encoding can
+// triple the length, so the prompt is bounded to keep the request sane.
+const IMAGE_PROMPT_URL_CHARS = 1500;
+
 const OPENROUTER_REASONING_EFFORTS = new Set([
     'none',
     'minimal',
@@ -261,12 +300,18 @@ const defaultSettings = {
         ttsEnabled: 'false',
         ttsVoiceURI: '',
         replyLength: 'default',
+        imageGenEnabled: 'true',
+        imageGenProvider: 'pollinations',
+        imageGenModel: 'google/gemini-3.1-flash-lite-image',
     };
 
     let audioCtx;
     let soundEnabled = true;
     let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
+    let imageGenEnabled = true;
+    let imageGenProvider = 'pollinations';
+    let imageGenModel = 'google/gemini-3.1-flash-lite-image';
     let ttsEnabled = false;
     let ttsCurrentVoiceURI = '';
     let replyLength = 'default';
@@ -291,7 +336,12 @@ const defaultSettings = {
     let openChatGroupId = null;
     let personas = {};
     let appSettings = {};
-    let currentStreamController = null; 
+    let currentStreamController = null;
+    // True from the moment a reply is requested until it has finished arriving.
+    // currentStreamController is not enough on its own: it is created well after
+    // the handler starts, and the handler focuses the message box before that,
+    // which used to kick off reply suggestions against the previous message.
+    let chatTurnInProgress = false;
     const stopStreamBtn = document.getElementById('stop-stream-btn');
 
     
@@ -612,7 +662,10 @@ function showCustomPrompt(message, defaultValue = '') {
 
 
 
-function showCustomLargePrompt(message, placeholder = '') {
+// `pendingSuggestion` lets the dialog open instantly with whatever text is
+// already available and improve it later, instead of making the user wait on a
+// network round trip before the box even appears. Anything the user types wins.
+function showCustomLargePrompt(message, placeholder = '', defaultValue = '', rows = 6, pendingSuggestion = null) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.className = 'custom-alert-overlay';
@@ -627,7 +680,8 @@ function showCustomLargePrompt(message, placeholder = '') {
 
         const textarea = document.createElement('textarea');
         textarea.placeholder = placeholder;
-        textarea.rows = 6;
+        textarea.value = defaultValue;
+        textarea.rows = rows;
         textarea.style.cssText = 'width:100%;background:#2a2a3a;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:9px 10px;font-size:0.9em;margin-bottom:12px;box-sizing:border-box;resize:vertical;font-family:inherit;line-height:1.5;';
 
         const buttonContainer = document.createElement('div');
@@ -645,11 +699,43 @@ function showCustomLargePrompt(message, placeholder = '') {
         buttonContainer.appendChild(okButton);
         modal.appendChild(messageP);
         modal.appendChild(textarea);
+
+        let refiningNote = null;
+        if (pendingSuggestion) {
+            refiningNote = document.createElement('div');
+            refiningNote.className = 'prompt-refining-note';
+            const spinner = document.createElement('span');
+            spinner.className = 'btn-spinner';
+            refiningNote.appendChild(spinner);
+            refiningNote.appendChild(document.createTextNode(
+                'Refining this into an image prompt… you can edit or send it now.'
+            ));
+            modal.appendChild(refiningNote);
+        }
+
         modal.appendChild(buttonContainer);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
         textarea.focus();
+
+        // Once the user touches the box, a late suggestion must not overwrite
+        // their work; it only fills in text they never changed.
+        let userEdited = false;
+        textarea.addEventListener('input', () => { userEdited = true; });
+
+        if (pendingSuggestion) {
+            Promise.resolve(pendingSuggestion).then(better => {
+                if (refiningNote) refiningNote.remove();
+                if (!overlay.isConnected || userEdited) return;
+                const cleaned = String(better || '').trim();
+                if (cleaned && cleaned !== textarea.value) {
+                    textarea.value = cleaned;
+                }
+            }).catch(() => {
+                if (refiningNote) refiningNote.remove();
+            });
+        }
 
         const confirm = () => {
             overlay.remove();
@@ -1261,6 +1347,25 @@ async function resetAppSettings() {
                 const replyLengthSelectEl = document.getElementById('reply-length-select');
                 if (replyLengthSelectEl) replyLengthSelectEl.value = replyLength;
                 break;
+            case 'imageGenEnabled':
+                imageGenEnabled = (value === 'true' || value === true);
+                // Hide the buttons with a class rather than re-rendering, so
+                // the toggle also affects messages that are already on screen.
+                document.body.classList.toggle('image-gen-off', !imageGenEnabled);
+                break;
+            case 'imageGenProvider': {
+                imageGenProvider = IMAGE_PROVIDERS[value] ? value : 'pollinations';
+                const providerSelectEl = document.getElementById('image-gen-provider-select');
+                if (providerSelectEl) providerSelectEl.value = imageGenProvider;
+                const modelSettingEl = document.getElementById('image-gen-model-setting');
+                if (modelSettingEl) modelSettingEl.classList.toggle('hidden', imageGenProvider !== 'openrouter');
+                // Showing or hiding the model row changes the section's height.
+                if (typeof refreshOpenAccordionHeight === 'function') refreshOpenAccordionHeight();
+                break;
+            }
+            case 'imageGenModel':
+                imageGenModel = value || defaultSettings.imageGenModel;
+                break;
         }
     }
 
@@ -1315,6 +1420,9 @@ async function resetAppSettings() {
         ttsEnabled: document.getElementById('tts-toggle'),
         ttsVoiceURI: document.getElementById('tts-voice-select'),
         replyLength: document.getElementById('reply-length-select'),
+        imageGenEnabled: document.getElementById('image-gen-toggle'),
+        imageGenProvider: document.getElementById('image-gen-provider-select'),
+        imageGenModel: document.getElementById('image-gen-model-input'),
     };
 
     for (const key in defaultSettings) {
@@ -2896,11 +3004,22 @@ await startChat(currentCharacterId, newChatId);
 
 
 
-function escapeHtml(s) {
-  return s
+// Escapes only the structural characters, leaving quotes as literal characters
+// so formatSubString can still find quoted speech and style it. Safe for text
+// between tags; NEVER use it for an attribute value - use escapeHtml there.
+function escapeHtmlKeepingQuotes(s) {
+  return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+// For text that has already had & < > escaped and only needs to be made safe
+// for an attribute value.
+function escapeQuotes(s) {
+  return String(s)
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function sanitizeModelOutput(text) {
@@ -2994,17 +3113,21 @@ function formatSubString(text) {
     let imagesHtml = '';
     let processedText = text;
 
+        // These two run against raw text, so the captured URL still needs full
+    // escaping before it can be placed inside a src attribute. The regexes
+    // exclude whitespace and angle brackets but not quotes, so without this a
+    // URL like https://x/a".onerror="..".png would break out of the attribute.
     processedText = processedText.replace(markdownImageRegex, (match, url) => {
-        imagesHtml += `<div class="message-image-container"><img src="${url}" alt="Image from chat" loading="lazy"></div>`;
-        return ''; 
+        imagesHtml += `<div class="message-image-container"><img src="${escapeHtml(url)}" alt="Image from chat" loading="lazy"></div>`;
+        return '';
     });
 
     processedText = processedText.replace(bareImageUrlRegex, (url) => {
-        imagesHtml += `<div class="message-image-container"><img src="${url}" alt="Image from chat" loading="lazy"></div>`;
-        return ''; 
+        imagesHtml += `<div class="message-image-container"><img src="${escapeHtml(url)}" alt="Image from chat" loading="lazy"></div>`;
+        return '';
     });
 
-    const safeRemainingText = escapeHtml(processedText.trim())
+    const safeRemainingText = escapeHtmlKeepingQuotes(processedText.trim())
         .replace(/"(.*?)"/g, '<span class="dialogue">"$1"</span>')
         .replace(/“(.*?)”/g, '<span class="dialogue">“$1”</span>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -3013,10 +3136,156 @@ function formatSubString(text) {
             if (href.toLowerCase().startsWith('www.')) {
                 href = 'http://' + href;
             }
-            return `<a href="${href}" target="_blank" style="text-decoration: underline; color: inherit;">${url}</a>`;
+            // & < > are already escaped by this point, so escaping them again
+            // would double-encode; only the quotes still have to be handled.
+            return `<a href="${escapeQuotes(href)}" target="_blank" style="text-decoration: underline; color: inherit;">${url}</a>`;
         });
 
     return imagesHtml + safeRemainingText;
+}
+
+// Generated pictures hang off the variation they illustrate, so switching
+// variants swaps the images along with the text. Nodes are built with the DOM
+// API and `src` is assigned as a property, never interpolated into markup.
+// Creates the container that holds generated pictures, placing it directly
+// after the message text. Shared by the renderer and the pending placeholder.
+function ensureImagesHolder(messageElement) {
+    let holder = messageElement.querySelector('.generated-images');
+    if (holder) return holder;
+    holder = document.createElement('div');
+    holder.className = 'generated-images';
+    const mainContent = messageElement.querySelector('.main-content');
+    if (mainContent && mainContent.parentNode === messageElement) {
+        mainContent.insertAdjacentElement('afterend', holder);
+    } else {
+        messageElement.appendChild(holder);
+    }
+    return holder;
+}
+
+function renderVariationImages(messageElement, variation, message) {
+    if (!messageElement) return;
+
+    let holder = messageElement.querySelector('.generated-images');
+    const images = Array.isArray(variation?.images) ? variation.images : [];
+    // A generation in progress lives in this holder too and must outlive a
+    // re-render, so it is detached first and put back afterwards.
+    const pending = holder?.querySelector('.generated-image-pending') || null;
+
+    if (!images.length) {
+        if (holder && !pending) holder.remove();
+        else if (holder) holder.dataset.renderedIds = '';
+        return;
+    }
+
+    if (!holder) holder = ensureImagesHolder(messageElement);
+
+    const ids = images.map(i => i.id).join(',');
+    if (holder.dataset.renderedIds === ids && !pending) return;
+    holder.dataset.renderedIds = ids;
+    if (pending) pending.remove();
+    holder.innerHTML = '';
+
+    images.forEach(image => {
+        const container = document.createElement('div');
+        container.className = 'message-image-container generated-image';
+
+        const img = document.createElement('img');
+        img.src = image.dataUrl || image.url || '';
+        img.alt = image.prompt ? `Generated image: ${image.prompt}` : 'Generated image';
+        img.loading = 'lazy';
+        img.title = image.prompt || '';
+        img.addEventListener('error', () => {
+            container.classList.add('image-failed');
+            if (!container.querySelector('.generated-image-error')) {
+                const note = document.createElement('div');
+                note.className = 'generated-image-error';
+                note.textContent = 'Image could not be loaded.';
+                container.appendChild(note);
+            }
+        });
+        container.appendChild(img);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-generated-image-btn';
+        removeBtn.title = 'Remove this image';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleRemoveGeneratedImage(message?.id, image.id);
+        });
+        container.appendChild(removeBtn);
+
+        holder.appendChild(container);
+    });
+
+    if (pending) holder.appendChild(pending);
+}
+
+// A placeholder in the bubble, where the picture will land. The free tier can
+// queue for the better part of a minute, so it reports elapsed time and offers
+// a way out rather than leaving the user guessing.
+function showImagePendingBlock(messageElement, { providerLabel, onCancel }) {
+    const holder = ensureImagesHolder(messageElement);
+    holder.querySelector('.generated-image-pending')?.remove();
+
+    const box = document.createElement('div');
+    box.className = 'generated-image-pending';
+
+    const row = document.createElement('div');
+    row.className = 'generated-image-pending-row';
+
+    const spinner = document.createElement('span');
+    spinner.className = 'btn-spinner';
+    row.appendChild(spinner);
+
+    const label = document.createElement('span');
+    label.className = 'generated-image-pending-label';
+    // The provider is named so it is obvious whether this one costs money.
+    label.textContent = `Generating image (${providerLabel})…`;
+    row.appendChild(label);
+
+    const timer = document.createElement('span');
+    timer.className = 'generated-image-pending-timer';
+    timer.textContent = '0s';
+    row.appendChild(timer);
+
+    box.appendChild(row);
+
+    const hint = document.createElement('div');
+    hint.className = 'generated-image-pending-hint';
+    box.appendChild(hint);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'generated-image-cancel-btn';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+        cancelBtn.disabled = true;
+        cancelBtn.textContent = 'Cancelling…';
+        onCancel?.();
+    });
+    box.appendChild(cancelBtn);
+
+    holder.appendChild(box);
+
+    const started = Date.now();
+    const ticker = setInterval(() => {
+        const seconds = Math.round((Date.now() - started) / 1000);
+        timer.textContent = `${seconds}s`;
+        if (seconds === 15) {
+            hint.textContent = 'The free service queues busy requests — this can take up to a minute.';
+        }
+    }, 1000);
+
+    return {
+        remove() {
+            clearInterval(ticker);
+            box.remove();
+            if (holder.isConnected && !holder.children.length) holder.remove();
+        }
+    };
 }
 
 function createTypewriter(charsPerFrame = 3) {
@@ -3218,6 +3487,13 @@ messageWrapper.appendChild(avatarContainer);
     }
     messageElement.appendChild(mainContent);
 
+    if (message.sender === 'ai') {
+        const activeVariantForImages = message.variations?.[message.activeVariant];
+        if (activeVariantForImages?.images?.length) {
+            renderVariationImages(messageElement, activeVariantForImages, message);
+        }
+    }
+
     const actionGroup = document.createElement('div');
     actionGroup.className = 'message-action-group';
     const deleteBtn = document.createElement('button');
@@ -3244,6 +3520,14 @@ messageWrapper.appendChild(avatarContainer);
             }
         });
         actionGroup.appendChild(ttsBtn);
+    }
+    if (message.sender === 'ai' && isImageGenUnlocked()) {
+        const imageBtn = document.createElement('button');
+        imageBtn.className = 'generate-image-btn message-action-btn';
+        imageBtn.title = 'Illustrate this scene';
+        imageBtn.textContent = '🎨';
+        imageBtn.addEventListener('click', () => handleGenerateImage(message.id, imageBtn));
+        actionGroup.appendChild(imageBtn);
     }
     messageElement.appendChild(actionGroup);
 
@@ -3339,6 +3623,9 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
 
 async function handleChatSubmit(type) {
+    // Set before the message box is focused below, since that focus fires the
+    // handler that requests reply suggestions.
+    chatTurnInProgress = true;
     hideUndoDeleteFab();
     pendingReplyOptions = null;
     hideReplyOptionsDropdown();
@@ -3893,6 +4180,7 @@ if (elapsedTime > 20000) {
     storyBtn.disabled = false;
     stopStreamBtn.classList.add('hidden');
     currentStreamController = null;
+    chatTurnInProgress = false;
     if (!streamAbortedByUser) generateReplyOptionsInBackground();
 }
 
@@ -3903,6 +4191,9 @@ async function handleRegenerate(messageId) {
     if (!chat) return;
     const messageIndex = chat.history.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
+    // Only after the bail-outs above, or an early return would leave the flag
+    // stuck on and suppress reply suggestions for the rest of the session.
+    chatTurnInProgress = true;
 
 let mainContentEl = null;
 let thinkBlockEl = null;
@@ -4436,6 +4727,7 @@ continue;
     dialogBtn.disabled = false;
     storyBtn.disabled = false;
     currentStreamController = null;
+    chatTurnInProgress = false;
     generateReplyOptionsInBackground();
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateSingleMessageView(messageId);
@@ -4448,6 +4740,9 @@ async function handleContinue(messageId) {
     if (!chat) return;
     const messageIndex = chat.history.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
+    // Only after the bail-outs above, or an early return would leave the flag
+    // stuck on and suppress reply suggestions for the rest of the session.
+    chatTurnInProgress = true;
 
 let mainContentEl = null;
 let thinkBlockEl = null;
@@ -4917,6 +5212,7 @@ if (!finalThink) {
     dialogBtn.disabled = false;
     storyBtn.disabled = false;
     currentStreamController = null;
+    chatTurnInProgress = false;
     generateReplyOptionsInBackground();
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateSingleMessageView(messageId);
@@ -4996,6 +5292,10 @@ function updateSingleMessageView(messageId) {
         } else {
             thinkBlock.classList.add('hidden');
         }
+    }
+
+    if (message.sender === 'ai') {
+        renderVariationImages(messageElement, activeVariant, message);
     }
 
     if (controls) {
@@ -8298,7 +8598,10 @@ personaEditorAvatarImg.onerror = () => {
         });
     }
 
-    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null) {
+    // `reasoningEffort` defaults to 'auto', which sends no reasoning field and
+    // lets a thinking model deliberate as it normally would. Short mechanical
+    // jobs can pass 'none' to skip that, where the model supports it.
+    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto') {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
         const lookupId = modelId.replace(/:online$/, '');
         const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
@@ -8316,7 +8619,10 @@ personaEditorAvatarImg.onerror = () => {
                 'HTTP-Referer': window.location.href,
                 'X-Title': 'Casual Character Chat'
             },
-            body: JSON.stringify({ model: modelId, messages, temperature: 0.7, top_p: 0.95, stream: true }),
+            body: JSON.stringify({
+                model: modelId, messages, temperature: 0.7, top_p: 0.95, stream: true,
+                ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort)
+            }),
             ...(signal ? { signal } : {})
         });
         if (!response.ok) throw new Error(await response.text());
@@ -8343,6 +8649,477 @@ personaEditorAvatarImg.onerror = () => {
             }
         }
         return fullText.trim();
+    }
+
+    // --- Image generation ---------------------------------------------------
+
+    // Resolves once the browser has actually decoded the image, so a queued
+    // free-tier generation is still "in flight" rather than a broken <img>.
+    function preloadImage(url, timeoutMs = IMAGE_GEN_TIMEOUT_MS, signal = null) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            let settled = false;
+            const finish = (fn, arg) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                if (signal) signal.removeEventListener('abort', onAbort);
+                fn(arg);
+            };
+            const timer = setTimeout(() => {
+                img.src = '';
+                finish(reject, new Error(`Timed out after ${Math.round(timeoutMs / 1000)}s`));
+            }, timeoutMs);
+            // Dropping the src is what actually stops the browser fetching it.
+            const onAbort = () => {
+                img.src = '';
+                finish(reject, new DOMException('Cancelled', 'AbortError'));
+            };
+            if (signal) {
+                if (signal.aborted) return onAbort();
+                signal.addEventListener('abort', onAbort);
+            }
+            img.onload = () => finish(resolve, url);
+            // An <img> cannot read the response body, so the cause has to be
+            // described rather than quoted: the free service returns the same
+            // broken load whether it was busy or refused the prompt.
+            img.onerror = () => finish(reject, new Error(
+                'The free image service did not return a picture. It may be overloaded, or it may have rejected the prompt. Try again, or reword the prompt.'
+            ));
+            img.src = url;
+        });
+    }
+
+    // Marks a failure as "the model said no", so the UI can present it as a
+    // content decision to act on rather than as a technical error.
+    class ImageRefusalError extends Error {
+        constructor(message) {
+            super(message);
+            this.name = 'ImageRefusalError';
+        }
+    }
+
+    // Providers report a refusal in a lot of different places: an HTTP 403 with
+    // metadata.reasons, a finish_reason of IMAGE_SAFETY / PROHIBITED_CONTENT /
+    // content_policy_violation, a promptFeedback.blockReason, or a plain 200
+    // carrying only the model's own refusal text. These are the keys worth
+    // reading whichever shape comes back.
+    const IMAGE_REFUSAL_KEYS = /^(message|reasons?|finish_?reason|native_finish_?reason|block_?reason|block_?reason_?message|rai_?filtered_?reason|refusal|error|detail|text|content)$/i;
+    const IMAGE_REFUSAL_PATTERN = /image[_\s-]?safety|prohibited[_\s-]?content|content[_\s-]?polic|content filter|safety[_\s-]?filter|safety[_\s-]?setting|moderation|rai[_\s-]?filtered|\brefus|\bblocked\b|not allowed|violat/i;
+
+    // Walks a response body and collects the strings that might explain a
+    // refusal, so a message can be built without knowing the exact schema.
+    function collectRefusalSignals(node, depth = 0, out = []) {
+        if (!node || depth > 6 || out.length > 40) return out;
+        if (Array.isArray(node)) {
+            node.forEach(item => collectRefusalSignals(item, depth + 1, out));
+            return out;
+        }
+        if (typeof node !== 'object') return out;
+        for (const [key, value] of Object.entries(node)) {
+            const matchingKey = IMAGE_REFUSAL_KEYS.test(key);
+            if (typeof value === 'string') {
+                const text = value.trim();
+                if (text && matchingKey) out.push({ key, text });
+            } else if (matchingKey && Array.isArray(value)) {
+                // e.g. metadata.reasons: ["sexual"] - a list of plain strings
+                // that would otherwise be skipped as non-objects.
+                value.forEach(item => {
+                    if (typeof item === 'string' && item.trim()) out.push({ key, text: item.trim() });
+                    else collectRefusalSignals(item, depth + 1, out);
+                });
+            } else {
+                collectRefusalSignals(value, depth + 1, out);
+            }
+        }
+        return out;
+    }
+
+    function looksLikeRefusal(signals) {
+        return signals.some(s => IMAGE_REFUSAL_PATTERN.test(s.text) || IMAGE_REFUSAL_PATTERN.test(s.key));
+    }
+
+    // Picks the most human-readable explanation available, preferring a real
+    // sentence from the provider over a bare enum like IMAGE_SAFETY.
+    function bestRefusalDetail(signals) {
+        const sentences = signals
+            .map(s => s.text)
+            .filter(t => /\s/.test(t) && t.length > 12 && !/^https?:/i.test(t));
+        const chosen = sentences.sort((a, b) => b.length - a.length)[0]
+            || signals.map(s => s.text).find(t => IMAGE_REFUSAL_PATTERN.test(t))
+            || '';
+        const clean = chosen.replace(/\s+/g, ' ').trim();
+        return clean.length > 220 ? clean.slice(0, 217) + '…' : clean;
+    }
+
+    // Turns a provider refusal into something a user can act on. Returns null
+    // when the failure is not a content refusal, so normal errors pass through.
+    // `noImage` means the request succeeded but produced no picture: on an
+    // image endpoint, prose instead of pixels is itself a refusal, whatever
+    // the finish reason says (Gemini often reports a plain STOP).
+    function explainImageRefusal(payload, { status = 0, noImage = false } = {}) {
+        const signals = collectRefusalSignals(payload);
+        const moderationStatus = status === 403 || status === 451;
+        const spokeInsteadOfDrawing = noImage && signals.some(
+            s => /^(content|text|message|refusal)$/i.test(s.key) && /\s/.test(s.text) && s.text.length > 12
+        );
+        if (!moderationStatus && !spokeInsteadOfDrawing && !looksLikeRefusal(signals)) return null;
+
+        const detail = bestRefusalDetail(signals);
+        const lines = ['The image model refused this prompt.'];
+        if (detail) {
+            // A bare code like IMAGE_SAFETY is a label, not something the model
+            // "said", so only real sentences are quoted as speech.
+            lines.push(/\s/.test(detail) ? `It said: “${detail}”` : `Reason: ${detail}`);
+        }
+        lines.push('This image model is moderated and filters sensitive content. Try rewording the prompt.');
+        return lines.join('\n\n');
+    }
+
+    // Free, no key. The URL is the image: same prompt + seed gives the same
+    // picture back, so only the URL is stored and the bytes are re-fetched.
+    async function generateViaPollinations({ prompt, seed, width = IMAGE_GEN_SIZE, height = IMAGE_GEN_SIZE, signal = null }) {
+        const url = new URL(POLLINATIONS_IMAGE_URL + encodeURIComponent(String(prompt).slice(0, IMAGE_PROMPT_URL_CHARS)));
+        url.searchParams.set('width', width);
+        url.searchParams.set('height', height);
+        url.searchParams.set('seed', seed);
+        url.searchParams.set('nologo', 'true');
+        const finalUrl = url.toString();
+        await preloadImage(finalUrl, IMAGE_GEN_TIMEOUT_MS, signal);
+        return { provider: 'pollinations', url: finalUrl, width, height };
+    }
+
+    // Paid, reuses the OpenRouter key already in App Settings. Returns base64,
+    // which is re-encoded to webp so the stored copy stays around 100KB.
+    async function generateViaOpenRouter({ prompt, model, width = IMAGE_GEN_SIZE, height = IMAGE_GEN_SIZE, signal = null }) {
+        const modelId = model || imageGenModel;
+        const modelSettings = (appSettings.availableModels || []).find(m => m.id === modelId);
+        const apiKey = (modelSettings?.apiKey) || appSettings.apiKey;
+        if (!apiKey) throw new Error('Set your API key in App Settings first - only free image generation works without API.');
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT_MS);
+        // A user cancel and the timeout both have to reach the same request.
+        const onAbort = () => controller.abort();
+        if (signal) {
+            if (signal.aborted) controller.abort();
+            else signal.addEventListener('abort', onAbort);
+        }
+        let response;
+        try {
+            response = await fetch(OPENROUTER_IMAGE_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: modelId, prompt, n: 1 }),
+                signal: controller.signal
+            });
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+                throw new Error('Image request timed out.');
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
+            if (signal) signal.removeEventListener('abort', onAbort);
+        }
+
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            let parsed = null;
+            try { parsed = JSON.parse(body); } catch (_) {}
+            const refusal = explainImageRefusal(parsed || body, { status: response.status });
+            if (refusal) throw new ImageRefusalError(refusal);
+            // Not a content refusal, so surface the provider's own wording.
+            const message = parsed?.error?.message || body.slice(0, 200) || response.statusText;
+            throw new Error(`Image request failed (${response.status}): ${message}`);
+        }
+        const json = await response.json();
+        const b64 = json?.data?.[0]?.b64_json;
+        if (!b64) {
+            // A 200 with no picture is usually a silent refusal: the model
+            // returns a finish reason or a sentence explaining itself instead.
+            const refusal = explainImageRefusal(json, { status: 200, noImage: true });
+            throw refusal
+                ? new ImageRefusalError(refusal)
+                : new Error('The provider returned no image data.');
+        }
+
+        const mediaType = json?.data?.[0]?.media_type || 'image/png';
+        const sourceBlob = await (await fetch(`data:${mediaType};base64,${b64}`)).blob();
+        const { dataURL } = await imageFileToWebp(sourceBlob, 0.80, 1024);
+        return {
+            provider: 'openrouter',
+            dataUrl: dataURL,
+            model: modelId,
+            cost: (typeof json?.usage?.cost === 'number') ? json.usage.cost : null,
+            width,
+            height
+        };
+    }
+
+    const IMAGE_PROVIDERS = {
+        pollinations: { label: 'free', storesBytes: false, generate: generateViaPollinations },
+        openrouter: { label: 'OpenRouter, paid', storesBytes: true, generate: generateViaOpenRouter },
+    };
+
+    const IMAGE_PROMPT_SYSTEM = `You turn a roleplay scene into a prompt for an image generator.
+Reply with ONLY the prompt: a single line of comma-separated visual phrases, at most 60 words.
+Describe what is literally visible - subject, appearance, clothing, pose, setting, lighting, mood, art style.
+Do not write dialogue, narration, names, or any commentary about the request.`;
+
+    // Raw roleplay prose makes a poor image prompt, so it is distilled first.
+    // The free path must keep working when no text model is reachable, so any
+    // failure here falls back to the trimmed scene text instead of throwing.
+    // What the prompt box shows straight away, with no network round trip.
+    function imagePromptFallback(sceneText) {
+        return String(sceneText || '').trim().slice(0, IMAGE_PROMPT_FALLBACK_CHARS);
+    }
+
+    async function buildImagePrompt(sceneText, character, signal = null) {
+        const scene = String(sceneText || '').trim();
+        const appearance = String(character?.description || '').trim().slice(0, IMAGE_PROMPT_APPEARANCE_CHARS);
+        const fallback = imagePromptFallback(scene);
+        if (!scene) return fallback;
+        try {
+            const sceneForModel = scene.slice(0, IMAGE_PROMPT_SCENE_CHARS);
+            const userMessage = appearance
+                ? `Character reference:\n${appearance}\n\nScene:\n${sceneForModel}`
+                : `Scene:\n${sceneForModel}`;
+            // Turning a scene into a comma-separated list is mechanical work,
+            // so reasoning is switched off where the model allows it. Without
+            // this, a thinking model set as the Suggestions Model spends time
+            // and tokens deliberating before writing a single line.
+            const distilled = await callAISimple(
+                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none'
+            );
+            const cleaned = String(distilled || '').replace(/\s+/g, ' ').trim();
+            return cleaned || fallback;
+        } catch (_) {
+            return fallback;
+        }
+    }
+
+    function countStoredImageBytes(chat) {
+        let count = 0;
+        for (const entry of (chat?.history || [])) {
+            for (const variation of (entry.variations || [])) {
+                for (const image of (variation.images || [])) {
+                    if (image.dataUrl) count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    // The app stores a character as one IndexedDB record, so every base64 image
+    // is rewritten on each save. Warn before the browser starts refusing writes.
+    async function isStorageNearlyFull() {
+        try {
+            if (!navigator.storage?.estimate) return false;
+            const { usage, quota } = await navigator.storage.estimate();
+            if (!usage || !quota) return false;
+            return (usage / quota) > 0.8;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // Free generation is the default, so the first time one succeeds the user
+    // is told once what the paid option buys them. Follows the same
+    // localStorage-flag pattern as the help notification.
+    const IMAGE_GEN_HINT_KEY = 'hasSeenImageGenHint';
+
+    function maybeShowFreeImageHint(messageElement) {
+        if (!messageElement) return;
+        try {
+            if (localStorage.getItem(IMAGE_GEN_HINT_KEY)) return;
+            localStorage.setItem(IMAGE_GEN_HINT_KEY, 'true');
+        } catch (_) {
+            return;
+        }
+
+        const hint = document.createElement('div');
+        hint.className = 'image-gen-hint';
+
+        const title = document.createElement('strong');
+        title.className = 'image-gen-hint-title';
+        title.textContent = '💡 Want better images?';
+        hint.appendChild(title);
+
+        const body = document.createElement('span');
+        body.append('Free generation is unlimited, but often slow and rough. For fast images and high quality, open ');
+        const where = document.createElement('em');
+        where.textContent = 'Chat Settings → Features → Image Source';
+        body.appendChild(where);
+        body.append(' and switch to OpenRouter with your own API key — around $0.002 per image.');
+        hint.appendChild(body);
+
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'image-gen-hint-dismiss';
+        dismiss.textContent = 'Got it';
+        dismiss.addEventListener('click', () => hint.remove());
+        hint.appendChild(dismiss);
+
+        const holder = messageElement.querySelector('.generated-images');
+        if (holder) holder.insertAdjacentElement('afterend', hint);
+        else messageElement.appendChild(hint);
+
+        // A tall picture pushes the hint below the fold, so scroll its bottom
+        // into view rather than doing the minimum ('nearest' barely moves).
+        requestAnimationFrame(() => {
+            hint.scrollIntoView({ block: 'end', behavior: 'smooth' });
+        });
+    }
+
+    async function handleGenerateImage(messageId, button) {
+        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+        if (!chat) return;
+        const message = chat.history.find(m => m.id === messageId);
+        if (!message || message.sender !== 'ai') return;
+
+        const variation = message.variations?.[message.activeVariant];
+        if (!variation) return;
+
+        const provider = IMAGE_PROVIDERS[imageGenProvider] || IMAGE_PROVIDERS.pollinations;
+
+        if (provider.storesBytes) {
+            if (countStoredImageBytes(chat) >= IMAGE_GEN_STORED_LIMIT) {
+                showCustomAlert(`This chat already holds ${IMAGE_GEN_STORED_LIMIT} saved images. Remove one with the × button before generating another.`);
+                return;
+            }
+            if (await isStorageNearlyFull()) {
+                const proceed = await showCustomConfirm('Browser storage is over 80% full. Saving another image may fail. Generate anyway?');
+                if (!proceed) return;
+            }
+        }
+
+        const speaker = characters[message.speakerId] || characters[currentCharacterId];
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        let stopSpinner = null;
+        let pendingBlock = null;
+        try {
+            if (button) {
+                button.disabled = true;
+                button.textContent = '⏳';
+                button.title = 'Generating…';
+                stopSpinner = () => {
+                    button.disabled = false;
+                    button.textContent = '🎨';
+                    button.title = 'Illustrate this scene';
+                };
+            }
+
+            // The box opens immediately with the raw scene text. Refining it
+            // through a text model is a network call that grows with message
+            // length, so it runs in the background and fills the box when it
+            // lands rather than holding the dialog shut until then.
+            const refineController = new AbortController();
+            const suggestion = buildImagePrompt(variation.main, speaker, refineController.signal);
+            let finalPrompt;
+            try {
+                finalPrompt = await showCustomLargePrompt(
+                    'Image prompt — edit it if you like, then press OK.',
+                    'Describe the picture you want…',
+                    imagePromptFallback(variation.main),
+                    // Roomy, so a whole distilled prompt or a long fallback is
+                    // visible without scrolling a small box to check the end.
+                    12,
+                    suggestion
+                );
+            } finally {
+                // Nothing is waiting on it once the dialog closes.
+                refineController.abort();
+            }
+            if (finalPrompt === null) return;
+            const prompt = String(finalPrompt).trim();
+            if (!prompt) return;
+
+            const controller = new AbortController();
+            if (messageElement) {
+                pendingBlock = showImagePendingBlock(messageElement, {
+                    providerLabel: provider.label,
+                    onCancel: () => controller.abort()
+                });
+            }
+
+            const seed = Math.floor(Math.random() * 1000000);
+            const result = await provider.generate({
+                prompt,
+                seed,
+                model: imageGenModel,
+                width: IMAGE_GEN_SIZE,
+                height: IMAGE_GEN_SIZE,
+                signal: controller.signal
+            });
+
+            const imageRecord = {
+                id: 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                prompt,
+                seed,
+                createdAt: Date.now(),
+                ...result
+            };
+
+            if (!Array.isArray(variation.images)) variation.images = [];
+            variation.images.push(imageRecord);
+
+            try {
+                await saveSingleCharacterToDB(characters[currentCharacterId]);
+            } catch (saveErr) {
+                variation.images.pop();
+                const quotaHit = saveErr?.name === 'QuotaExceededError'
+                    || /quota/i.test(saveErr?.message || '');
+                showCustomAlert(quotaHit
+                    ? 'Out of browser storage, so the image was not saved. Remove some images or gallery pictures and try again.'
+                    : `The image could not be saved: ${saveErr?.message || saveErr}`);
+                return;
+            }
+
+            updateSingleMessageView(messageId);
+
+            if (imageRecord.provider === 'pollinations') {
+                maybeShowFreeImageHint(document.querySelector(`[data-message-id="${messageId}"]`));
+            }
+
+            if (typeof imageRecord.cost === 'number') {
+                console.info(`[image] generated via ${imageRecord.provider} for $${imageRecord.cost.toFixed(5)}`);
+            }
+        } catch (err) {
+            if (err?.name === 'AbortError') {
+                // Cancelling is a deliberate act, so it passes without an alert.
+            } else if (err?.name === 'ImageRefusalError') {
+                // Already a full, plain-language explanation.
+                showCustomAlert(err.message);
+            } else {
+                showCustomAlert(`Image generation failed: ${err?.message || err}`);
+            }
+        } finally {
+            if (pendingBlock) pendingBlock.remove();
+            if (stopSpinner) stopSpinner();
+        }
+    }
+
+    async function handleRemoveGeneratedImage(messageId, imageId) {
+        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+        if (!chat) return;
+        const message = chat.history.find(m => m.id === messageId);
+        const variation = message?.variations?.[message.activeVariant];
+        if (!variation || !Array.isArray(variation.images)) return;
+
+        const index = variation.images.findIndex(i => i.id === imageId);
+        if (index === -1) return;
+
+        const confirmed = await showCustomConfirm('Remove this image?', true);
+        if (!confirmed) return;
+
+        variation.images.splice(index, 1);
+        await saveSingleCharacterToDB(characters[currentCharacterId]);
+        updateSingleMessageView(messageId);
     }
 
     function _formatAIError(err, context) {
@@ -8419,8 +9196,16 @@ personaEditorAvatarImg.onerror = () => {
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || !chat.history || chat.history.length === 0) return;
 
+        // Suggestions must be based on a finished reply. Focusing the message
+        // box mid-stream used to fire this against a half-written sentence, and
+        // the model would answer with something that was not a JSON pair, which
+        // surfaced as a parse error. The stream-completion handlers call this
+        // again once the reply is done, so bailing out here loses nothing.
+        if (chatTurnInProgress || currentStreamController) return;
+
         const lastAIMsg = [...chat.history].reverse().find(m => m.sender !== 'user');
         if (!lastAIMsg) return;
+        if (lastAIMsg.isStreaming) return;
         const lastAIText = (lastAIMsg.variations?.[lastAIMsg.activeVariant ?? 0]?.main || '').trim();
         if (!lastAIText || lastAIText.length < 5) return;
 
@@ -8442,7 +9227,10 @@ personaEditorAvatarImg.onerror = () => {
         const userMsg = `${charName} just said: "${lastAIText.substring(0, 600)}"\n\nNow provide 2 fitting reply options for the user (in quotation marks!). Each one must be one whole line in length.`;
 
         try {
-            const result = await callAISimple(systemPrompt, userMsg, modelId);
+            // Suggestions appear while the user is deciding what to type, so
+            // speed matters more than deliberation. Reasoning is switched off
+            // where the model allows it, as with the image prompt builder.
+            const result = await callAISimple(systemPrompt, userMsg, modelId, null, 'none');
             if (replyOptionsReqId !== reqId) return;
             const cleaned = stripThinkTags(result).trim();
             let parsed = null;
@@ -9424,12 +10212,46 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
             settingsPanel.classList.add('hidden');
         }
     });
+    // The open height is measured rather than hard-coded, so a section can grow
+    // when settings are added or when a conditional row appears without its
+    // content being clipped by a stale pixel value.
+    function closeAccordionSection(section) {
+        const content = section.querySelector('.accordion-content');
+        if (!content) { section.classList.remove('open'); return; }
+        // Collapsing from 'none' would jump, so pin the current height first.
+        content.style.maxHeight = `${content.scrollHeight}px`;
+        void content.offsetHeight;
+        section.classList.remove('open');
+        content.style.maxHeight = '';
+    }
+
+    function openAccordionSection(section) {
+        const content = section.querySelector('.accordion-content');
+        section.classList.add('open');
+        if (content) content.style.maxHeight = `${content.scrollHeight}px`;
+    }
+
+    // Once expanded, drop the cap entirely so later content changes are shown.
+    function refreshOpenAccordionHeight() {
+        const open = settingsPanel.querySelector('.accordion-section.open .accordion-content');
+        if (open) open.style.maxHeight = 'none';
+    }
+
+    settingsPanel.querySelectorAll('.accordion-content').forEach(content => {
+        content.addEventListener('transitionend', (e) => {
+            if (e.propertyName !== 'max-height') return;
+            if (content.closest('.accordion-section')?.classList.contains('open')) {
+                content.style.maxHeight = 'none';
+            }
+        });
+    });
+
     settingsPanel.querySelectorAll('.accordion-header').forEach(btn => {
         btn.addEventListener('click', () => {
             const section = btn.closest('.accordion-section');
             const isOpen = section.classList.contains('open');
-            settingsPanel.querySelectorAll('.accordion-section').forEach(s => s.classList.remove('open'));
-            if (!isOpen) section.classList.add('open');
+            settingsPanel.querySelectorAll('.accordion-section.open').forEach(closeAccordionSection);
+            if (!isOpen) openAccordionSection(section);
         });
     });
 
@@ -9450,6 +10272,20 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     addSettingListener(modelSelect, 'model', 'change');
     addSettingListener(avatarSizeSlider, 'avatarSize');
     if (suggestionModelSelect) addSettingListener(suggestionModelSelect, 'suggestionModelId', 'change');
+
+    // Image generation is still in testing, so the whole block stays hidden
+    // unless this browser has it unlocked. Listeners are registered either way
+    // so the settings still round-trip once it launches.
+    const imageGenSettingsBlock = document.getElementById('image-gen-settings');
+    if (imageGenSettingsBlock && isImageGenUnlocked()) {
+        imageGenSettingsBlock.classList.remove('hidden');
+    }
+    const imageGenToggleEl = document.getElementById('image-gen-toggle');
+    const imageGenProviderEl = document.getElementById('image-gen-provider-select');
+    const imageGenModelEl = document.getElementById('image-gen-model-input');
+    if (imageGenToggleEl) addSettingListener(imageGenToggleEl, 'imageGenEnabled', 'change');
+    if (imageGenProviderEl) addSettingListener(imageGenProviderEl, 'imageGenProvider', 'change');
+    if (imageGenModelEl) addSettingListener(imageGenModelEl, 'imageGenModel', 'change');
 
     if (typeof window !== 'undefined') {
         if (responsiveViewportQuery) {

@@ -260,7 +260,7 @@
                         </div>
                         <div class="setting" id="suggestion-model-setting">
                             <label for="suggestion-model-select">
-                                <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose any AI model for generating reply suggestions. Lower-quality models are sufficient for this. Ideally use a free model here to avoid unnecessary API costs.">ℹ️</span></span>
+                                <span>Suggestions Model: <span class="setting-info-icon" data-tooltip="Choose any AI model for generating reply suggestions and for writing image prompts. Lower-quality models are sufficient for this, and a fast one keeps both quick. Ideally use a free model here to avoid unnecessary API costs.">ℹ️</span></span>
                             </label>
                             <select id="suggestion-model-select">
                                 <option value="">(same as chat model)</option>
@@ -307,6 +307,27 @@
                                 <span>Notification Sound:</span>
                                 <input type="checkbox" id="sound-toggle" class="toggle-switch">
                             </label>
+                        </div>
+                        <div id="image-gen-settings" class="hidden">
+                            <div class="setting">
+                                <label for="image-gen-toggle">
+                                    <span>Image Generation:</span>
+                                    <span class="setting-info-icon" data-tooltip="Adds a 🎨 button to AI messages that turns the scene into a picture.">ℹ️</span>
+                                    <input type="checkbox" id="image-gen-toggle" class="toggle-switch">
+                                </label>
+                                <p class="setting-note">The prompt is written by your <strong>Suggestions Model</strong> (AI section). Pick a fast, cheap one — it only has to summarise the scene.</p>
+                            </div>
+                            <div class="setting">
+                                <label for="image-gen-provider-select">Image Source:</label>
+                                <select id="image-gen-provider-select">
+                                    <option value="pollinations">Free (no API key)</option>
+                                    <option value="openrouter">OpenRouter (uses your key)</option>
+                                </select>
+                            </div>
+                            <div class="setting" id="image-gen-model-setting">
+                                <label for="image-gen-model-input">Image Model:</label>
+                                <input type="text" id="image-gen-model-input" placeholder="google/gemini-3.1-flash-lite-image">
+                            </div>
                         </div>
                     </div>
                 </div>

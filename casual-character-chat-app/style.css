@@ -2532,9 +2532,11 @@ max-height: 27em;
     transition: max-height 0.3s ease-in-out;
 }
 
+/* Fallbacks only. On open, JS measures the content and sets an inline
+   max-height, so these values do not clip a section that has grown. */
 #section-design.open .accordion-content   { max-height: 580px; }
 #section-ai.open .accordion-content       { max-height: 440px; }
-#section-features.open .accordion-content { max-height: 280px; }
+#section-features.open .accordion-content { max-height: 520px; }
 
 .accordion-inner {
     padding: 12px 12px 14px;
@@ -2542,6 +2544,28 @@ max-height: 27em;
     flex-direction: column;
     gap: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* A short explanatory line under a setting. Visible rather than a hover
+   tooltip, since hover does not exist on the phones most users are on. */
+.setting-note {
+    margin: 0;
+    font-size: 0.72em;
+    line-height: 1.45;
+    opacity: 0.62;
+}
+
+.setting-note strong {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+/* This wrapper is a single flex item of .accordion-inner, so it has to repeat
+   the same gap or the settings inside it sit flush against each other. */
+#image-gen-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
 #settings-panel.hidden {
@@ -4478,10 +4502,202 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 }
 
 .message-image-container img {
-  max-width: 100%; 
-  max-height: 990px; 
+  max-width: 100%;
+  max-height: 990px;
   border-radius: 9px;
-  object-fit: contain; 
+  object-fit: contain;
+}
+
+
+
+.generated-images {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 9px 0;
+}
+
+.generated-image {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.remove-generated-image-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  font-size: 17px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.generated-image:hover .remove-generated-image-btn,
+.remove-generated-image-btn:focus-visible {
+  opacity: 1;
+}
+
+.remove-generated-image-btn:hover {
+  background: rgba(190, 40, 40, 0.85);
+}
+
+/* Touch devices never hover, so the control has to stay visible there. */
+@media (hover: none) {
+  .remove-generated-image-btn {
+    opacity: 0.8;
+  }
+}
+
+.generated-image.image-failed img {
+  display: none;
+}
+
+.generated-image-error {
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 9px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+
+/* Shown in the prompt dialog while the scene is being refined in the
+   background, so the wait is visible without blocking the box. */
+.prompt-refining-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 12px;
+  font-size: 0.8em;
+  opacity: 0.65;
+  line-height: 1.4;
+}
+
+.generated-image-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 22px 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.generated-image-pending-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+}
+
+.generated-image-pending-timer {
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.generated-image-pending-hint {
+  font-size: 0.78em;
+  opacity: 0.55;
+  max-width: 34ch;
+  line-height: 1.4;
+}
+
+.generated-image-pending-hint:empty {
+  display: none;
+}
+
+.generated-image-cancel-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: inherit;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.8em;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.generated-image-cancel-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.generated-image-cancel-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generated-image-pending .btn-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* Shown once, under the first free image, to explain the paid alternative. */
+.image-gen-hint {
+  position: relative;
+  margin: 10px 0 2px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(86, 156, 214, 0.55);
+  background: rgba(86, 156, 214, 0.16);
+  color: #f2f6fa;
+  font-size: 0.86em;
+  line-height: 1.5;
+}
+
+.image-gen-hint::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 26px;
+  border-width: 7px;
+  border-style: solid;
+  border-color: transparent transparent rgba(86, 156, 214, 0.55) transparent;
+}
+
+.image-gen-hint-title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.image-gen-hint em {
+  font-style: normal;
+  font-weight: 600;
+  color: #9fd0f5;
+}
+
+.image-gen-hint-dismiss {
+  display: block;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  border-radius: 6px;
+  padding: 4px 13px;
+  font-size: 0.92em;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.image-gen-hint-dismiss:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+body.image-gen-off .generate-image-btn {
+  display: none;
 }
 
 
@@ -6587,6 +6803,30 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
 #settings-panel select option {
     background: #0c0e14;
     color: #fff;
+}
+
+/* Matches the select above so text fields in the panel are not left with the
+   browser default white box. */
+#settings-panel input[type="text"] {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 5px;
+    color: #fff;
+    padding: 5px 7px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#settings-panel input[type="text"]:focus {
+    outline: none;
+    border-color: rgba(255,255,255,0.42);
+    background: rgba(255,255,255,0.12);
+}
+
+#settings-panel input[type="text"]::placeholder {
+    color: rgba(255,255,255,0.35);
 }
 
 /* ===== WORLDS FEATURE ===== */
