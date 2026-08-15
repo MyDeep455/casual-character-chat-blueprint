@@ -2566,6 +2566,7 @@ function updatePersonaEditorTokenCount() {
     chatListScreen.classList.add('is-inactive');
     chatScreen.classList.add('is-inactive');
     characterSelectionScreen.classList.remove('is-inactive');
+    tutorialOnScreenChange('character-selection');
     characterSelectionScreen.style.pointerEvents = 'auto';
 chatListScreen.style.pointerEvents = 'none';
 chatScreen.style.pointerEvents = 'none';
@@ -2598,6 +2599,7 @@ chatScreen.style.pointerEvents = 'none';
         showChatList(lastCharId);
     } else {
         characterSelectionScreen.classList.remove('is-inactive');
+        tutorialOnScreenChange('character-selection');
     }
     localStorage.removeItem('activeChatId');
     currentChatId = null;
@@ -11287,88 +11289,139 @@ helpBtn.addEventListener('click', () => {
 // TUTORIAL TOUR MODULE
 // =============================================================
 
+// Three self-contained tours, one per screen. Each one starts the first time
+// its screen is reached and finishes on that same screen. The previous version
+// was a single step list split across all three screens, so it kept breaking
+// off mid-tour and waiting for the user to navigate — separate tours per screen
+// are short, and nothing is left hanging.
+//
+// Finishing a tour only marks that tour seen. "Skip Tour" marks all of them,
+// because a user who skips is saying they don't want onboarding at all.
+const tutorialTours = {
+    'character-selection': {
+        storageKey: 'tourSeenMain',
+        label: 'Main Menu',
+        steps: [
+            {
+                targetId: null,
+                position: 'center',
+                indicator: 'Welcome',
+                title: 'Welcome to Casual Character Chat!',
+                text: "Here's a quick tour of the main menu. You'll get two more short ones later — for your chat list and for the chat itself. Feel free to skip anytime.",
+                nextLabel: "Let's Go",
+            },
+            {
+                targetId: 'app-settings-btn',
+                position: 'bottom',
+                title: 'Enter your API key first',
+                text: 'Open Global App Settings to add your AI API key and choose a default model. This is your first stop — no key, no AI chat.',
+            },
+            {
+                targetId: 'new-character-btn',
+                position: 'bottom',
+                title: 'Create your own character',
+                text: "Give them a name, personality, and avatar. This is who you'll be chatting with.",
+            },
+            {
+                targetId: 'get-cards-btn',
+                position: 'bottom',
+                title: 'Or grab a ready-made one',
+                text: 'Browse Characters opens the Character Card Browser in a second tab. Search chub.ai, Character Tavern and JanitorAI from one place, then send any card straight into your collection — no downloads, no files to juggle.',
+            },
+            {
+                targetId: 'manage-personas-btn',
+                position: 'bottom',
+                title: 'Play as your own persona',
+                text: 'Optionally create a persona for yourself — useful if you like to roleplay as a specific character or personality across chats.',
+            },
+            {
+                targetId: 'export-btn',
+                position: 'bottom',
+                title: 'Your data lives in this browser',
+                text: 'Nothing is stored on a server, so Export Data is your backup — please keep one. Import Data restores it, and also loads character cards you already have as V2 PNG or JSON.',
+            },
+            {
+                targetId: 'help-btn',
+                position: 'top',
+                title: 'Everything else is explained here',
+                text: "Help & FAQ waits at the bottom of the page whenever you need it. That's the main menu — pick a character to carry on.",
+                nextLabel: 'Done',
+            },
+        ],
+    },
+    'chat-list': {
+        storageKey: 'tourSeenChatList',
+        label: 'Chat List',
+        steps: [
+            {
+                targetId: 'start-new-chat-btn',
+                position: 'top',
+                title: 'Start a new conversation',
+                text: 'Every chat with this character is saved here, so you can keep several separate storylines running side by side.',
+            },
+            {
+                targetId: 'new-chat-group-btn',
+                position: 'bottom',
+                title: 'Keep your chats organised',
+                text: 'Once the list grows, create a group and use the "Move" button on any chat to file it in there. Groups sit at the top of the list — open one to see its chats, and use the arrow to come back out.',
+            },
+            {
+                targetId: 'edit-character-btn',
+                position: 'top',
+                title: 'Edit your character anytime',
+                text: 'Refine their personality, add scenarios, or change their avatar here. Copy Character gives you a duplicate to experiment on.',
+                nextLabel: 'Done',
+            },
+        ],
+    },
+    'chat': {
+        storageKey: 'tourSeenChat',
+        label: 'Chat',
+        steps: [
+            {
+                targetId: 'chat-form',
+                position: 'top',
+                title: 'Type your message here',
+                text: '"Character" sends your message and gets an AI reply. "Narrator" moves the story along instead. Try both!',
+            },
+            {
+                targetId: 'settings-container',
+                position: 'bottom',
+                title: 'Your chat control panel',
+                text: 'This row is per-chat: mood, ambient effects, music, memories, group chat, and your persona.',
+            },
+            {
+                targetId: 'settings-btn',
+                position: 'bottom',
+                title: "Don't miss the settings dropdown",
+                text: 'The gear hides the good stuff: AI model selection, reply suggestions, and image generation are all in here, along with fonts, colours and bubble styling.',
+                nextLabel: 'Done',
+            },
+        ],
+    },
+};
+
+// Set once by the old single tour when it was completed or skipped. Anyone
+// carrying it has already been onboarded, so they are not shown the new tours.
+const TUTORIAL_LEGACY_KEY = 'tutorialCompleted';
+
+// Numbering the steps here rather than in the data keeps "Step 3 of 7" honest
+// when steps are added or removed. Steps with their own indicator (the welcome
+// card) sit outside the count.
+Object.values(tutorialTours).forEach(tour => {
+    const counted = tour.steps.filter(step => !step.indicator);
+    counted.forEach((step, i) => {
+        step.indicator = `${tour.label} · Step ${i + 1} of ${counted.length}`;
+    });
+    tour.steps.forEach(step => {
+        if (!step.nextLabel) step.nextLabel = 'Next';
+    });
+});
+
 const tutorialData = {
     active: false,
+    tourName: null,
     currentStep: 0,
-    pendingPhase: null,
-    localStorageKey: 'tutorialCompleted',
-    steps: [
-        // Phase 1 — Character Selection Screen
-        {
-            phase: 'character-selection',
-            targetId: null,
-            position: 'center',
-            indicator: 'Welcome',
-            title: 'Welcome to Casual Character Chat!',
-            text: "This quick tour will show you the basics. It only takes a moment — feel free to skip anytime.",
-            nextLabel: "Let's Go",
-        },
-        {
-            phase: 'character-selection',
-            targetId: 'app-settings-btn',
-            position: 'bottom',
-            indicator: 'Step 1 of 6',
-            title: 'Enter your API Key first',
-            text: 'Open Global Settings to add your AI API key. This is your first stop — no key, no AI chat.',
-            nextLabel: 'Next',
-        },
-        {
-            phase: 'character-selection',
-            targetId: 'new-character-btn',
-            position: 'bottom',
-            indicator: 'Step 2 of 7',
-            title: 'Create your first character',
-            text: 'Give them a name, personality, and avatar. This is who you\'ll be chatting with.',
-            nextLabel: 'Next',
-        },
-        {
-            phase: 'character-selection',
-            targetId: 'manage-personas-btn',
-            position: 'bottom',
-            indicator: 'Step 3 of 7',
-            title: 'Play as your own persona',
-            text: 'Optionally create a persona for yourself — useful if you like to roleplay as a specific character or personality across chats.',
-            nextLabel: 'Got it',
-        },
-        // Phase 2 — Chat List Screen
-        {
-            phase: 'chat-list',
-            targetId: 'start-new-chat-btn',
-            position: 'top',
-            indicator: 'Step 4 of 7',
-            title: 'Start a new conversation',
-            text: 'Click here to begin a fresh chat session with your character.',
-            nextLabel: 'Next',
-        },
-        {
-            phase: 'chat-list',
-            targetId: 'edit-character-btn',
-            position: 'top',
-            indicator: 'Step 5 of 7',
-            title: 'Edit your character anytime',
-            text: 'Refine their personality, add scenarios, or change their avatar here.',
-            nextLabel: 'Got it',
-        },
-        // Phase 3 — Chat Screen
-        {
-            phase: 'chat',
-            targetId: 'chat-form',
-            position: 'top',
-            indicator: 'Step 6 of 7',
-            title: 'Type your message here',
-            text: '"Character" sends an AI reply. "Narrator" adds story narration. Try both!',
-            nextLabel: 'Next',
-        },
-        {
-            phase: 'chat',
-            targetId: 'settings-container',
-            position: 'bottom',
-            indicator: 'Step 7 of 7',
-            title: 'Your chat control panel',
-            text: 'Memories, group chat, persona, and settings all live up here. That\'s the tour!',
-            nextLabel: 'Done!',
-        },
-    ],
 };
 
 const tutorialBackdrop        = document.getElementById('tutorial-backdrop');
@@ -11441,20 +11494,50 @@ function tutorialComputeTooltipPos(targetRect, position) {
     return { top, left };
 }
 
-function tutorialHideUI() {
-    tutorialSpotlight.classList.remove('tutorial-visible');
-    tutorialTooltipEl.classList.remove('tutorial-visible');
-    setTimeout(() => {
-        tutorialBackdrop.classList.remove('tutorial-active');
-        tutorialSpotlight.classList.remove('tutorial-active', 'tutorial-welcome');
-        tutorialTooltipEl.classList.remove('tutorial-active', 'tutorial-centered');
-    }, 260);
+function tutorialCurrentSteps() {
+    const tour = tutorialTours[tutorialData.tourName];
+    return tour ? tour.steps : [];
 }
 
-function tutorialComplete() {
-    localStorage.setItem(tutorialData.localStorageKey, 'true');
+function tutorialTourSeen(tourName) {
+    if (localStorage.getItem(TUTORIAL_LEGACY_KEY)) return true;
+    const tour = tutorialTours[tourName];
+    return !tour || !!localStorage.getItem(tour.storageKey);
+}
+
+// A step whose target is missing or collapsed would leave a 0x0 spotlight and
+// a tooltip floating in the corner, so those steps are stepped over instead.
+function tutorialTargetUsable(step) {
+    if (!step.targetId) return true;
+    const el = document.getElementById(step.targetId);
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
+// The spotlight is position:fixed, so a target below the fold — the Help link
+// sits under the whole character list — has to be scrolled into view first or
+// the highlight lands off screen.
+function tutorialRevealTarget(step) {
+    if (!step.targetId) return;
+    const el = document.getElementById(step.targetId);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 90;
+    if (rect.top < margin || rect.bottom > window.innerHeight - margin) {
+        el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    }
+}
+
+function tutorialFinish(skipEverything) {
+    const tour = tutorialTours[tutorialData.tourName];
+    if (tour) localStorage.setItem(tour.storageKey, 'true');
+    if (skipEverything) {
+        Object.values(tutorialTours).forEach(t => localStorage.setItem(t.storageKey, 'true'));
+        localStorage.setItem(TUTORIAL_LEGACY_KEY, 'true');
+    }
     tutorialData.active = false;
-    tutorialData.pendingPhase = null;
+    tutorialData.tourName = null;
     tutorialSpotlight.classList.remove('tutorial-visible');
     tutorialTooltipEl.classList.remove('tutorial-visible');
     setTimeout(() => {
@@ -11467,22 +11550,16 @@ function tutorialComplete() {
 }
 
 function tutorialShowStep(stepIndex) {
-    if (stepIndex >= tutorialData.steps.length) {
-        tutorialComplete();
+    const steps = tutorialCurrentSteps();
+    while (stepIndex < steps.length && !tutorialTargetUsable(steps[stepIndex])) stepIndex++;
+
+    if (stepIndex >= steps.length) {
+        tutorialFinish(false);
         return;
     }
 
-    const step = tutorialData.steps[stepIndex];
+    const step = steps[stepIndex];
     tutorialData.currentStep = stepIndex;
-
-    const activePhase = tutorialGetActivePhase();
-    if (step.phase !== activePhase) {
-        tutorialData.pendingPhase = step.phase;
-        tutorialHideUI();
-        return;
-    }
-
-    tutorialData.pendingPhase = null;
 
     tutorialStepIndicatorEl.textContent = step.indicator;
     tutorialTitleEl.textContent         = step.title;
@@ -11499,16 +11576,8 @@ function tutorialShowStep(stepIndex) {
         tutorialTooltipEl.classList.remove('tutorial-centered');
     }
 
-    const targetRect = tutorialPositionSpotlight(step);
-
-    if (step.position !== 'center') {
-        const pos = tutorialComputeTooltipPos(
-            targetRect || { top: 0, left: 0, width: 0, height: 0, bottom: 0, right: 0 },
-            step.position
-        );
-        tutorialTooltipEl.style.top  = pos.top  + 'px';
-        tutorialTooltipEl.style.left = pos.left + 'px';
-    }
+    tutorialRevealTarget(step);
+    tutorialReposition();
 
     requestAnimationFrame(() => {
         tutorialSpotlight.classList.add('tutorial-visible');
@@ -11516,32 +11585,50 @@ function tutorialShowStep(stepIndex) {
     });
 }
 
+// Re-measures the current step in place. Used on every step change and again
+// whenever the page moves under the overlay (resize, scroll, on-screen keyboard).
+function tutorialReposition() {
+    const step = tutorialCurrentSteps()[tutorialData.currentStep];
+    if (!step) return;
+    const targetRect = tutorialPositionSpotlight(step);
+    if (step.position === 'center') return;
+    const pos = tutorialComputeTooltipPos(
+        targetRect || { top: 0, left: 0, width: 0, height: 0, bottom: 0, right: 0 },
+        step.position
+    );
+    tutorialTooltipEl.style.top  = pos.top  + 'px';
+    tutorialTooltipEl.style.left = pos.left + 'px';
+}
+
+function tutorialStartTour(tourName) {
+    if (tutorialData.active) return;
+    if (!tutorialTours[tourName]) return;
+    if (tutorialTourSeen(tourName)) return;
+    tutorialData.active = true;
+    tutorialData.tourName = tourName;
+    tutorialShowStep(0);
+}
+
+// Called by each screen as it becomes visible. The swap animates, so the tour
+// waits for it to land before measuring anything.
 function tutorialOnScreenChange(screenName) {
-    if (!tutorialData.active) return;
-    if (tutorialData.pendingPhase !== screenName) return;
+    if (tutorialData.active) return;
+    if (tutorialTourSeen(screenName)) return;
     setTimeout(() => {
-        const stepIndex = tutorialData.steps.findIndex(s => s.phase === screenName);
-        if (stepIndex !== -1) tutorialShowStep(stepIndex);
-    }, 260);
+        if (tutorialGetActivePhase() !== screenName) return;
+        tutorialStartTour(screenName);
+    }, 320);
 }
 
 function tutorialInit() {
-    if (localStorage.getItem(tutorialData.localStorageKey)) return;
-    tutorialData.active = true;
+    // Restoring a session may still be swapping screens, in which case that
+    // screen announces itself through tutorialOnScreenChange instead.
     const currentPhase = tutorialGetActivePhase();
-    if (currentPhase === 'chat-list') {
-        const i = tutorialData.steps.findIndex(s => s.phase === 'chat-list');
-        tutorialShowStep(i);
-    } else if (currentPhase === 'chat') {
-        const i = tutorialData.steps.findIndex(s => s.phase === 'chat');
-        tutorialShowStep(i);
-    } else {
-        tutorialShowStep(0);
-    }
+    if (currentPhase) tutorialStartTour(currentPhase);
 }
 
 tutorialSkipBtn.addEventListener('click', () => {
-    tutorialComplete();
+    tutorialFinish(true);
 });
 
 tutorialNextBtn.addEventListener('click', () => {
@@ -11555,19 +11642,25 @@ tutorialBackdrop.addEventListener('click', (e) => {
 
 let tutorialResizeTimer;
 window.addEventListener('resize', () => {
-    if (!tutorialData.active || tutorialData.pendingPhase !== null) return;
+    if (!tutorialData.active) return;
     clearTimeout(tutorialResizeTimer);
-    tutorialResizeTimer = setTimeout(() => {
-        const step = tutorialData.steps[tutorialData.currentStep];
-        if (!step) return;
-        const targetRect = tutorialPositionSpotlight(step);
-        if (step.position !== 'center' && targetRect) {
-            const pos = tutorialComputeTooltipPos(targetRect, step.position);
-            tutorialTooltipEl.style.top  = pos.top  + 'px';
-            tutorialTooltipEl.style.left = pos.left + 'px';
-        }
-    }, 120);
+    tutorialResizeTimer = setTimeout(tutorialReposition, 120);
 });
+
+// The backdrop swallows clicks but not the wheel, so the page can still slide
+// out from under a highlight. Capture phase catches the inner scrollers too.
+// The spotlight's 0.3s ease would trail the target the whole way down, so it
+// tracks instantly while the scroll is running and gets its easing back after.
+let tutorialScrollTimer;
+window.addEventListener('scroll', () => {
+    if (!tutorialData.active) return;
+    tutorialSpotlight.style.transition = 'opacity 0.25s ease';
+    tutorialReposition();
+    clearTimeout(tutorialScrollTimer);
+    tutorialScrollTimer = setTimeout(() => {
+        tutorialSpotlight.style.transition = '';
+    }, 150);
+}, { capture: true, passive: true });
 
 // =============================================================
 // END TUTORIAL TOUR MODULE
