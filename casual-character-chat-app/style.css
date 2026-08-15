@@ -128,22 +128,46 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 18px;
+    /* .main-title is an absolute overlay ending at y108, so the button rows start
+       below it rather than sharing its band. The 90px that buys is taken back out
+       of margin-bottom (was 153) and of the h3's translateY (was 135), so the
+       Favorites heading and everything under it stay exactly where they were. */
+    padding: 104px 18px 14px;
     margin-top: 16px;
-    margin-bottom: 153px;
+    margin-bottom: 63px;
 }
 
 
+/* Two menu buttons on the top row, the group's data button tucked under the
+   outer one. Keeping both groups to two columns leaves the middle of the header
+   clear, so the absolutely-positioned .main-title has room to sit across it. */
 .header-left-group, .header-right-group {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto auto;
     align-items: center;
     gap: 9px;
-    flex: 1; 
+    flex: 1;
+}
+
+.header-left-group {
+    justify-content: start;
 }
 
 .header-right-group {
-    justify-content: flex-end; 
+    justify-content: end;
 }
+
+/* Import lands under Create Character, Export under Global App Settings — the
+   outer edge of each group, furthest from the title. Each stretches to the width
+   of the menu button above it, so the label is centred rather than left against
+   the padding. */
+#import-btn,
+#export-btn {
+    justify-content: center;
+}
+
+#import-btn { grid-column: 1; }
+#export-btn { grid-column: 2; }
 
 
 .main-header h3 {
@@ -153,7 +177,7 @@ h1 {
     font-size: 2em;
     margin-top: 36px;
     position: relative;
-    transform: translateY(135px);
+    transform: translateY(45px);
     font-weight: 800;
     letter-spacing: 0.03em;
 
@@ -177,10 +201,12 @@ h1 {
    SHARED BUTTON BASE — modern, clean, sharp design
    ===================================================== */
 #new-character-btn,
+#get-cards-btn,
 #manage-personas-btn,
 #app-settings-btn,
 #create-new-persona-btn,
-.header-menu button,
+#import-btn,
+#export-btn,
 #privacy-btn,
 #help-btn,
 #back-to-main-btn,
@@ -218,10 +244,12 @@ h1 {
 }
 
 #new-character-btn:hover,
+#get-cards-btn:hover,
 #manage-personas-btn:hover,
 #app-settings-btn:hover,
 #create-new-persona-btn:hover,
-.header-menu button:hover,
+#import-btn:hover,
+#export-btn:hover,
 #privacy-btn:hover,
 #help-btn:hover,
 #back-to-main-btn:hover,
@@ -249,10 +277,12 @@ h1 {
 }
 
 #new-character-btn:active,
+#get-cards-btn:active,
 #manage-personas-btn:active,
 #app-settings-btn:active,
 #create-new-persona-btn:active,
-.header-menu button:active,
+#import-btn:active,
+#export-btn:active,
 #privacy-btn:active,
 #help-btn:active,
 #back-to-main-btn:active,
@@ -280,10 +310,12 @@ h1 {
 }
 
 #new-character-btn:focus-visible,
+#get-cards-btn:focus-visible,
 #manage-personas-btn:focus-visible,
 #app-settings-btn:focus-visible,
 #create-new-persona-btn:focus-visible,
-.header-menu button:focus-visible,
+#import-btn:focus-visible,
+#export-btn:focus-visible,
 #privacy-btn:focus-visible,
 #help-btn:focus-visible,
 #back-to-main-btn:focus-visible,
@@ -316,6 +348,15 @@ h1 {
 	padding: 6px 14px;
 	font-size: 16px;
 	background-color: rgba(4, 79, 165, 0.70);
+}
+
+/* Sits next to "Create Character" and is the other half of the same question -
+   make one yourself, or go and fetch one. Green rather than the blue beside it
+   so the pair reads as two routes rather than one button with a twin. */
+#get-cards-btn {
+	padding: 6px 14px;
+	font-size: 16px;
+	background-color: rgba(20, 122, 74, 0.78);
 }
 
 
@@ -378,9 +419,17 @@ h1 {
     color: #aaaaaa;
 }
 
-.header-menu {
+/* Help and Privacy are reference links, not part of the main menu — they sit in
+   their own strip at the foot of the character screen, above the copyright. */
+.footer-menu {
     display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 9px;
+    margin-top: 54px;
+    padding: 0 18px;
+    position: relative;
+    z-index: 1;
 }
 
 #start-empty-chat-btn {
@@ -389,7 +438,8 @@ h1 {
 
 
 
-.header-menu button,
+#import-btn,
+#export-btn,
 #privacy-btn,
 #help-btn {
 	background-color: rgba(90,90,90,0.65);
@@ -4870,32 +4920,6 @@ body.image-gen-off .generate-image-btn {
     position: relative;
 }
 
-.help-tooltip {
-    position: absolute;
-    bottom: 125%; 
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #569cd6; 
-    color: #fff;
-    padding: 5px 11px;
-    border-radius: 5px;
-    font-size: 13px;
-    white-space: nowrap; 
-    z-index: 100;
-    transition: opacity 0.2s;
-}
-
-.help-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%; 
-    left: 50%;
-    margin-left: -5px;
-    border-width: 6px;
-    border-style: solid;
-    border-color: #569cd6 transparent transparent transparent; 
-}
-
 /* === Chat Mobile Layout Tweaks === */
 @media (max-width: 768px) {
 	#chat-header {
@@ -5174,22 +5198,11 @@ body.image-gen-off .generate-image-btn {
     height: 100dvh;
   }
 
-  /* Header kompakter und stapeln */
-  .main-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    margin-bottom: 80px;
-  }
-  .header-left-group, .header-right-group {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
+  /* Header kompakter (Raster weiter unten) */
   .main-header h3 {
     transform: none;
     text-align: center;
     font-size: 1.6em;
-    margin-top: 8px;
   }
 
   /* Charakter-Grid dichter */
@@ -5527,84 +5540,8 @@ body.image-gen-off .generate-image-btn {
     padding: 0 16px;
   }
 
-  .main-header {
-    margin-top: 12px;
-    margin-bottom: 48px;
-    padding: 0 16px;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .main-header .header-left-group,
-  .main-header .header-right-group,
-  .main-header h3 {
-    width: 100%;
-    max-width: 360px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .main-header .header-left-group,
-  .main-header .header-right-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .main-header .header-left-group { order: 1; }
-  .main-header .header-right-group { order: 2; }
-  .main-header h3 {
-    order: 3;
-    margin-top: 0;
-    position: static;
-    transform: none;
-    text-align: center;
-  }
-
-  .main-header .header-left-group button,
-  .main-header .header-right-group button,
-  .main-header .header-right-group a {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-
-  .main-header .header-right-group {
-    margin-top: 10px;
-    margin-bottom: 26px;
-  }
-
-  .header-menu {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    width: 100%;
-    justify-items: stretch;
-    align-items: stretch;
-  }
-
-  .header-menu > * {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 8px 12px;
-    box-sizing: border-box;
-    gap: 6px;
-    font-size: 12px;
-    max-width: 100%;
-    text-align: center;
-  }
-
-  .header-menu button,
-  .header-menu a,
-  #import-btn,
-  #export-btn,
-  #help-btn,
-  #privacy-btn {
-    font-size: 12px !important;
-    padding: 8px 10px;
-  }
+  /* The small-screen main menu is laid out once, in the block further down that
+     turns .main-header into the six-button grid. Nothing about it belongs here. */
 
   #token-tooltip {
     left: 50%;
@@ -5699,27 +5636,6 @@ body.image-gen-off .generate-image-btn {
     font-size: 2em;
   }
 
-  .main-header {
-    gap: 12px;
-    margin-top: 20px;
-    margin-bottom: 36px;
-  }
-
-  .main-header .header-left-group,
-  .main-header .header-right-group,
-  .main-header h3 {
-    max-width: 320px;
-  }
-
-  .main-header .header-right-group {
-    margin-top: 12px;
-  }
-
-  .main-header .header-left-group button {
-    font-size: 16px;
-    padding: 10px 14px;
-  }
-
   .favorite-item span {
     font-size: 15px;
   }
@@ -5786,58 +5702,86 @@ body.image-gen-off .generate-image-btn {
     padding: 0 16px;
   }
 
+  /* Small screens get the six main-menu buttons as one 2x3 grid: the two ways in
+     (create / browse), the two settings screens (personas / app), then the two
+     data buttons. The left and right groups are `display: contents` so their
+     buttons become the grid's own items and can be placed row by row without
+     the desktop DOM order — which pairs each data button with its neighbour —
+     getting in the way. */
   .main-header {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: center;
+    /* overrides the desktop `align-items: center`, so a label that wraps to two
+       lines doesn't leave its neighbour shorter than it */
+    align-items: stretch;
     margin-top: 6px;
     margin-bottom: 48px;
     padding: 0 16px;
-    align-items: center;
-    gap: 14px;
-    flex-direction: column;
-  }
-
-  .main-header .header-left-group,
-  .main-header .header-right-group,
-  .main-header h3 {
+    gap: 12px;
     width: 100%;
-    max-width: 360px;
+    max-width: 480px;
     margin-left: auto;
     margin-right: auto;
+    box-sizing: border-box;
   }
 
   .main-header .header-left-group,
   .main-header .header-right-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    display: contents;
   }
 
-  .main-header .header-left-group { order: 1; }
-  .main-header .header-right-group { order: 2; margin-top: 10px; }
+  #new-character-btn   { grid-column: 1; grid-row: 1; }
+  #get-cards-btn       { grid-column: 2; grid-row: 1; }
+  #manage-personas-btn { grid-column: 1; grid-row: 2; }
+  #app-settings-btn    { grid-column: 2; grid-row: 2; }
+  #import-btn          { grid-column: 1; grid-row: 3; }
+  #export-btn          { grid-column: 2; grid-row: 3; }
+
   .main-header h3 {
-    order: 3;
-    margin-top: 18px;
+    grid-column: 1 / -1;
+    grid-row: 4;
+    width: 100%;
+    margin: 18px auto 0;
+    padding: 0;
+    position: static;
+    transform: none;
     text-align: center;
   }
 
-  .main-header .header-left-group button,
-  .main-header .header-right-group button,
-  .main-header .header-right-group a {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-
-  .header-menu {
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-  }
-
-  .header-menu a {
+  /* Half the width they had when they were full-width rows, so the labels are
+     sized to the cell instead of overflowing it. */
+  #new-character-btn,
+  #get-cards-btn,
+  #manage-personas-btn,
+  #app-settings-btn,
+  #import-btn,
+  #export-btn {
     display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     width: 100%;
+    min-height: 46px;
+    padding: 9px 8px;
+    box-sizing: border-box;
+    font-size: clamp(12px, 3.4vw, 15px);
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .footer-menu {
+    margin-top: 40px;
+    gap: 12px;
+  }
+
+  #help-btn,
+  #privacy-btn {
     justify-content: center;
     box-sizing: border-box;
+    font-size: 13px;
+    padding: 8px 12px;
   }
 
   #favorites-bar-container {
@@ -5953,69 +5897,27 @@ body.image-gen-off .generate-image-btn {
   }
 
   .main-header {
-    gap: 12px;
+    gap: 10px;
     margin-top: 12px;
     margin-bottom: 36px;
-  }
-
-  .main-header .header-left-group,
-  .main-header .header-right-group,
-  .main-header h3 {
-    max-width: 320px;
-  }
-
-  .main-header .header-right-group {
-    margin-top: 12px;
-    margin-bottom: 28px;
-  }
-
-  .main-header .header-left-group button {
-    font-size: 16px;
-    padding: 10px 14px;
-  }
-
-  .header-menu {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: row;
-    grid-auto-rows: auto;
-    gap: 12px;
-    width: 100%;
-    justify-items: stretch;
-    align-items: stretch;
-  }
-
-  .header-menu > * {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 12px;
-    padding: 8px 10px;
-    box-sizing: border-box;
-    width: 100%;
-    max-width: 100%;
-    text-align: center;
-  }
-
-  .header-menu a {
-    display: flex;
-    box-sizing: border-box;
-  }
-
-  .header-menu button,
-  .header-menu a,
-  #import-btn,
-  #export-btn,
-  #help-btn,
-  #privacy-btn {
-    font-size: 12px !important;
-    padding: 8px 10px;
+    padding: 0 12px;
   }
 
   .main-header h3 {
     font-size: 1.2em;
-    margin-top: 0;
+    margin-top: 14px;
+  }
+
+  .footer-menu {
+    margin-top: 32px;
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  #help-btn,
+  #privacy-btn {
+    font-size: 12px;
+    padding: 8px 10px;
   }
 
   #search-bar-container {

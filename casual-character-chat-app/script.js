@@ -1620,6 +1620,91 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
 
 
 
+  // Merge a v3 backup object into the live collection.
+  //
+  // Pulled out of handleFileImport so the Character Card Browser bridge below can use
+  // the exact same path: a card that arrives over postMessage has to land in
+  // the collection identically to one that arrived as a file, or the two ways
+  // in drift and only one of them stays tested.
+  //
+  // Deliberately does not confirm and does not report - the caller owns both,
+  // because a file import and a hand-off from the converter have different
+  // things to say. Duplicate ids are skipped rather than overwritten, which is
+  // what makes re-importing the same card harmless.
+  async function mergeBackupIntoCollection(importedData) {
+    const importedChars = importedData.characters || {};
+    const importedPersonas = importedData.personas || {};
+    const importedAppSettings = importedData.appSettings || null;
+
+    let charsAdded = 0, personasAdded = 0, charsSkipped = 0, personasSkipped = 0;
+    for (const charId in importedChars) {
+        if (!characters[charId]) {
+            characters[charId] = importedChars[charId];
+            await saveSingleCharacterToDB(importedChars[charId]);
+            charsAdded++;
+        } else { charsSkipped++; }
+    }
+    for (const personaId in importedPersonas) {
+        if (!personas[personaId]) {
+            personas[personaId] = importedPersonas[personaId];
+            personasAdded++;
+        } else { personasSkipped++; }
+    }
+
+    let modelsAdded = 0, modelsSkipped = 0, modelsHydrated = 0;
+    if (importedAppSettings) {
+       appSettings = appSettings || {};
+       appSettings.availableModels = Array.isArray(appSettings.availableModels) ? appSettings.availableModels : [];
+       const existingById = {};
+       (appSettings.availableModels || []).forEach(m => {
+           if (m && m.id) existingById[m.id] = m;
+       });
+       const incoming = Array.isArray(importedAppSettings.availableModels) ? importedAppSettings.availableModels : [];
+       incoming.forEach(m => {
+           if (m && m.id && !existingById[m.id]) {
+               appSettings.availableModels.push({
+                   name: m.name || "", id: m.id || "",
+                   instructions: m.instructions || "", reminder: m.reminder || "", narratorReminder: m.narratorReminder || ""
+               });
+               modelsAdded++;
+           } else if (m && m.id && existingById[m.id]) {
+               const target = existingById[m.id];
+               let updated = false;
+               if ((!target.instructions || target.instructions.trim() === "") && (m.instructions && m.instructions.trim() !== "")) {
+                   target.instructions = m.instructions; updated = true;
+               }
+               if ((!target.reminder || target.reminder.trim() === "") && (m.reminder && m.reminder.trim() !== "")) {
+                   target.reminder = m.reminder; updated = true;
+               }
+               if ((!target.narratorReminder || target.narratorReminder.trim() === "") && (m.narratorReminder && m.narratorReminder.trim() !== "")) {
+                   target.narratorReminder = m.narratorReminder; updated = true;
+               }
+               if (updated) { modelsHydrated++; } else { modelsSkipped++; }
+           } else { modelsSkipped++; }
+       });
+       if (db) {
+           const transaction = db.transaction(['settings'], 'readwrite');
+           const store = transaction.objectStore('settings');
+           store.put({ key: 'appSettings', value: appSettings });
+       }
+       populateModelSelector();
+       if (typeof createModelEntry === 'function') {
+           modelListContainer.innerHTML = '';
+           (appSettings.availableModels || []).forEach(model => createModelEntry(model));
+       }
+    }
+
+    await savePersonasToDB();
+    renderCharacterList();
+    if (!personaListModal.classList.contains('hidden')) { openPersonaListModal(); }
+
+    return {
+        charsAdded, charsSkipped, personasAdded, personasSkipped,
+        modelsAdded, modelsSkipped, modelsHydrated,
+        hadAppSettings: Boolean(importedAppSettings),
+    };
+  }
+
   async function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) { return; }
@@ -1674,76 +1759,13 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
                     }
                 }
                 else if (importedData.version === 3 && importedData.characters) {
-                    const importedChars = importedData.characters || {};
-                    const importedPersonas = importedData.personas || {};
-                    const importedAppSettings = importedData.appSettings || null;
                     if (await showCustomConfirm("JSON backup file detected. Do you want to merge the imported data with your current collection?")) {
-                        const initialCharCount = Object.keys(characters).length;
-                        const initialPersonaCount = Object.keys(personas).length;
-                        let charsAdded = 0, personasAdded = 0, charsSkipped = 0, personasSkipped = 0;
-                        for (const charId in importedChars) {
-                    if (!characters[charId]) {
-                        characters[charId] = importedChars[charId];
-                        await saveSingleCharacterToDB(importedChars[charId]); 
-                        charsAdded++;
-                    } else { charsSkipped++; }
-                }
-                for (const personaId in importedPersonas) {
-                            if (!personas[personaId]) {
-                                personas[personaId] = importedPersonas[personaId];
-                                personasAdded++;
-                            } else { personasSkipped++; }
-                        }
-                        let modelsAdded = 0, modelsSkipped = 0, modelsHydrated = 0;
-                        if (importedAppSettings) {
-                           appSettings = appSettings || {};
-                           appSettings.availableModels = Array.isArray(appSettings.availableModels) ? appSettings.availableModels : [];
-                           const existingById = {};
-                           (appSettings.availableModels || []).forEach(m => {
-                               if (m && m.id) existingById[m.id] = m;
-                           });
-                           const incoming = Array.isArray(importedAppSettings.availableModels) ? importedAppSettings.availableModels : [];
-                           incoming.forEach(m => {
-                               if (m && m.id && !existingById[m.id]) {
-                                   appSettings.availableModels.push({
-                                       name: m.name || "", id: m.id || "",
-                                       instructions: m.instructions || "", reminder: m.reminder || "", narratorReminder: m.narratorReminder || ""
-                                   });
-                                   modelsAdded++;
-                               } else if (m && m.id && existingById[m.id]) {
-                                   const target = existingById[m.id];
-                                   let updated = false;
-                                   if ((!target.instructions || target.instructions.trim() === "") && (m.instructions && m.instructions.trim() !== "")) {
-                                       target.instructions = m.instructions; updated = true;
-                                   }
-                                   if ((!target.reminder || target.reminder.trim() === "") && (m.reminder && m.reminder.trim() !== "")) {
-                                       target.reminder = m.reminder; updated = true;
-                                   }
-                                   if ((!target.narratorReminder || target.narratorReminder.trim() === "") && (m.narratorReminder && m.narratorReminder.trim() !== "")) {
-                                       target.narratorReminder = m.narratorReminder; updated = true;
-                                   }
-                                   if (updated) { modelsHydrated++; } else { modelsSkipped++; }
-                               } else { modelsSkipped++; }
-                           });
-                           if (db) {
-                               const transaction = db.transaction(['settings'], 'readwrite');
-                               const store = transaction.objectStore('settings');
-                               store.put({ key: 'appSettings', value: appSettings });
-                           }
-                           populateModelSelector();
-                           if (typeof createModelEntry === 'function') {
-                               modelListContainer.innerHTML = '';
-                               (appSettings.availableModels || []).forEach(model => createModelEntry(model));
-                           }
-                        }
-                        await savePersonasToDB();
-                        renderCharacterList();
-                        if (!personaListModal.classList.contains('hidden')) { openPersonaListModal(); }
+                        const r = await mergeBackupIntoCollection(importedData);
                         showCustomAlert(
     `Import Complete!\n\n` +
-    `Added from file: ${charsAdded} characters, ${personasAdded} personas.\n` +
-    `Skipped duplicates: ${charsSkipped} characters, ${personasSkipped} personas.\n\n` +
-    (importedAppSettings ? `Models added: ${modelsAdded}, skipped: ${modelsSkipped}\nPrompts hydrated: ${modelsHydrated}` : ``)
+    `Added from file: ${r.charsAdded} characters, ${r.personasAdded} personas.\n` +
+    `Skipped duplicates: ${r.charsSkipped} characters, ${r.personasSkipped} personas.\n\n` +
+    (r.hadAppSettings ? `Models added: ${r.modelsAdded}, skipped: ${r.modelsSkipped}\nPrompts hydrated: ${r.modelsHydrated}` : ``)
 );
                     }
                 }
@@ -9774,9 +9796,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                 systemPrompt = `You are a creative writer for immersive world roleplay opening scenes. Write a medium-length opening paragraph (10-15 sentences) set in the world of ${worldName}. Rules:
 - Write from an omniscient narrator perspective, establishing the setting and atmosphere of ${worldName}.
 - Place the user ("you") into the scene as an active participant discovering or entering the world.
-- Introduce one or two named inhabitants or characters of ${worldName} who interact with or observe the user.
-- Weave in at least two lines of dialog (from any character, in quotation marks), integrated naturally into the narration.
-- Write the narration in a very direct, factual style — no flowery prose or overly poetic descriptions.
+- Introduce at least one or two named inhabitants or characters of ${worldName} who experience something particular or interact with the user.
+- Weave in at least three lines of dialog (from any involved character, in quotation marks), integrated naturally into the narration.
+- Write the narration in a very direct, factual style — no prose, no flowery descriptions.
 - Prefer short and medium-length sentences over long nested sentences with commas.
 - Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
 
@@ -10035,9 +10057,6 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
 - lore: a single plain string — a bunch of relationships between relevant characters, key historical events, notable conflicts, and secrets/mysteries of this world. Multiple paragraphs, plain text.
 - worldRules: short bullet-point rules the AI must always follow in this world (e.g. "Magic is forbidden by law.\\nPeople never experience pain."). These are critical rules that may never be broken.
 - tags: 10-20 comma-separated tags (genre, atmosphere, setting type, era, tone, etc.)
-Be detailed and write between 500 and 1000 words. 
-Do not write about future events of the series or its characters.
-Write direct and factual. No purple prose and no complex, nested sentences. 
 Write direct and factual. No prose and no long, nested sentences with commas. 
 Stay always in-universe! No meta and no fourth-wall talk. 
 Output ONLY the raw JSON object. No markdown fences, no commentary.`;
@@ -10573,6 +10592,108 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     scenarioSelectionModal.classList.add('hidden');
 });
 
+    /* ================= Character Card Browser bridge =================
+     * "Browse Characters" opens the browser, and converted cards come
+     * back into this collection over postMessage - no file, no downloads
+     * folder, no second trip through the Import Data picker.
+     *
+     * The app opens the tool rather than the other way round, and hands it
+     * this page's origin in the link, so the tool knows where to post back
+     * to. That is what lets the same converter serve this app wherever it is
+     * running - vercel, a self-hosted copy, a standalone file off the disk -
+     * without the tool having to know any of those addresses in advance.
+     *
+     * Cards only travel inwards. Nothing about this collection is ever sent
+     * out; the only thing that goes back is how many characters were added.
+     * ================================================================== */
+    const CARD_CONVERTER_URL = 'https://mydeep455.github.io/roleplay-card-converter/';
+    const CARD_IMPORT_PROTOCOL = 'ccc-card-import';
+
+    // The window this app opened itself, kept so an arriving card can be
+    // checked against it by reference. A window object cannot be forged or
+    // guessed by another page, so `event.source === converterWin` is proof
+    // that this is the tool the user just asked for - and that is what earns
+    // it the right to skip the confirm below.
+    let converterWin = null;
+
+    function openCardConverter() {
+        const url = CARD_CONVERTER_URL
+            + '#ccc-import-from=' + encodeURIComponent(location.origin);
+        converterWin = window.open(url, 'rcc-card-converter');
+        if (converterWin) {
+            converterWin.focus();
+        } else {
+            showCustomAlert("Your browser blocked the Character Card Browser tab.\n\nAllow pop-ups for this site and try again.");
+        }
+    }
+
+    const getCardsBtn = document.getElementById('get-cards-btn');
+    if (getCardsBtn) getCardsBtn.addEventListener('click', openCardConverter);
+
+    window.addEventListener('message', async (event) => {
+        const msg = event.data;
+        // Every embed on the page shares this event - the music player alone
+        // talks constantly - so anything without the tag is not ours.
+        if (!msg || msg.protocol !== CARD_IMPORT_PROTOCOL) return;
+
+        // A file:// page has the opaque origin "null", which postMessage will
+        // not accept as a target. A standalone copy of the converter is a real
+        // case, so those are answered with '*'. Safe here: the reply is a
+        // count of what was added and holds nothing of the user's.
+        const reply = (payload) => {
+            const target = (!event.origin || event.origin === 'null') ? '*' : event.origin;
+            try {
+                event.source?.postMessage({ protocol: CARD_IMPORT_PROTOCOL, v: 1, ...payload }, target);
+            } catch (e) { /* the tab went away mid-import; nothing to answer */ }
+        };
+
+        if (msg.type === 'hello') {
+            // Answered only once the database is open and the collection is
+            // loaded. Saying "ready" any earlier would let a card arrive
+            // before there is anywhere to put it, and the converter pings
+            // until it gets an answer, so waiting costs nothing.
+            await appReady;
+            reply({ type: 'ready', app: 'Casual Character Chat' });
+            return;
+        }
+
+        if (msg.type !== 'import') return;
+
+        try {
+            await appReady;
+            const backup = msg.backup;
+            if (!backup || backup.version !== 3 || !backup.characters) {
+                reply({ type: 'result', id: msg.id, ok: false, error: 'Unrecognised import format.' });
+                return;
+            }
+
+            // The tab this app opened is trusted on sight - the user pressed
+            // "Browse Characters" to summon it, and asking them to confirm
+            // the thing they just asked for is the download step wearing a
+            // different hat. Anything else has to say who it is and be let in
+            // by hand: postMessage is open to every page on the web, and
+            // silently writing into someone's collection is not on.
+            if (event.source !== converterWin) {
+                const count = Object.keys(backup.characters).length;
+                const ok = await showCustomConfirm(
+                    `${event.origin || 'Another page'} wants to add ${count} character(s) to your collection.\n\nImport them?`
+                );
+                if (!ok) {
+                    reply({ type: 'result', id: msg.id, ok: true, added: 0, skipped: 0, cancelled: true });
+                    return;
+                }
+            }
+
+            const r = await mergeBackupIntoCollection(backup);
+            reply({
+                type: 'result', id: msg.id, ok: true,
+                added: r.charsAdded, skipped: r.charsSkipped,
+            });
+        } catch (err) {
+            reply({ type: 'result', id: msg.id, ok: false, error: err?.message || String(err) });
+        }
+    });
+
     exportBtn.addEventListener('click', handleExport);
     importBtn.addEventListener('click', () => {
         // No format picker: handleFileImport sniffs the file itself and routes
@@ -10983,7 +11104,10 @@ async function initializeApp() {
         showCustomAlert("Could not load database. Please check browser permissions or try clearing site data.");
     }
 }
-initializeApp();
+// Kept rather than fired and forgotten: the Character Card Browser bridge has to wait
+// for the database and the collection before it can accept a card, and this is
+// the only handle on "the app has finished coming up".
+const appReady = initializeApp();
 
 
 
@@ -11146,11 +11270,9 @@ modalsToFixScroll.forEach(modalId => {
 
 const helpBtn = document.getElementById('help-btn');
 const helpDot = document.getElementById('help-notification-dot');
-const helpTooltip = document.getElementById('help-tooltip');
 
 if (!localStorage.getItem('hasSeenHelpNotification')) {
     helpDot.classList.remove('hidden');
-    helpTooltip.classList.remove('hidden');
 }
 
 helpBtn.addEventListener('click', () => {
@@ -11158,7 +11280,6 @@ helpBtn.addEventListener('click', () => {
         localStorage.setItem('hasSeenHelpNotification', 'true');
     }
     helpDot.classList.add('hidden');
-    helpTooltip.classList.add('hidden');
 });
 
 

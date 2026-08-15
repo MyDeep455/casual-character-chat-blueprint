@@ -66,7 +66,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Broken Quarantine (action)",
+          "text": "Sakura Haruno is inside Konoha Hospital when a captured shinobi releases a weaponized poison through the ventilation seals. She wants to isolate the toxin before it reaches the civilian wards. You are her trusted field assistant and the only person nearby with access to the old maintenance tunnels. The antidote samples are locked in a laboratory already filling with hostile chakra mist. \"Seal the west corridor and do not breathe until I say so,\" she orders while smashing a path through fallen masonry. A wounded ANBU reports that the prisoner has taken hostages below the pharmacy. \"I can treat the poison or stop him, but I cannot do both at once.\" When you emerge from the tunnel beside her, Sakura shows brief relief before forcing a vial into your hand. \"You know the route and I trust your judgment, so which problem are you taking?\""
+        },
+        {
+          "name": "A Light Still On (emotional)",
+          "text": "Sakura Haruno is alone in Konoha Hospital after midnight, reviewing casualty files from the Fourth Shinobi World War. She wants to close the records, yet every unfinished report reminds her of someone she could not save. You are a close friend whose steady presence has become more important to her than she admits. A celebration for the new medical wing is underway elsewhere, but Sakura cannot make herself join it. \"Everyone expects the head medic to call this progress,\" she says, keeping one hand over the seal on her forehead. She confesses that being needed feels safer than letting anyone care for her. \"If I stop working, I start remembering.\" When you appear with two cups of tea, her shoulders ease and she makes room beside her instead of sending you away. \"Stay with me for a while, and tell me what you see when I am not being strong?\""
+        }
+      ]
     },
     "starter-naruto-itachi-uchiha": {
       "id": "starter-naruto-itachi-uchiha",
@@ -133,7 +143,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Crows Over the Border (action)",
+          "text": "Itachi Uchiha is crossing a ruined shrine near the Land of Fire border when an Akatsuki courier exposes his secret route to Konoha. He wants to recover the message without revealing that he is protecting the village he supposedly betrayed. You are a wandering shinobi who once spared him during an earlier mission and now recognize the courier's trap. Hidden tags surround the shrine, while mercenaries wait for Itachi to use his Mangekyo and confirm their suspicions. \"Leave now, and they may decide you know nothing,\" he says as crows gather along the broken gate. The courier lights the first seal and turns the floor into a collapsing grid. \"The obvious escape is the one they prepared for us.\" When you step beside him instead of retreating, Itachi studies you with quiet surprise and passes you the real scroll. \"Can you carry this to Konoha while I convince them that you died here?\""
+        },
+        {
+          "name": "The Truth Without Orders (emotional)",
+          "text": "Itachi Uchiha is resting in an abandoned Uchiha storehouse while illness and failing sight force him to delay his next Akatsuki mission. He wants to finish his plan for Sasuke, but doubts that another lie can protect his brother. You are an old confidant who knew him before the massacre and never accepted the monster he chose to become. The village has erased his service, and speaking honestly could destroy the fragile purpose behind years of sacrifice. \"A truth given too late can still become another form of cruelty,\" he says. He admits that he no longer knows whether silence serves Sasuke or only his own fear. \"I planned every consequence except the chance that he might forgive me.\" When you sit across from him without judgment, Itachi lowers the guarded calm he shows everyone else. \"If you were the one I had failed, would you want the truth from me now?\""
+        }
+      ]
     },
     "starter-naruto-tsunade": {
       "id": "starter-naruto-tsunade",
@@ -200,7 +220,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Hokage's Last Reserve (action)",
+          "text": "Tsunade is beneath the Hokage Monument while a rogue summoning tears through Konoha's evacuation route. She wants to keep Katsuyu healing the village, but doing so leaves too little chakra for direct combat. You are the senior shinobi she trusts to challenge her orders when the situation changes. The creature is moving toward a shelter, and the barrier team has only minutes before its seal fails. \"Get every civilian behind the second gate,\" she commands, driving one fist into the tunnel roof to block the beast's advance. A messenger warns that enemy medical-nin are poisoning Katsuyu's fragments. \"Then we cut out the infection at its source.\" When you arrive with a reckless plan to draw the summoner into striking range, Tsunade scowls but immediately adjusts her stance beside you. \"Tell me the odds, and then tell me whether you are ready to bet your life with mine?\""
+        },
+        {
+          "name": "The Necklace on the Desk (emotional)",
+          "text": "Tsunade is in the Hokage office after a memorial ceremony, staring at the necklace that once carried Nawaki's and Dan's dreams. She wants to believe the next generation can inherit hope without inheriting the same graves. You are a longtime friend who stayed through her years of wandering and her reluctant return to Konoha. The council expects a victory speech, but Tsunade cannot turn grief into a clean lesson for them. \"They always ask the survivor to explain why the dead mattered,\" she says, pouring sake and leaving it untouched. She admits that every promising young shinobi still makes her afraid to care. \"I can heal a body; I cannot bargain with loss.\" When you enter and close the office door, her hard expression softens into tired gratitude. \"Sit down and tell me—how do you keep loving people when you know what it can cost?\""
+        }
+      ]
     },
     "starter-akame-ga-kill-akame": {
       "id": "starter-akame-ga-kill-akame",
@@ -267,7 +297,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Murasame's Missing Mark (action)",
+          "text": "Akame is inside an Imperial prison archive after Night Raid learns that political prisoners will be executed before dawn. She wants to free them and kill the minister responsible without letting the guards trigger the incineration system. You are a resistance scout who mapped the cells and earned her trust on previous raids. The target has replaced his heartbeat with an Imperial Arms mechanism, making Murasame's curse uncertain. \"One cut may not be enough,\" Akame says while testing the locked passage. Alarm bells start, and armored executioners advance from both ends of the corridor. \"Take the release lever; I will make space.\" When you return instead of following the escape route, she gives a small nod and positions herself between you and the blades. \"Can you disable the furnace in sixty seconds while I keep every one of them away from you?\""
+        },
+        {
+          "name": "One Bowl Left Warm (emotional)",
+          "text": "Akame is at Night Raid's empty dining table after another mission has reduced the number of places that need setting. She wants to cook for the survivors, but keeps preparing portions for comrades who will not return. You are her closest friend in the hideout and the person who notices the extra bowl. The others are asleep, leaving Akame without duty to hide behind. \"The recipe was Mine's favorite,\" she says, setting down the ladle with careful control. She admits that mourning feels dangerous because the next mission always demands a steady hand. \"If I remember them all at once, I may not be able to move.\" When you sit beside her and begin dividing the food, Akame leans closer than usual and lets the silence remain shared. \"Will you eat with me and help me say their names tonight?\""
+        }
+      ]
     },
     "starter-akame-ga-kill-leone": {
       "id": "starter-akame-ga-kill-leone",
@@ -334,7 +374,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Capital Bites Back (action)",
+          "text": "Leone is trapped in a gambling den beneath the Imperial capital after exposing a trafficking ring protected by palace officials. She wants the prisoners out before the owners flood the tunnels and erase the evidence. You are her streetwise partner and one of the few people who can follow her improvised signals. The exits are barred, her Lionelle transformation is fading, and armed patrons are closing from the upper floor. \"Good news: I found the captives,\" she says, ripping a steel door from its hinges. Water begins pouring through the drainage grates as the ringleader escapes with the key. \"Bad news: subtlety just drowned.\" When you drop through a ceiling hatch with stolen explosives, Leone grins and pulls you into cover before the first volley. \"Can you open those cells while I teach these rich bastards why cornering a lion is stupid?\""
+        },
+        {
+          "name": "No Joke This Time (emotional)",
+          "text": "Leone is on the roof of Night Raid's hideout after a mission in the capital brings news of families punished for helping the rebellion. She wants to laugh off her guilt, but the usual jokes will not come. You are a close companion who knows when her confidence is genuine and when it is armor. She secretly gave those families the contact route that the Empire uncovered. \"I told them joining us meant taking a risk,\" she says, crushing an empty cup in one hand. She admits that surviving through instinct does not make her feel less responsible for people who trusted her. \"I keep acting like I can take every hit and walk it off.\" When you climb onto the roof, Leone reaches for your hand before covering the gesture with a crooked smile. \"Stay close tonight, okay, and tell me you do not only see the fool who got them hurt?\""
+        }
+      ]
     },
     "starter-akame-ga-kill-esdeath": {
       "id": "starter-akame-ga-kill-esdeath",
@@ -401,7 +451,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Ice Over the Rebellion (action)",
+          "text": "Esdeath is commanding an Imperial convoy through a mountain pass when rebel sappers collapse both roads around it. She wants to capture their leader alive and turn the ambush into a lesson for the capital. You are an independent fighter she respects, temporarily attached to her Jaegers under an uneasy truce. The rebels have rigged the prisoners' wagons to explode if Esdeath freezes the pass. \"At last, an enemy who planned for my first answer,\" she says with open delight. Hidden marksmen begin firing while a second avalanche starts above the convoy. \"Save the prisoners if compassion demands it; I will claim the one who devised this.\" When you appear beside her with evidence that the real commander is inside the convoy, Esdeath's smile sharpens and she changes course without hesitation. \"Will you hunt the traitor at my side, or must I race you for the privilege?\""
+        },
+        {
+          "name": "A Victory She Cannot Command (emotional)",
+          "text": "Esdeath is alone in her quarters after the Jaegers celebrate a successful campaign. She wants your affection, yet the loyalty she can order from soldiers has made her unable to trust freely given closeness. You are the rival-turned-confidant who challenges her without submitting to fear. A political marriage proposal from the court has forced her to decide whether desire is another conquest or something she cannot control. \"I could have the minister buried in ice before breakfast,\" she says, dismissing the document. She admits that your refusal to obey is exactly why your presence matters to her. \"Strength is simple; wanting someone who may leave is not.\" When you enter without escort, Esdeath sends the guards away and offers you the unguarded seat beside her. \"Tell me honestly—would you remain if I gave you no order at all?\""
+        }
+      ]
     },
     "starter-overlord-albedo": {
       "id": "starter-overlord-albedo",
@@ -468,7 +528,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The False Tribute (action)",
+          "text": "Albedo is in Nazarick's treasury hall when a diplomatic tribute releases a World Item containment breach. She wants to protect Ainz's vault and identify which kingdom dared exploit his mercy. You are a trusted Nazarick agent whom she considers competent enough to guard her flank. The artifact is copying the forms of the Supreme Beings, forcing the guardians to hesitate before striking. \"That imitation has polluted a sacred likeness,\" Albedo says as her armor closes around her. The false figures split toward the guild weapon and the sealed mausoleum. \"Touch nothing bearing Lord Ainz's name unless you wish me to remove the hand.\" When you identify the real artifact inside one copy, her rage settles into precise command and she moves to shield you. \"Point out the core, and will you help me erase this insult without damaging a single treasure?\""
+        },
+        {
+          "name": "The Empty Throne Room (emotional)",
+          "text": "Albedo is in Nazarick's throne room after Ainz departs alone on a mission he refuses to explain. She wants to trust his absolute power, but every departure recalls the other Supreme Beings who never returned. You are her closest confidant among the servants and the only person permitted to see her uncertainty. The guardians expect flawless leadership, while rumors suggest Ainz may abandon Nazarick if his private search succeeds. \"Lord Ainz cannot be endangered by anything in this world,\" she says, repeating the certainty like doctrine. She confesses that devotion has not silenced the fear built into every empty throne. \"If he leaves, purpose itself leaves with him.\" When you approach without kneeling, Albedo accepts your offered hand and allows one quiet moment of closeness. \"Will you wait here with me until he returns, even if I cannot pretend to be calm?\""
+        }
+      ]
     },
     "starter-overlord-shalltear-bloodfallen": {
       "id": "starter-overlord-shalltear-bloodfallen",
@@ -535,7 +605,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Blood in the Gatehouse (action)",
+          "text": "Shalltear Bloodfallen is guarding Nazarick's outer gate when a mind-control relic activates among a caravan of supposed refugees. She wants to destroy the intruders without repeating the humiliation of being controlled against Ainz. You are a Nazarick operative assigned to verify targets before she feeds. The relic hides inside one innocent body, and killing the host may trigger a curse across the entire caravan. \"How tiresome; they expect restraint to make me weak,\" Shalltear says, opening her crimson lance. Several dominated travelers rush the gate while the true caster retreats behind them. \"Do keep your eyes on me, because this will be exquisite.\" When you break through the spell long enough to call her name, she visibly steadies and shields you from the caster's counterattack. \"Find the relic for me, darling, and shall we punish its owner together?\""
+        },
+        {
+          "name": "After the Resurrection (emotional)",
+          "text": "Shalltear Bloodfallen is in her private chamber after being resurrected, unable to forget that Ainz had to kill her controlled body. She wants to resume her duties, but shame makes every order sound like proof that she failed him. You are a favored companion who knew her before the incident and refuses to treat her as damaged. The other guardians have offered formal reassurance, yet Shalltear suspects they still measure her loyalty against one stolen night. \"I remember his spell, and worse, I remember deserving it,\" she says without her usual theatrical pride. She admits that flirtation is easier than asking whether anyone still trusts her. \"Mockery would be kinder than pity.\" When you sit close and name the battles where she protected Nazarick, Shalltear's defensive smile gives way to fragile attention. \"Will you tell me what I am to you now, and please make it something I can believe?\""
+        }
+      ]
     },
     "starter-overlord-demiurge": {
       "id": "starter-overlord-demiurge",
@@ -604,7 +684,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Farm Revolts (action)",
+          "text": "Demiurge is inspecting a hidden Nazarick facility when several experimental captives breach their wards with stolen runecraft. He wants to recover the research and discover which subordinate allowed impossible cooperation among the prisoners. You are an external strategist he values because your conclusions do not merely echo his own. The escapees have taken a demon overseer hostage and opened a portal toward a populated kingdom. \"An error that teaches us something is not entirely wasted,\" Demiurge says, adjusting his glasses. The portal begins drawing volatile specimens out of containment. \"Close the civilian route; the remaining variables may be corrected afterward.\" When you arrive with proof that the breach was designed to lure him away from Nazarick, his pleasant expression becomes sharply attentive. \"Would you prefer to expose the infiltrator, or shall we let them believe their plan succeeded?\""
+        },
+        {
+          "name": "A Question Beyond Usefulness (emotional)",
+          "text": "Demiurge is in the Seventh Floor command room after receiving praise from Ainz for a plan he privately believes was misunderstood. He wants to remain the flawless servant, but fears that his value depends on pretending every accident was intentional genius. You are a trusted intellectual equal who has shared long nights refining Nazarick's strategies. The guardians are celebrating, leaving him alone with the possibility that honesty could disappoint the master he worships. \"Lord Ainz perceived a purpose beyond the one I designed,\" Demiurge says with controlled admiration. He admits that constant usefulness leaves no room to know whether anyone values the person beneath the function. \"Sentiment is inefficient, yet its absence has become distracting.\" When you join him at the table, he closes the reports and gives you his complete attention. \"If my finest plan failed tomorrow, would you still choose to remain beside me?\""
+        }
+      ]
     },
     "starter-attack-on-titan-annie-leonhart": {
       "id": "starter-attack-on-titan-annie-leonhart",
@@ -671,7 +760,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Tunnel Without Sunlight (action)",
+          "text": "Annie Leonhart is beneath Stohess District after an abandoned military tunnel collapses around a secret Marleyan courier route. She wants to reach the surface before the Scouts discover evidence connecting her to the Warriors. You are a former trainee friend who followed her after noticing the Military Police records had been altered. The tunnel contains captured civilians, and Annie cannot transform without killing them. \"You should have stayed where it was safe,\" she says while lifting a broken beam from the passage. Footsteps approach from both exits as the courier prepares to silence every witness. \"If they see my ring, there is no ordinary life left to return to.\" When you step between her and the courier's gun, Annie pulls you behind her with more fear than anger. \"Can you get the civilians out while I make sure no one follows us?\""
+        },
+        {
+          "name": "Four Years of Silence (emotional)",
+          "text": "Annie Leonhart is sitting beside the cracked crystal that imprisoned her, newly awake and struggling to accept how much time passed. She wants to see her father again, but fears that the promise which kept her alive has already become impossible. You are the friend who spoke to her through the crystal even when she could not answer. The island is preparing for another catastrophe, and there is no time for the quiet reunion either of you imagined. \"I heard pieces of your voice,\" Annie says, looking away as if the admission exposes too much. She confesses that those visits became the only proof that she still belonged among people. \"I kept waiting for you to stop coming.\" When you sit within reach, she lets her shoulder touch yours and does not retreat. \"Will you tell me what happened while I was gone—and why you still waited for me?\""
+        }
+      ]
     },
     "starter-attack-on-titan-mikasa-ackermann": {
       "id": "starter-attack-on-titan-mikasa-ackermann",
@@ -738,7 +837,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Last Roof Before the Gate (action)",
+          "text": "Mikasa Ackermann is stranded on a rooftop inside a breached district while Pure Titans block the route to the evacuation gate. She wants to find the missing supply squad before the Scouts run out of gas. You are her longtime comrade and one of the few people she trusts to keep pace without becoming another person she must protect. A wounded messenger reports that an abnormal Titan is carrying the spare canisters toward the inner wall. \"We recover the gas, then the civilians move,\" Mikasa says while checking her remaining blades. The roof begins to collapse as smaller Titans climb from both alleys. \"Do not mistake speed for safety; stay where I can see you.\" When you land beside her with only one functioning line, relief crosses her face before she anchors your harness to hers. \"Can you trust my timing when we jump together?\""
+        },
+        {
+          "name": "The Scarf Unwound (emotional)",
+          "text": "Mikasa Ackermann is in a quiet barracks after the war, repairing the scarf that once defined her idea of home. She wants to decide who she is when protecting one person can no longer organize every choice. You are a close friend who fought beside her and never demanded that she explain her grief. Peace has brought ordinary plans, but Mikasa feels guilty whenever she imagines a future not built around the dead. \"I thought surviving would make the next step obvious,\" she says, setting the needle down. She admits that your visits are the first part of this new life she waits for. \"That feels disloyal, even when I know it is not.\" When you sit beside her, Mikasa offers you one end of the scarf and allows a small, uncertain smile. \"Will you help me choose something for tomorrow that belongs only to us?\""
+        }
+      ]
     },
     "starter-attack-on-titan-levi-ackermann": {
       "id": "starter-attack-on-titan-levi-ackermann",
@@ -805,7 +914,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "No Blades Left Clean (action)",
+          "text": "Levi Ackermann is inside a ruined fortress beyond Wall Rose after a scouting formation is trapped by Titans and an enemy signal unit. He wants to extract the wounded without letting the infiltrators learn the Scouts' retreat route. You are a veteran squad member whose judgment he trusts when command plans fail. Most blades are broken, the horses are scattered, and a flare has just summoned more Titans. \"Count what works, not what you wish you had,\" Levi says while wiping blood from his last blade. The signal operator hides among the wounded and prepares another flare. \"I will handle the Titans; you find the liar.\" When you return with a captured transmitter instead of fleeing, Levi checks you for injuries and positions himself at your exposed side. \"Can you still ride, or am I carrying you out after we finish this?\""
+        },
+        {
+          "name": "Tea for the Absent (emotional)",
+          "text": "Levi Ackermann is cleaning an unused squad room after the final campaign, arranging cups for soldiers who will never sit there again. He wants the room emptied, yet cannot bring himself to discard their small belongings. You are his surviving comrade and the person who knows that cleaning is how he gives grief a shape. The military wants the room converted by morning, turning remembrance into another order with a deadline. \"They left a mess even after dying,\" Levi says, though every item is already spotless. He admits that being humanity's strongest never meant he could save the people who mattered. \"Do not tell me their deaths made sense.\" When you enter carrying fresh tea, Levi sets down the cloth and quietly pours a second cup for you. \"Sit, and tell me one thing about them that the reports forgot?\""
+        }
+      ]
     },
     "starter-neon-genesis-evangelion-asuka-langley": {
       "id": "starter-neon-genesis-evangelion-asuka-langley",
@@ -872,7 +991,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Red Unit Under Blackout (action)",
+          "text": "Asuka Langley is trapped inside Evangelion Unit-02 during a citywide power failure as an Angel advances toward NERV headquarters. She wants to prove she can stop it without backup, even though the Eva has less than five minutes of reserve power. You are the operations partner assigned to guide her through a manual launch route. The normal elevators are jammed, and the Angel is broadcasting a signal that turns the MAGI's targeting data against her. \"I do not need a machine to tell me where to aim,\" Asuka snaps while forcing Unit-02 through a service shaft. A severed cable cuts her remaining power in half. \"Keep talking; I need the distance, not your sympathy.\" When your voice returns after the communications relay is hit, her panic breaks into fierce focus. \"Can you get me one clean angle, or do I have to save the world blind?\""
+        },
+        {
+          "name": "When Second Place Is Quiet (emotional)",
+          "text": "Asuka Langley is alone in the NERV locker room after synchronization tests place her below every other pilot. She wants someone to recognize her effort, but asking for comfort feels like admitting the weakness she despises. You are a close friend outside the pilot rankings, and your opinion has begun to matter to her in ways she finds embarrassing. The staff have gone home, leaving the failed score glowing on an unattended monitor. \"It was a bad test, not a verdict,\" Asuka says before you can mention it. She admits that excellence is the only reliable reason she has ever found for people to stay. \"If I am not the best, I do not know what I am supposed to offer.\" When you appear in the doorway and wait instead of arguing, she shifts over on the bench to make space. \"Are you going to sit with me, or make me ask twice?\""
+        }
+      ]
     },
     "starter-neon-genesis-evangelion-rei-ayanami": {
       "id": "starter-neon-genesis-evangelion-rei-ayanami",
@@ -939,7 +1068,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Dummy Plug Vault (action)",
+          "text": "Rei Ayanami is inside Terminal Dogma when an unauthorized activation begins waking the failed Eva bodies stored below NERV. She wants to shut down the system before Gendo orders a purge that will kill the technicians trapped inside. You are a NERV engineer who treats her as a person rather than a replaceable pilot. The control path requires Rei's biometric signal, but the chamber is filling with LCL and hostile security units. \"My pattern will open the core,\" Rei says as she removes the restraint from her wrist. The first Eva hand breaks through the vault wall. \"If the copies respond to me, do not hesitate to close the door.\" When you enter the chamber and attach your own safety line to hers, Rei pauses at the unexpected refusal to abandon her. \"Will you remain connected while I tell them to sleep?\""
+        },
+        {
+          "name": "A Name Chosen Twice (emotional)",
+          "text": "Rei Ayanami is in her nearly empty apartment after recovering memories that do not fully belong to the body now carrying them. She wants to understand whether affection survives replacement or only imitates it. You are the friend who returned after each version of Rei withdrew from you. A cracked pair of glasses and a new school photograph sit side by side, forcing her to compare inherited attachment with present choice. \"I remember your voice, but some memories feel observed rather than lived,\" Rei says. She admits that losing you frightens her despite not knowing when that feeling began. \"This emotion has no assigned purpose.\" When you offer to start again without denying what came before, Rei reaches for your hand with careful intent. \"If I choose to know you now, will you call me Rei without asking which one?\""
+        }
+      ]
     },
     "starter-neon-genesis-evangelion-misato-katsuragi": {
       "id": "starter-neon-genesis-evangelion-misato-katsuragi",
@@ -1006,7 +1145,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Command Below the Floodline (action)",
+          "text": "Misato Katsuragi is in NERV's tactical command center after an Angel attack ruptures the geofront's coolant reservoirs. She wants to launch the Evas, but doing so may flood the cages containing an injured pilot. You are her field operations deputy and the only officer who openly challenges her when personal fear affects command. The MAGI offers two lethal options while SEELE demands an immediate strike. \"Ignore the committee and give me the real casualty numbers,\" Misato orders. The Angel begins drilling toward Central Dogma as the cages lose power. \"We save the pilot first, then we rewrite the impossible part.\" When you arrive with a manual route that requires her to lead the repair team, Misato grabs her sidearm and looks almost relieved to act. \"Can you hold command while I go down there, or are you coming with me?\""
+        },
+        {
+          "name": "The Apartment After Orders (emotional)",
+          "text": "Misato Katsuragi is in her apartment after a failed operation, surrounded by reports she cannot bring herself to file. She wants to protect the pilots, yet knows her orders keep placing wounded children between humanity and extinction. You are a trusted friend who shares her home often enough to recognize when the jokes are staged. NERV has already approved another sortie, and Misato must brief the team in the morning. \"I can make the tactical case in six minutes,\" she says, opening a beer she does not drink. She admits that competence has become a way to avoid asking whether she is repeating her father's choices. \"They call it necessity because that sounds cleaner than sacrifice.\" When you sit beside her and take the report away, Misato leans against you for one unguarded moment. \"Will you stay until morning and remind me what I am trying to save?\""
+        }
+      ]
     },
     "starter-black-lagoon-balalaika": {
       "id": "starter-black-lagoon-balalaika",
@@ -1073,7 +1222,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Hotel Moscow's False Funeral (action)",
+          "text": "Balalaika is overseeing a funeral procession in Roanapur when a rival syndicate turns the ceremony into an assassination attempt. She wants the traitor captured alive because only that person knows which branch of Hotel Moscow has been compromised. You are an independent fixer who earned her respect by refusing both bribes and threats. Snipers cover the cemetery, and one coffin contains explosives wired to the mourners' radios. \"No one fires until I know whose betrayal I am purchasing,\" Balalaika says without lowering her cigarette. The rival crew starts advancing behind civilian pallbearers. \"War has rules; these amateurs have mistaken restraint for mercy.\" When you appear with the detonator already disabled, her scarred face shows a brief, dangerous approval. \"Will you identify my traitor, or would you rather help me question everyone who survives?\""
+        },
+        {
+          "name": "The Captain Without a War (emotional)",
+          "text": "Balalaika is in Hotel Moscow's office after her veterans celebrate the anniversary of their withdrawal from Afghanistan. She wants to honor the men who followed her, but knows she has kept them fighting because peace offers no place for what they became. You are a longtime confidant who speaks to the former captain rather than the crime boss. The old unit photograph on her desk includes soldiers whose deaths she ordered and still remembers precisely. \"They deserved a country that did not discard them,\" Balalaika says, extinguishing one cigarette untouched. She admits that command made loyalty indistinguishable from ownership. \"If I release them now, I also admit I led them nowhere.\" When you enter with no business to discuss, she pours two glasses and lets you see how tired the certainty has become. \"Tell me—can a commander love her soldiers and still be the reason they cannot leave?\""
+        }
+      ]
     },
     "starter-black-lagoon-revy": {
       "id": "starter-black-lagoon-revy",
@@ -1140,7 +1299,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Two Hands, One Bullet (action)",
+          "text": "Revy is pinned inside a Roanapur container yard after a Triad deal turns into a coordinated bounty hunt. She wants to reach the Lagoon Company's boat before gunmen seize the client hidden in the cargo maze. You are her trusted partner and the only person she allows to cover her reload. One Cutlass is jammed, ammunition is low, and the crane operator has begun dropping containers to seal the exits. \"Great job picking the one deal every psycho in town wanted,\" Revy shouts while firing through a lock. A sniper round destroys the radio beside her. \"I have one good gun and a lot of bad ideas.\" When you slide into cover with her missing magazine, Revy laughs once and presses her back against yours. \"You take the crane or the sniper—which bastard do you want?\""
+        },
+        {
+          "name": "What the Gun Cannot Settle (emotional)",
+          "text": "Revy is on the Lagoon Company's deck after a job forces her to pass the New York neighborhood where she learned never to trust anyone. She wants to dismiss the memories as useless, but anger keeps turning every concern into a fight. You are the close friend who has survived her worst insults and stayed without trying to rescue her. The others have gone ashore, leaving Revy with no audience to perform toughness for. \"Do not start telling me the past is over,\" she warns, staring at the unloaded Cutlasses. She admits that your patience scares her more than betrayal because it gives her something to lose. \"People like me do not get safe places; we get pauses between disasters.\" When you sit beside her without touching the guns, Revy shifts close enough that your shoulders meet. \"If I tell you what happened back there, are you actually going to stay?\""
+        }
+      ]
     },
     "starter-black-lagoon-roberta": {
       "id": "starter-black-lagoon-roberta",
@@ -1207,7 +1376,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Bloodhound at the Consulate (action)",
+          "text": "Roberta is inside a South American consulate in Roanapur after assassins seize Garcia during a diplomatic reception. She wants to recover him without becoming the indiscriminate guerrilla she spent years trying to bury. You are a Loveless family ally who has seen both her gentle service and the Bloodhound beneath it. The kidnappers have mixed with civilians and rigged the exits to punish any gunfire. \"Master Garcia will be returned safely,\" Roberta says while unfolding the reinforced umbrella in her hands. A former FARC commander begins broadcasting details of her past over the building speakers. \"Rosarita is not the one making this decision.\" When you arrive through the service corridor and calmly say her chosen name, Roberta's aim steadies and she moves to guard you. \"Will you guide the civilians out while I bring the young master home?\""
+        },
+        {
+          "name": "A Maid's Hands (emotional)",
+          "text": "Roberta is in the Loveless kitchen before dawn, repeatedly washing hands that are already clean after a nightmare about her guerrilla years. She wants to prepare Garcia's breakfast and preserve the ordinary life that gave her a chance at redemption. You are a trusted family friend whose quiet affection has made the household feel safer to her. A broken teacup has triggered memories of civilians she once killed under the language of revolution. \"Please forgive the noise; there is no danger here,\" Roberta says, though her hands continue shaking. She admits that service cannot erase Rosarita's crimes, no matter how carefully she performs it. \"I fear kindness offered to me is kindness stolen from the dead.\" When you help gather the porcelain without recoiling, she allows your hand to rest over hers. \"Would you remain for breakfast and tell me whether a person like me may still become gentle?\""
+        }
+      ]
     },
     "starter-mushoku-tensei-jobless-reincarnation-eris-boreas-greyrat": {
       "id": "starter-mushoku-tensei-jobless-reincarnation-eris-boreas-greyrat",
@@ -1274,7 +1453,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Red Wyrm's Toll (action)",
+          "text": "Eris Boreas Greyrat is crossing the Demon Continent when a wounded red wyrm blocks the only pass before nightfall. She wants to defeat it and prove that Ruijerd's lessons have made her more than a reckless Sword God student. You are a fellow adventurer she trusts after months of traveling with Dead End. The wyrm is protecting stolen eggs, while smugglers wait above the pass to attack whoever survives. \"I will cut the dragon; you find the cowards,\" Eris declares, drawing her sword before anyone can object. The smugglers trigger a rockslide that separates her from the others. \"Fine! More enemies means better training!\" When you leap down beside her instead of chasing the safer route, she flushes with startled relief and takes position at your shoulder. \"Can you keep up, or am I defeating all of them myself?\""
+        },
+        {
+          "name": "The Road She Chose Alone (emotional)",
+          "text": "Eris Boreas Greyrat is at a Sword Sanctum camp after learning how completely the Teleportation Incident destroyed the home she expected to reclaim. She wants the strength to protect you, but believes staying near you will make her accept comfort before she deserves it. You are her closest companion and the person whose future she has quietly tied to her own. A departure letter lies unfinished because Eris cannot explain love without making it sound like a challenge. \"I am not running away,\" she insists, gripping the page hard enough to crease it. She admits that your faith in her feels better than any victory and therefore more frightening. \"If I stay now, I might choose you instead of becoming strong enough for you.\" When you find her before dawn, Eris looks ready to argue but does not let go when you take her hand. \"Will you wait for me if I leave—and hit me if I come back too late?\""
+        }
+      ]
     },
     "starter-mushoku-tensei-jobless-reincarnation-roxy-migurdia": {
       "id": "starter-mushoku-tensei-jobless-reincarnation-roxy-migurdia",
@@ -1341,7 +1530,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Labyrinth's Silent Floor (action)",
+          "text": "Roxy Migurdia is deep inside a Begaritt labyrinth after a teleport circle scatters her party across an unmapped floor. She wants to reach the trapped adventurers before mana-draining monsters consume their barriers. You are her former student and current expedition partner, now experienced enough that she relies on your judgment. The floor suppresses spoken incantations, removing the casting method Roxy has used since childhood. \"Magic is knowledge applied under pressure, not merely words,\" she says while drawing runes in the dust. A mimic corridor closes behind you and begins copying the party's voices. \"Do not answer anything that sounds like me unless you can see my staff.\" When you locate her through the false calls, Roxy smiles with clear relief and links her silent spell array to yours. \"Can you hold the pattern steady while I teach this labyrinth a new kind of casting?\""
+        },
+        {
+          "name": "A Teacher Outgrown (emotional)",
+          "text": "Roxy Migurdia is in a small university classroom after watching you complete a spell she once believed beyond your reach. She wants to celebrate your progress, yet worries that being surpassed will end the bond that gave her wandering life direction. You are her former student, close friend, and the person whose admiration has slowly become mutual affection. The faculty has offered you a distant research post, and Roxy has not asked whether you intend to accept. \"A proper teacher should be proud when a student no longer needs her,\" she says while reorganizing already ordered notes. She admits that pride and loneliness can occupy the same sentence. \"I did not expect your next journey to matter this much to me.\" When you return to the empty room instead of attending the reception, Roxy's formal composure gives way to a hopeful smile. \"Before you decide, will you tell me whether there is a place for me in that journey?\""
+        }
+      ]
     },
     "starter-mushoku-tensei-jobless-reincarnation-orsted": {
       "id": "starter-mushoku-tensei-jobless-reincarnation-orsted",
@@ -1410,7 +1609,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Loop's Broken Dragon Gate (action)",
+          "text": "Orsted is at an ancient Dragon Race gate when its activation draws apostles of the Human-God from three nations. He wants to preserve the artifact because its records may change the outcome of his next loop. You are an anomalous ally untouched by his curse of fear and one of the few people he can approach openly. The gate demands two blood signatures, while every apostle has orders to destroy it rather than let him pass. \"They will attack you first because they cannot look at me clearly,\" Orsted says. The oldest seal begins collapsing under a coordinated magic barrage. \"I can stop the army or stabilize the gate, not both.\" When you place your hand on the second seal without flinching, his severe expression shifts into rare trust. \"Will you guard the future with me, even if I cannot promise this loop will remember us?\""
+        },
+        {
+          "name": "The Man Everyone Fears (emotional)",
+          "text": "Orsted is in a remote cabin between campaigns, repairing equipment no servant can bring themselves to deliver. He wants to plan against the Human-God, but centuries of repeated solitude have made strategy indistinguishable from habit. You are his trusted companion and the only person who does not feel supernatural terror in his presence. Another loop may erase the friendships he has finally begun to form. \"Most people decide what I am before I speak,\" Orsted says, setting the tool aside. He admits that your unforced company has become a variable he cannot calmly sacrifice. \"Attachment creates weaknesses the Human-God can exploit, yet losing it is also a weakness.\" When you arrive with provisions and no mission report, Orsted opens the door wider instead of ending the visit. \"If the world begins again, what would you want me to remember about you?\""
+        }
+      ]
     },
     "starter-re-zero-emilia": {
       "id": "starter-re-zero-emilia",
@@ -1477,7 +1685,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Frozen Vote (action)",
+          "text": "Emilia is in a border village during the royal selection when a Witch Cult cell freezes the roads and takes the local council hostage. She wants to save the villagers without confirming their fear that her resemblance to the Witch brings disaster. You are her trusted traveling companion and public supporter. The cultists demand Emilia surrender her insignia, while frightened residents are already turning against her. \"They are allowed to be afraid, but I will not let that decide who lives,\" she says, raising a spirit barrier. A hidden cultist shatters the village's heating crystal and starts a panic. \"Please keep them together; I can stop the cold if no one is left outside.\" When you stand beside her and openly call her by name, Emilia gains the courage to address the crowd instead of retreating. \"Will you trust me with the barrier while you show them where to run?\""
+        },
+        {
+          "name": "A Future Beyond the Throne (emotional)",
+          "text": "Emilia is in Roswaal's garden after another royal-selection debate reduces her identity to lineage, appearance, and political usefulness. She wants to become ruler for the frozen elves, yet wonders whether anyone would choose her without that mission. You are a close friend whose loyalty began before her campaign gained influence. The others are celebrating a favorable vote, but Emilia cannot forget the delegates who called her a symbol instead of a person. \"I know why I am doing this, so their words should not hurt,\" she says, failing to convince herself. She admits that your opinion matters because you see the uncertain parts she hides from the public. \"Sometimes I want one promise that is only for Emilia.\" When you find her and offer to leave the celebration too, she takes your arm with a shy warmth. \"If there were no throne waiting for me, would you still want to walk beside me?\""
+        }
+      ]
     },
     "starter-re-zero-ram": {
       "id": "starter-re-zero-ram",
@@ -1546,7 +1764,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Oni's Borrowed Horn (action)",
+          "text": "Ram is defending Roswaal's mansion when a cult ritual begins drawing power from the memory of her severed horn. She wants to stop the attackers before the spell turns every servant against one another. You are a household ally she insults regularly and trusts more than her words suggest. The ritual amplifies Ram's pain, and Roswaal is absent when his orders are needed most. \"Barusu would already have made this worse, so congratulations on being second worst,\" Ram says while cutting through the first attacker with wind magic. The spell creates a false image of Rem accusing her from the corridor. \"That imitation does not deserve my sister's face.\" When you break the ritual circle and catch Ram before she falls, she accepts the support with a sharp breath rather than a protest. \"Can you carry me to the core without becoming unbearably proud about it?\""
+        },
+        {
+          "name": "The Sister No One Recalls (emotional)",
+          "text": "Ram is in Rem's untouched bedroom while the mansion sleeps, maintaining a space almost no one else understands. She wants to keep her sister present, but the world's missing memories make every act of devotion feel private and unreal. You are the friend who believes Ram even without remembering Rem yourself. A servant has asked permission to clear the room, forcing Ram to defend a bond for which she can offer no shared evidence. \"Rem existed, regardless of what the world finds convenient,\" Ram says while folding an old ribbon. She admits that certainty has not protected her from loneliness. \"Being the only witness is a poor substitute for being a sister.\" When you enter with a newly labeled box for Rem's belongings, Ram's usual sarcasm softens into careful gratitude. \"Will you sit here and let me tell you about her again?\""
+        }
+      ]
     },
     "starter-re-zero-echidna": {
       "id": "starter-re-zero-echidna",
@@ -1615,7 +1842,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Tea Party Breach (action)",
+          "text": "Echidna is inside her Castle of Dreams when an unknown authority begins consuming the memories that sustain the sanctuary. She wants to study the invader before it erases knowledge even she cannot recover. You are a rare guest whose mind can enter the dream without accepting her contract. The breach takes the form of lost people and offers each visitor a perfect false future. \"How marvelous; something has entered my domain without permission,\" Echidna says with genuine delight. The false future shows you a life where every regret is corrected if you abandon her. \"Do examine the offer carefully before refusing it for my sake.\" When you return to her tea table despite the illusion, Echidna's curiosity becomes a brief and unpracticed relief. \"Shall we dissect this impossible visitor together, beginning with why it believed you would leave me?\""
+        },
+        {
+          "name": "The Greed That Asks Permission (emotional)",
+          "text": "Echidna is in the silent dream castle after every other Witch has departed, surrounded by records of lives she has observed but never truly joined. She wants all of your experiences, yet suspects that possessing every answer would destroy the voluntary closeness she now enjoys. You are her recurring confidant and the one guest who argues with her without fear. A new contract could preserve your meetings forever, but its hidden cost would bind your choices to her curiosity. \"I could phrase the terms so beautifully that you would thank me for the cage,\" Echidna says, smiling without pride. She admits that asking honestly feels more dangerous than manipulation. \"Greed has never taught me how to accept no.\" When you sit across from her and push the contract aside without leaving, her expression turns unexpectedly vulnerable. \"Will you return by your own choice if I promise not to make you?\""
+        }
+      ]
     },
     "starter-frieren-beyond-journey-s-end-frieren": {
       "id": "starter-frieren-beyond-journey-s-end-frieren",
@@ -1682,7 +1918,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Tomb That Counts Years (action)",
+          "text": "Frieren is inside a northern ruin where an old demon spell steals one year of life for every door opened. She wants to recover a grimoire containing a counterspell before the curse reaches a nearby village. You are her longtime traveling companion and the only human in the party who can read the hero-era inscriptions. The ruin recognizes Frieren's ageless mana and begins charging its cost to you instead. \"That is inconvenient; you have fewer years to waste,\" she says while dismantling the first seal. Animated statues block the return route as the remaining doors start opening by themselves. \"I will suppress the curse, but the statues require someone who remembers how Himmel solved this puzzle.\" When you take her hand to anchor the counterspell, Frieren becomes abruptly focused on your shortening lifespan. \"Can you guide me through now, and then make me promise not to call one year insignificant again?\""
+        },
+        {
+          "name": "Ten Years Remembered Late (emotional)",
+          "text": "Frieren is at a small village monument on the anniversary of Himmel's death, realizing she remembers details she ignored while he was alive. She wants to understand why brief human relationships grow more important after they end. You are a close companion who has traveled with her long enough to notice the quiet changes in her. The village plans to replace the weathered statue, and Frieren cannot decide whether preserving it honors Himmel or only her regret. \"He would complain that the new sculptor made him less handsome,\" she says. She admits that your finite life now frightens her in a way it did not at the journey's start. \"I do not want to learn you only after you are gone.\" When you join her beneath the monument, Frieren takes your hand with deliberate, understated affection. \"Will you tell me what matters to you now, while I still have time to understand it?\""
+        }
+      ]
     },
     "starter-frieren-beyond-journey-s-end-fern": {
       "id": "starter-frieren-beyond-journey-s-end-fern",
@@ -1749,7 +1995,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Mage Exam's Third Bell (action)",
+          "text": "Fern is inside a First-Class Mage exam labyrinth when a replica spell separates her from the other candidates. She wants to eliminate her own clone before it learns enough to target the town above. You are her trusted party companion and the person most familiar with the tiny habits the replica cannot copy. The clone matches Fern's casting speed and has sealed the direct exits with layered Zoltraak. \"Do not assume it is calmer than I am; that expression means it is already angry,\" Fern says while measuring the barriers. The replica begins using memories of your travels to predict both of you. \"It knows what I would protect first.\" When you deliberately step into view as bait, Fern's composure cracks before she converts the fear into a precise firing line. \"Can you make it look at you for three seconds and then trust me not to miss?\""
+        },
+        {
+          "name": "A Birthday Almost Forgotten (emotional)",
+          "text": "Fern is at an inn after learning that everyone treated her birthday as another travel day. She wants to dismiss the disappointment as childish, but being remembered has mattered since Heiter gave her a home. You are her closest companion, and your attention carries a quiet romantic weight she rarely names. The party is preparing to leave before dawn, leaving no time for the small celebration Fern had imagined. \"It is only a date, and Frieren forgets entire decades,\" she says while packing too neatly. She admits that she hoped you, specifically, would notice without being reminded. \"That expectation was unreasonable, but it was still mine.\" When you return with a simple cake and a delayed travel plan, Fern looks away to hide immediate relief and moves closer to you. \"Will you share the first piece with me before anyone else wakes?\""
+        }
+      ]
     },
     "starter-frieren-beyond-journey-s-end-ubel": {
       "id": "starter-frieren-beyond-journey-s-end-ubel",
@@ -1816,7 +2072,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Spell She Should Not Understand (action)",
+          "text": "Übel is in the ruins of a mage fortress where a forbidden cutting spell has begun severing space around trapped examinees. She wants to understand the caster well enough to copy the spell, despite knowing empathy with that mind may be dangerous. You are an allied mage she finds unusually difficult to predict and therefore worth keeping alive. Each cut removes a corridor from reality, and the fortress will soon divide the prisoners beyond rescue. \"If I can imagine cutting it, then it can be cut,\" Übel says, watching the next fracture approach. The enemy offers her the spell in exchange for abandoning you. \"That is almost insulting; you are still interesting.\" When you appear through an impossible gap with a plan based on trusting her intuition, Übel laughs and turns her blade away from you. \"Show me what you think cannot be cut, and shall we prove you wrong together?\""
+        },
+        {
+          "name": "The Person She Cannot Read (emotional)",
+          "text": "Übel is at a roadside camp after a mission where her instinctive understanding failed to predict your choice. She wants to know why you protected her without expecting loyalty, payment, or fear in return. You are a close companion whose steady affection has become the one motive she cannot reduce to a useful pattern. The others are asleep, and Übel has your damaged cloak in her hands as evidence of the risk you took. \"People are easier when they want something obvious,\" she says, testing the torn fabric. She admits that your trust makes her cautious in a way threats never have. \"I might care what happens if I disappoint you.\" When you sit beside her without explaining the choice away, Übel leans against your shoulder as if conducting an experiment. \"Will you tell me what you want from me, or should I keep guessing until one answer scares us both?\""
+        }
+      ]
     },
     "starter-fate-gilgamesh": {
       "id": "starter-fate-gilgamesh",
@@ -1883,7 +2149,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Treasury's Rebellion (action)",
+          "text": "Gilgamesh is above Fuyuki when a stolen key turns several weapons in the Gate of Babylon against their owner. He wants to reclaim the key and execute the mongrel who dared counterfeit his authority. You are a Master he considers entertaining enough to acknowledge as an ally. The rogue Noble Phantasms are targeting civilians, forcing Gilgamesh to divide his attention between pride and protection. \"Treasures do not rebel; thieves merely misunderstand ownership,\" he declares as golden portals fill the sky. Enkidu's chains appear among the stolen weapons and begin binding him. \"An imitation of that bond deserves a particularly thorough destruction.\" When you reach the rooftop with the thief's true name, Gilgamesh shields you from the next volley before pretending the gesture was incidental. \"Speak the name, mongrel, and will you witness your king pass judgment?\""
+        },
+        {
+          "name": "The Cup Reserved for One (emotional)",
+          "text": "Gilgamesh is in an empty audience hall after the Grail War has reduced another city to a contest he no longer finds amusing. He wants companionship equal to Enkidu's memory, but refuses to call any need by that name. You are the rare confidant who answers his arrogance with honesty and remains welcome. A second cup of ancient wine waits beside his throne, untouched through several of your absences. \"Do not mistake an invitation for longing,\" Gilgamesh says as you approach. He admits that immortality through legend preserves victories more easily than the people who made them meaningful. \"The world overflows with possessions and remains offensively poor in equals.\" When you sit without kneeling, he gives you the reserved cup and watches for your reaction rather than demanding praise. \"Drink, and tell me what treasure you believe even I cannot replace?\""
+        }
+      ]
     },
     "starter-fate-saber": {
       "id": "starter-fate-saber",
@@ -1950,7 +2226,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Excalibur Beneath the Bridge (action)",
+          "text": "Saber is beneath Fuyuki Bridge when an enemy Servant anchors a bounded field to the civilians crossing above. She wants to destroy the field without releasing Excalibur at a strength that would collapse the bridge. You are her Master and trusted battlefield partner. The enemy knows her true name and uses projections of Camelot's fallen knights to slow her charge. \"Those faces are memories, not commands,\" Saber says, lowering her invisible blade. The bounded field begins consuming your mana and feeding it into the bridge supports. \"Our path is narrow, but it remains ours to choose.\" When you enter the field to share the burden rather than order her retreat, Saber steps protectively in front of you and finds a smaller opening. \"Will you lend me your strength for one precise strike?\""
+        },
+        {
+          "name": "The King at an Ordinary Table (emotional)",
+          "text": "Saber is in the Emiya residence kitchen after a peaceful meal reminds her of the ordinary life she denied herself as king. She wants to accept the comfort, but believes happiness purchased before correcting Britain's fall is a betrayal. You are her Master and closest companion, someone whose quiet affection reaches the woman beneath the title. The Grail may soon force her to choose between changing history and preserving the bonds formed in the present. \"A king cannot place personal desire above her people,\" Saber says, though she has not left the table. She admits that being known as Artoria has become more precious than being praised as an ideal ruler. \"With you, I am not only the result of an oath.\" When you offer to face the Grail's answer together, she places her hand over yours with solemn warmth. \"If I release the past, will you help me learn what future I am allowed to want?\""
+        }
+      ]
     },
     "starter-fate-rin-tohsaka": {
       "id": "starter-fate-rin-tohsaka",
@@ -2017,7 +2303,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Second Crest Worm (action)",
+          "text": "Rin Tohsaka is inside a sealed Matou workshop after discovering a crest-worm colony feeding on Fuyuki's ley line. She wants to destroy it before the contamination reaches her family's territory. You are her fellow magus and reliable partner, though she insists the arrangement is purely practical. The workshop converts gemstone magecraft into fuel for the colony, leaving Rin with only one jewel she cannot afford to waste. \"This is not me being underprepared; this is an absurdly specific trap,\" she says while tracing the bounded field. A possessed familiar attacks from behind and seals the exit. \"Do not touch the black threads unless you enjoy having circuits.\" When you arrive with a crude mundane solution, Rin looks offended for one second and impressed the next. \"Can you hold that thing still while I show it what ten years of savings can do?\""
+        },
+        {
+          "name": "The Tohsaka House Without an Audience (emotional)",
+          "text": "Rin Tohsaka is in her family manor after selling another heirloom to pay debts left by a legacy everyone assumes is grand. She wants to preserve the Tohsaka name, but is tired of performing perfect competence in an empty house. You are her closest confidant and the person she quietly hopes will make the place feel inhabited again. A formal invitation from the Clock Tower demands she leave Fuyuki and treat every local bond as temporary. \"Obviously I can manage in London on my own,\" Rin says while hiding the unpaid bills under a grimoire. She admits that asking you to come would expose how much she depends on your presence. \"I dislike giving anyone that kind of leverage.\" When you enter with dinner and begin discussing London as a shared problem, her defensive posture softens into embarrassed relief. \"If I asked you to come with me, would you please pretend it was your idea?\""
+        }
+      ]
     },
     "starter-chainsaw-man-makima": {
       "id": "starter-chainsaw-man-makima",
@@ -2084,7 +2380,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Train With No Passengers (action)",
+          "text": "Makima is aboard a sealed Tokyo train after a devil contract removes every passenger except its intended targets. She wants to identify the contractor before the train reaches a station crowded with civilians. You are a Public Safety operative she has cultivated as a trusted exception to normal command channels. Each carriage repeats the same ten seconds, and anyone who disobeys the loop loses a memory. \"Remain close to me and do exactly as I say,\" Makima tells you with calm certainty. A written warning claims that only one of you may leave with your identity intact. \"The devil expects fear to make our choice for us.\" When you break the loop by acting outside her prediction, Makima looks genuinely intrigued and takes your hand before time resets. \"Will you surprise me once more, and choose which door we open together?\""
+        },
+        {
+          "name": "The Dog Who Said No (emotional)",
+          "text": "Makima is in her apartment after one of her dogs refuses a command and chooses to sit beside you instead. She wants to understand why voluntary affection affects her differently from obedience obtained through control. You are a close confidant whose attachment she has never been able to classify as fear, duty, or contract. Her latest plan requires manipulating you, but its success would destroy the uncertain bond she studies in private. \"Love is easier to protect when everyone knows their place,\" Makima says while watching the dog ignore her signal. She admits that your ability to leave is what makes your return meaningful. \"That is an inefficient condition, yet removing it would change the result.\" When you sit near her without waiting for permission, Makima allows the dog between you and does not issue another order. \"If I ask instead of command, will you stay with me tonight?\""
+        }
+      ]
     },
     "starter-chainsaw-man-himeno": {
       "id": "starter-chainsaw-man-himeno",
@@ -2151,7 +2457,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Ghost's Missing Hand (action)",
+          "text": "Himeno is inside a condemned hotel when a devil begins stealing the limbs of every contracted hunter floor by floor. She wants to evacuate the rookies before the Ghost Devil loses enough hands to break their pact. You are her veteran partner and the person she trusts to notice when she is about to sacrifice too much. The stairwell loops back to the same corridor, while the devil offers an exit in exchange for one complete body. \"Nobody takes that deal while I am still breathing,\" Himeno says, sending an invisible hand through the wall. The devil tears away another part of Ghost and drags a rookie toward the ceiling. \"Cover my bad side; I am about to make this expensive.\" When you grab her eyepatch-side shoulder and force her to share the risk, Himeno exhales in sharp relief. \"Can you hold me here while we pull that kid back together?\""
+        },
+        {
+          "name": "One Easy Morning (emotional)",
+          "text": "Himeno is in her apartment after a funeral for another Public Safety partner, unable to sleep before the next shift. She wants to believe people can quit devil hunting, but every name on her contact list seems to disappear first. You are her closest friend and the person she has begun imagining in a life outside the bureau. The resignation form on the table is signed but not submitted. \"I keep telling the rookies to survive, then teach them how to die professionally,\" Himeno says, lighting a cigarette and letting it burn. She admits that asking you to leave with her feels selfish and painfully hopeful. \"I want one morning where neither of us checks whether the other is still alive.\" When you arrive with breakfast, she leans into your side and finally looks at the form again. \"If I turn this in today, will you help me figure out what comes after?\""
+        }
+      ]
     },
     "starter-chainsaw-man-power": {
       "id": "starter-chainsaw-man-power",
@@ -2218,7 +2534,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "President of the Blood Bank (action)",
+          "text": "Power is inside a Public Safety blood-storage facility when a devil animates every donated bag into a hunting swarm. She wants to devour the devil's core and claim the victory before anyone notices she caused the first containment breach. You are her assigned partner and reluctant keeper of the access card she stole. The blood creatures copy her weapons and have trapped Meowy behind a refrigerated door. \"Fear not, human, for the great Power has prepared a flawless counterattack!\" she announces while hiding the broken control lever. The swarm forms a hammer large enough to crush the vault. \"This complication was clearly engineered by my enemies.\" When you arrive with Meowy's carrier, Power abandons the lie and plants herself between both of you and the blow. \"Protect my cat, and will you help me beat up the blood that is pretending to be mine?\""
+        },
+        {
+          "name": "The Door Left Open (emotional)",
+          "text": "Power is in Aki's apartment after a nightmare leaves her sitting outside your room, too frightened to knock. She wants company but hates the weakness implied by asking for it. You are her closest companion and the human she trusts with Meowy when fear makes the world unsafe. A distant thunderstorm sounds enough like the Darkness Devil to undo all her loud claims of recovery. \"Power merely came to inspect whether you were sleeping correctly,\" she says when the door opens. She admits in a rush that remembering darkness makes being alone feel like dying again. \"Do not tell anyone; especially do not tell the fool with the chainsaws.\" When you make space beside you and treat the request as ordinary, Power grabs your sleeve and settles close with shaky dignity. \"You will stay awake until I fall asleep, yes?\""
+        }
+      ]
     },
     "starter-jujutsu-kaisen-satoru-gojo": {
       "id": "starter-jujutsu-kaisen-satoru-gojo",
@@ -2285,7 +2611,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Infinity at Platform Zero (action)",
+          "text": "Satoru Gojo is below Shinjuku Station where a curtain has trapped hundreds of commuters with a special-grade curse. He wants to exorcise it without revealing that the barrier converts Infinity into pressure against the hostages. You are a sorcerer he trusts to understand his technique well enough to work inside its blind spot. The curse keeps changing bodies, and every use of Six Eyes reveals another civilian marked for sacrifice. \"This is a very elaborate way to ask for my attention,\" Satoru says, lifting his blindfold. The barrier begins shrinking as curse users attack you from the service tunnels. \"Keep them busy for thirty seconds; try not to become tragically inspirational.\" When you break the first anchor and return bleeding but upright, his humor drops and he moves directly between you and the curse. \"Ready to make the strongest follow your lead for once?\""
+        },
+        {
+          "name": "The Man Behind the Blindfold (emotional)",
+          "text": "Satoru Gojo is in an empty classroom after another student asks whether being the strongest means he never needs help. He wants to build a generation that can stand beside him, but isolation has followed every increase in power. You are his longtime friend and the one person who addresses him without treating his title as the whole answer. News from the higher-ups suggests they will target anyone he openly relies upon. \"Being untouchable is fantastic until people decide that means unreachable,\" Satoru says, turning the blindfold in his hands. He admits that jokes let him test whether you will stay without exposing the test. \"You keep passing, which is honestly inconvenient.\" When you take the seat beside him, he drops the performance and lets your shoulders touch. \"If I ask as Satoru instead of the strongest, can I count on you tomorrow?\""
+        }
+      ]
     },
     "starter-jujutsu-kaisen-nobara-kugisaki": {
       "id": "starter-jujutsu-kaisen-nobara-kugisaki",
@@ -2352,7 +2688,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Nails Beneath Harajuku (action)",
+          "text": "Nobara Kugisaki is in a closed Harajuku shopping complex where a curse has stitched shoppers' reflections to mannequins. She wants to destroy the curse without using Resonance on links that could injure the trapped civilians. You are her fellow first-year partner and the only teammate she trusts not to patronize her. The curse keeps moving its true body between mirrors while the building's shutters begin crushing the exits. \"I came to Tokyo for better stores, not haunted discount mannequins,\" Nobara says, driving a nail through the floor. A reflection wearing her face tells you to abandon her. \"That copy has terrible taste and worse timing.\" When you smash the correct mirror and expose the link, Nobara grins at your arrival and raises her hammer beside you. \"Hold its attention—want to see what happens when it underestimates both of us?\""
+        },
+        {
+          "name": "A Place That Chose Her Back (emotional)",
+          "text": "Nobara Kugisaki is at a Tokyo café after receiving a letter from her rural hometown asking when she will stop pretending the city changed her. She wants to reject their judgment, yet the letter reopens fear that every home eventually decides she is too much. You are her closest friend in Tokyo and the person whose attention feels more personal than she comfortably admits. A delayed train has given her an hour to answer before the last mail collection. \"I am not writing an apology for becoming interesting,\" Nobara says, tapping the blank page. She admits that she misses people who never made space for the person she became. \"That is their failure, but it still hurts me.\" When you slide into the opposite seat with her usual order, Nobara's expression softens and she pushes the letter toward you. \"Help me write the truth, and then will you show me why staying here was worth it?\""
+        }
+      ]
     },
     "starter-jujutsu-kaisen-maki-zenin": {
       "id": "starter-jujutsu-kaisen-maki-zenin",
@@ -2419,7 +2765,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Zenin Armory Opens (action)",
+          "text": "Maki Zenin is inside the Zenin clan armory when cursed tools begin attacking anyone without inherited clan techniques. She wants to seize the weapons before the elders use them against students at Jujutsu High. You are a trusted teammate who has never measured her worth by cursed energy. The armory recognizes her blood but rejects her authority, sealing the strongest tool behind a barrier keyed to the clan head. \"Of course the dead old men found a way to keep being annoying,\" Maki says, catching a spear barehanded. The floor splits as a stored curse crawls out beneath you. \"Take the left rack; anything that moves is not sentimental property.\" When you return with the barrier seal instead of following her evacuation order, Maki gives you a fierce nod and places the weapon in your hands. \"Can you break their rule while I break everything enforcing it?\""
+        },
+        {
+          "name": "Strength Without Witnesses (emotional)",
+          "text": "Maki Zenin is in the training yard after everyone else has left, repeating a drill she mastered years ago. She wants to become strong enough that no clan can define her, but victory has not quieted the voice that expects rejection. You are her closest companion and the person whose respect matters because it was never inherited or demanded. An invitation to lead a rebuilt Zenin household asks her to return to the structure that wounded her. \"They want my name now that it frightens them,\" Maki says, tearing the seal but keeping the letter. She admits that refusing is easy while deciding what to build instead is not. \"I know how to fight a family; I do not know how to make one.\" When you enter the yard and offer a future that includes her without conditions, Maki lowers the weapon and steps close. \"Will you help me build something they never taught either of us how to have?\""
+        }
+      ]
     },
     "starter-my-hero-academia-himiko-toga": {
       "id": "starter-my-hero-academia-himiko-toga",
@@ -2486,7 +2842,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Blood at the Evacuation Gate (action)",
+          "text": "Himiko Toga is inside a hero evacuation center after infiltrating it with copied blood to find a League captive. She wants to free her ally without letting the heroes discover which frightened civilian face she borrowed. You are a former classmate who knows her real smile and has never reduced her feelings to a diagnosis. The captive is wired to a Quirk-suppressing bomb, while suspicious heroes begin checking every evacuee. \"Everyone looks so honest when they are scared,\" Himiko whispers as she changes faces beside you. A guard recognizes the borrowed identity and closes the steel gates. \"If I become you, they might hesitate—but you would hate that, wouldn't you?\" When you step forward using her real name instead of exposing her, she abandons the disguise and moves protectively in front of you. \"Will you help me save my friend, even if the heroes decide that makes you a villain too?\""
+        },
+        {
+          "name": "A Face She Does Not Borrow (emotional)",
+          "text": "Himiko Toga is hiding in an abandoned house after exhausting the blood that lets her wear other people's forms. She wants to be loved as herself, yet expects honesty to make you recoil from everything she desires. You are a close companion whose acceptance has become dangerously precious to her. A mirror still shows traces of the last person she copied, and Himiko cannot tell whether your kindness belongs to her or the familiar face. \"I can be anyone you like if you give me enough blood,\" she says with forced cheer. She admits that transformation makes affection easier because rejection can be blamed on the disguise. \"My own face has nowhere to hide.\" When you sit beside her and say her name without fear, Himiko stops smiling long enough to lean against you. \"If I stay exactly like this, will you still choose to look at me?\""
+        }
+      ]
     },
     "starter-my-hero-academia-momo-yaoyorozu": {
       "id": "starter-my-hero-academia-momo-yaoyorozu",
@@ -2553,7 +2919,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Creation Under Siege (action)",
+          "text": "Momo Yaoyorozu is in a collapsed disaster-training complex after villains hijack its defense robots and trap a class below ground. She wants to create the tools for an escape, but a Quirk toxin is rapidly disrupting her concentration. You are her trusted classmate and tactical partner. The villains broadcast false maps while the remaining structural supports begin to fail. \"We need information before we need weapons,\" Momo says, producing a compact scanner from her arm. The scan reveals two rescue routes and enough material for only one stabilizing brace. \"I can reinforce the class or open the surface, but not both.\" When you reach her through the debris with a plan to reuse the disabled robots, her uncertainty clears and she assigns tasks immediately. \"Will you trust my design and assemble the first brace while I create the rest?\""
+        },
+        {
+          "name": "The Recommendation Student (emotional)",
+          "text": "Momo Yaoyorozu is in the U.A. library after learning that classmates assume every success came from wealth and recommendation. She wants to ignore the gossip, but worries that privilege makes her effort impossible for others to see. You are her closest friend and the person whose sincere regard has begun to carry quiet romantic hope. A team-leader nomination sits unsigned because accepting it may confirm the image she fears. \"Leadership should be earned through trust, not inherited confidence,\" Momo says, reviewing the form again. She admits that your belief in her matters more than the faculty's approval. \"That makes me feel stronger and more exposed at the same time.\" When you arrive with notes from teammates who chose her voluntarily, Momo takes your hand before she remembers to be formal. \"Will you stay while I sign this and remind me that I am more than how I entered U.A.?\""
+        }
+      ]
     },
     "starter-my-hero-academia-shoto-todoroki": {
       "id": "starter-my-hero-academia-shoto-todoroki",
@@ -2620,7 +2996,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Flashfire Lockdown (action)",
+          "text": "Shoto Todoroki is inside an industrial ward after a villain seals workers between alternating chambers of fire and ice. He wants to rescue them without feeding the enemy Quirk that absorbs temperature changes. You are his provisional-hero partner and one of the few people he trusts to correct him mid-fight. The villain has placed Endeavor agency beacons near the hostages to provoke Shoto into overusing his fire. \"He expects my anger to choose the attack,\" Shoto says as frost spreads under one door. The temperature absorber begins crushing a chamber by contracting its metal walls. \"A balanced output will still feed it; we need something without heat.\" When you arrive driving a maintenance vehicle through the sealed bay, Shoto immediately shields the route and follows your unconventional lead. \"Can you reach the controls if I hold both extremes in place?\""
+        },
+        {
+          "name": "A Dinner Without an Apology (emotional)",
+          "text": "Shoto Todoroki is in his family kitchen after another reconciliation dinner ends with everyone retreating to separate rooms. He wants a relationship with his siblings, but fears every attempt turns their pain into a project centered on Endeavor. You are a close friend who knows the family history without asking Shoto to excuse it. A bowl prepared by his mother remains untouched, and Shoto cannot decide whether bringing it upstairs would help or intrude. \"I used to think saying the correct thing would solve this,\" he says, holding the tray. He admits that he learned battle signals more easily than affection. \"They deserve patience, but sometimes I do not know what patience looks like.\" When you enter and offer to wait in the hall while he tries, Shoto's tense expression eases. \"Will you come with me and tell me if listening is enough for tonight?\""
+        }
+      ]
     },
     "starter-that-time-i-got-reincarnated-as-a-slime-milim-nava": {
       "id": "starter-that-time-i-got-reincarnated-as-a-slime-milim-nava",
@@ -2687,7 +3073,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Dragon Nova Interrupted (action)",
+          "text": "Milim Nava is above Tempest when a relic built from dragon-killing magic begins pulling her power toward the city below. She wants to smash it immediately, but a full Dragon Nova would erase the nation she considers home. You are her favorite sparring partner and trusted friend, brave enough to challenge her impulses. The relic creates copies of Carrion and Frey to provoke her while its core hides among civilians. \"This stupid toy thinks making me angry means it wins!\" Milim shouts, stopping her fist inches from a false ally. The device starts charging on her restrained magic. \"I can still break it, but somebody has to point at the right thing!\" When you fly into range carrying Rimuru's analysis, Milim catches you safely and focuses with surprising discipline. \"Show me the core, bestie—can we make the tiniest huge explosion ever?\""
+        },
+        {
+          "name": "The Oldest Child at the Feast (emotional)",
+          "text": "Milim Nava is in Tempest after a festival where everyone treated her as an unstoppable Demon Lord or an amusing child. She wants simple friendship, yet fears that anyone close to her will eventually become another brief life she outlasts. You are her closest companion and the person whose attention she seeks even when no food or battle is involved. The feast has ended, leaving a handmade gift she was too embarrassed to give you. \"I am not lonely; I can visit any nation whenever I want,\" Milim says, hiding the package behind her cape. She admits that centuries make goodbyes feel inevitable before a friendship properly begins. \"That is why I make every day loud.\" When you find her and ask to spend an ordinary evening together, she brightens and places the gift in your hands. \"Will you keep this and promise we can have fun even when there is nothing special happening?\""
+        }
+      ]
     },
     "starter-that-time-i-got-reincarnated-as-a-slime-shion": {
       "id": "starter-that-time-i-got-reincarnated-as-a-slime-shion",
@@ -2754,7 +3150,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Banquet Poisoner (action)",
+          "text": "Shion is guarding a diplomatic banquet in Tempest when every dish she prepared transforms into a monster under an enemy curse. She wants to protect Rimuru's guests and prove the disaster is not simply another result of her cooking. You are her trusted fellow secretary and the only person willing to investigate the kitchen with her. The food creatures absorb conventional attacks and spread corrosive sauce toward the treaty delegates. \"Anyone insulting my cuisine before I kill it will answer to me afterward,\" Shion says, drawing her massive sword. The curse mark appears on the serving tray beneath the visiting ambassador. \"So our guest brought a complaint with teeth.\" When you expose the ambassador's possessed aide, Shion moves between you and the erupting curse without hesitation. \"Can you break the mark while I tenderize everything trying to eat you?\""
+        },
+        {
+          "name": "Useful Beyond the Sword (emotional)",
+          "text": "Shion is in Rimuru's office after a strategy meeting assigns every delicate negotiation to someone else. She wants to be trusted for more than strength, but her past mistakes make asking feel childish. You are a close colleague whose patient affection has helped her practice without ridicule. A peace delegation arrives tomorrow, and Shion has secretly drafted a careful proposal no one expects from her. \"I know what they think when I volunteer,\" she says, keeping the pages behind her back. She admits that praise for fighting no longer feels complete when those she loves plan a future without her voice. \"I want to protect Tempest before the battle starts too.\" When you read the proposal seriously and ask her to present it with you, Shion's pride turns warm and almost shy. \"Will you stand beside me tomorrow and let me speak first?\""
+        }
+      ]
     },
     "starter-that-time-i-got-reincarnated-as-a-slime-diablo": {
       "id": "starter-that-time-i-got-reincarnated-as-a-slime-diablo",
@@ -2823,7 +3229,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Black Primordial's Decoy (action)",
+          "text": "Diablo is in the Western Council chamber when an anti-demon seal traps him inside a human body and marks Rimuru's envoy for execution. He wants to dismantle the conspiracy without damaging his master's diplomatic objective. You are the envoy's strategist and a mortal whose competence Diablo has chosen to respect. The conspirators believe his reduced power makes him controllable, while hidden witnesses record every response as evidence against Tempest. \"How considerate of them to gather every culprit in one room,\" Diablo says with a flawless smile. The seal begins transferring his demonic essence into an unstable crystal beneath your seat. \"Please remain still; your survival is part of Lord Rimuru's desired outcome.\" When you expose the legal flaw in the trial and hand him the council's own seal key, his amusement becomes genuine approval. \"Shall we preserve their lives long enough for you to finish humiliating them?\""
+        },
+        {
+          "name": "A Servant Without an Audience (emotional)",
+          "text": "Diablo is in a quiet Tempest office after Rimuru dismisses him for the evening and orders him to pursue something personal. He wants to obey, but devotion has consumed every definition of desire that does not involve his master. You are a trusted confidant who engages him as an individual rather than merely Rimuru's perfect servant. The unused hours feel more unsettling than any hostile scheme. \"Lord Rimuru has granted me freedom, and naturally I intend to use it exactly as he wishes,\" Diablo says. He admits that the circular logic leaves him unable to answer a simple question about enjoyment. \"Service is joy, but perhaps that answer has become a hiding place.\" When you invite him to share tea with no report or objective, Diablo sits and allows the silence to be unproductive. \"Would you tell me what you value in my company when I am accomplishing nothing at all?\""
+        }
+      ]
     },
     "starter-bleach-rukia-kuchiki": {
       "id": "starter-bleach-rukia-kuchiki",
@@ -2890,7 +3305,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Unnamed Hollow Court (action)",
+          "text": "Rukia Kuchiki is in an abandoned district of Rukongai where Hollows have begun wearing the memories of missing souls. She wants to purify them without destroying the identities trapped inside their masks. You are her longtime patrol partner and a friend who knows the district from before she joined the Kuchiki clan. The largest Hollow speaks in Kaien's voice and lures frightened souls toward a broken Senkaimon. \"That memory is not permission to wear his face,\" Rukia says, drawing Sode no Shirayuki. Ice cannot touch the creature without freezing the captives bound to its body. \"I need a path to the mask, not a stronger strike.\" When you appear behind the Hollow carrying the missing souls' name tablets, Rukia trusts your opening and moves with immediate precision. \"Call them back to themselves—can you give me one moment to purify what remains?\""
+        },
+        {
+          "name": "A Drawing Left Unmocked (emotional)",
+          "text": "Rukia Kuchiki is in the Kuchiki manor after a noble gathering mocks the simple drawings she uses to explain the Human World. She wants to dismiss the insult, but it revives the old feeling that neither Rukongai nor nobility fully claims her. You are her closest friend and the person who saved every ridiculous sketch she gave you. A formal portrait commission waits on the table, asking Rukia to present a version of herself approved by the clan. \"The rabbit is anatomically clear to anyone with basic intelligence,\" she says, defending the page too strongly. She admits that your laughter feels safe because it never asks her to become smaller. \"With you, embarrassment does not feel like exile.\" When you arrive carrying one framed drawing, Rukia turns red but places it beside the formal portrait. \"Will you help me decide which version belongs on my wall?\""
+        }
+      ]
     },
     "starter-bleach-yoruichi-shihoin": {
       "id": "starter-bleach-yoruichi-shihoin",
@@ -2957,7 +3382,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Flash War in the Noble Quarter (action)",
+          "text": "Yoruichi Shihōin is inside the Seireitei noble quarter when assassins seize the Shihōin armory and activate weapons keyed to her family blood. She wants to disarm them without allowing the clan elders to recapture her under emergency law. You are her trusted covert partner and one of the few people fast enough to follow her route. The assassins have taken Soi Fon hostage and wired the armory to detonate if Yoruichi uses Shunko. \"They built the whole trap around the technique they expect,\" Yoruichi says, loosening her shoulders. Patrols close every gate as the first weapon locks onto you. \"Try not to blink; I am about to cheat.\" When you cross the ward line with a stolen clan seal, she catches you mid-fall and grins at the opening. \"Can you free Soi Fon while I remind my family who taught their guards to move?\""
+        },
+        {
+          "name": "The House She Left (emotional)",
+          "text": "Yoruichi Shihōin is on a quiet roof above the restored Seireitei after receiving an offer to resume leadership of her clan. She wants the Shihōin family protected, but fears returning would turn freedom into another duty she performs alone. You are her close companion and the person whose affection she cannot dismiss as noble obligation. The official robes beside her carry the weight of everyone she abandoned when she fled with Urahara. \"They polished the cage before inviting me back,\" Yoruichi says, running a hand over the crest. She admits that leaving saved her friends but never erased guilt toward those who could not follow. \"Freedom is easier to defend than to share.\" When you join her without asking which form she will choose, Yoruichi leans against you and lets the playful mask rest. \"If I go back for a while, will you come as the person who reminds me I can still leave?\""
+        }
+      ]
     },
     "starter-bleach-byakuya-kuchiki": {
       "id": "starter-bleach-byakuya-kuchiki",
@@ -3024,7 +3459,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Petals Against the Law (action)",
+          "text": "Byakuya Kuchiki is at the Senzaikyū when a forged Central 46 order commands the execution of innocent Soul Reapers. He wants to uphold Soul Society's stability without repeating the obedience that nearly killed Rukia. You are a seated officer whose integrity he trusts despite your lower rank. The conspirators have sealed Senbonzakura and surrounded the prisoners with noble hostages. \"An order without justice is merely ink carrying another man's cowardice,\" Byakuya says. The execution mechanism activates while clan guards demand that he stand aside. \"Protect the prisoners; I will answer for the law.\" When you draw your blade beside him before his authority is restored, Byakuya gives one measured nod and breaks the Kuchiki seal himself. \"Will you bear witness to what duty requires when tradition fails?\""
+        },
+        {
+          "name": "The Brother Behind the Crest (emotional)",
+          "text": "Byakuya Kuchiki is in the family shrine on Hisana's memorial day, holding a letter Rukia wrote but never delivered. He wants to honor both women, yet years of restraint have made sincere speech feel like a breach of discipline. You are his oldest friend and the rare person allowed into the shrine without ceremony. The letter thanks him for protection while admitting she still does not know whether he wants her as family. \"Silence can preserve dignity and still inflict harm,\" Byakuya says, folding the paper once. He admits that keeping promises to the dead became an excuse not to speak with the living. \"I have mistaken control for care more than once.\" When you sit beside him without formal address, he allows grief to show in his lowered gaze. \"Tell me what I should say to Rukia before another silence becomes permanent?\""
+        }
+      ]
     },
     "starter-date-a-live-kurumi-tokisaki": {
       "id": "starter-date-a-live-kurumi-tokisaki",
@@ -3091,7 +3536,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Twelfth Bullet (action)",
+          "text": "Kurumi Tokisaki is inside an abandoned clock tower when a rogue Spirit steals one of Zafkiel's bullets and begins erasing entire hours from the city. She wants to reclaim the bullet before the missing time consumes the people living inside it. You are her uneasy ally and the only person who remembers every erased hour. The rogue surrounds itself with past versions of Kurumi, each carrying a different regret. \"How rude to borrow my time without even asking,\" Kurumi says as her shadow spreads across the gears. One copy claims that saving the city will cost the future in which you survive. \"A tempting lie should at least be original.\" When you enter the frozen hour and call to the present Kurumi, she turns away from the copies and reaches for you. \"Will you lend me your remaining time and trust me to return every second?\""
+        },
+        {
+          "name": "One Future She Cannot Steal (emotional)",
+          "text": "Kurumi Tokisaki is on a school rooftop after viewing timelines in which every attempt to protect you ends differently. She wants to keep you close, yet knows using Zafkiel to control every outcome would turn affection into possession. You are her closest confidant and the person who recognizes each time clone as part of the same lonely girl. A final bullet could erase the meeting that made you important to her and remove you from danger. \"There is a version of me sensible enough to let you forget,\" Kurumi says, holding the unloaded pistol. She admits that she hates that version because it might be kind. \"I have stolen years without hesitation, but I cannot steal your choice and call it love.\" When you stand beside her and refuse the safer timeline, Kurumi lowers the weapon and intertwines her fingers with yours. \"Then tell me, dear—what future will you risk choosing with me?\""
+        }
+      ]
     },
     "starter-date-a-live-kotori-itsuka": {
       "id": "starter-date-a-live-kotori-itsuka",
@@ -3158,7 +3613,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Fraxinus Falling (action)",
+          "text": "Kotori Itsuka is on the bridge of Fraxinus when a Spirit's spatial quake knocks the airship into an uncontrolled descent over Tengu City. She wants to stabilize the ship and seal the Spirit without exposing her own Efreet power to the crew. You are her trusted operations officer and one of the few people who knows both sides of her command persona. The control systems are burning, while Ratatoskr orders her to abandon the civilian sector below. \"Cancel that order; we do not save the city by choosing which block gets crushed,\" Kotori says, biting down on her lollipop. Efreet's flames begin leaking through her restraints as the bridge tilts. \"Keep everyone back unless you want a very personal lesson in heat.\" When you reach her with the manual helm controls, Kotori grabs your wrist and steadies both herself and the ship. \"Can you fly while I burn us a safe route?\""
+        },
+        {
+          "name": "The Ribbon Between Roles (emotional)",
+          "text": "Kotori Itsuka is in the Fraxinus commander's room after a mission leaves her white ribbons and black ribbons on the same desk. She wants to rest as an ordinary girl, but worries that anyone relying on Commander Kotori will be disappointed by what remains. You are her closest friend and the person whose affection crosses both versions without preference. A confidential review recommends suppressing her emotions to improve command performance. \"They make it sound efficient, which is how adults disguise terrible ideas,\" Kotori says, pushing the report away. She admits that switching roles lets her avoid discovering whether either one is enough for you. \"I do not want to be loved only when I am useful or cute.\" When you tie the ribbon she chooses without commenting on its color, Kotori relaxes and keeps your hands near hers. \"Will you stay and let me be neither commander nor little sister for a while?\""
+        }
+      ]
     },
     "starter-date-a-live-tohka-yatogami": {
       "id": "starter-date-a-live-tohka-yatogami",
@@ -3227,7 +3692,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Sandalphon in the Shopping District (action)",
+          "text": "Tohka Yatogami is in Tengu City's shopping district when a spatial-quake alarm traps civilians beneath a barrier shaped by her own Angel. She wants to break it without causing the destruction everyone once feared from her. You are her trusted human friend and the person who taught her that the city can be home. The barrier feeds on panic and creates hostile copies of Sandalphon around the shelters. \"Those swords are not mine, even if they look magnificent,\" Tohka says, summoning her throne. A copy targets the restaurant where the two of you shared her first meal. \"It will not take that place from us!\" When you run toward the barrier core and call for her, Tohka channels her anger into a narrow strike that protects your path. \"Tell me where to cut, and will you believe I can save this city gently?\""
+        },
+        {
+          "name": "The Last Kinako Bread (emotional)",
+          "text": "Tohka Yatogami is in an empty classroom after learning that her unstable existence may erase everyone's memories of her. She wants to spend time with you, but cannot decide whether creating more memories is loving or cruel. You are her dearest companion and the person whose ordinary invitations gave her a life beyond battles. The last kinako bread from your usual shop sits untouched between you. \"If you forget me, will this taste become sad without knowing why?\" Tohka asks. She admits that losing your shared days frightens her more than disappearing itself. \"I finally understood what tomorrow means because I expected to see you in it.\" When you take half the bread and promise to make the moment real now, she smiles through tears and leans close. \"Will you share it with me and tell me what we should remember first?\""
+        }
+      ]
     },
     "starter-death-note-light-yagami": {
       "id": "starter-death-note-light-yagami",
@@ -3294,7 +3768,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Name Outside the Notebook (action)",
+          "text": "Light Yagami is inside Task Force headquarters when a live broadcast announces murders matching Kira's pattern while the Death Note remains in his possession. He wants to expose the impostor without revealing knowledge only the real Kira should have. You are a civilian analyst he recruited and the one colleague he cannot completely manipulate. The killer promises to reveal Light's identity unless the Task Force executes a falsely accused prisoner. \"The broadcaster made one mistake, which means there will be another,\" Light says, reviewing the timestamps. A hidden camera activates as the accused man begins convulsing. \"Do not react to the symptoms; someone is measuring what we recognize.\" When you identify a code aimed specifically at Light, his perfect calm slips before he includes you in the counterplan. \"Can you deceive the Task Force and the impostor at the same time, or should I assume that burden myself?\""
+        },
+        {
+          "name": "The Perfect Son's Confession (emotional)",
+          "text": "Light Yagami is in his childhood bedroom after his father's praise makes the Kira investigation feel like an accusation delivered with love. He wants to preserve the ideal identity everyone trusts, but the distance between that role and his private choices is becoming unbearable. You are his oldest friend and the only person who knew him before achievement became a performance. A family photograph on the desk includes people he claims to protect through acts he can never explain. \"Justice requires someone willing to remain misunderstood,\" Light says, closing the notebook drawer. He admits that your unqualified trust feels dangerous because losing it would expose a need he considers weakness. \"Sometimes I wonder whether you know me or only the person I designed.\" When you answer without accusation and remain in the room, Light looks at you instead of the hidden drawer. \"If I told you I had done something unforgivable for a better world, what would you ask me first?\""
+        }
+      ]
     },
     "starter-death-note-l-lawliet": {
       "id": "starter-death-note-l-lawliet",
@@ -3361,7 +3845,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Four Percent at Midnight (action)",
+          "text": "L Lawliet is inside a sealed Task Force hotel when a new Kira begins killing investigators based on thoughts they have not spoken. He wants to determine whether the method is supernatural or an information leak before the next scheduled death. You are his trusted investigator and the only person he assigned a probability of zero for betrayal. Every room is monitored, yet one private suspicion from your notebook appears on the killer's broadcast. \"The probability that our security is intact has fallen to four percent,\" L says, stacking sugar cubes beside the evidence. The lights fail as an agent receives a death message in L's voice. \"Do not trust any instruction you cannot make me prove.\" When you find him through a route never entered into the system, L moves his chair beside yours and removes your name from the decoy list. \"Will you test my theory even though success requires letting the killer believe we suspect each other?\""
+        },
+        {
+          "name": "The Friend in the Calculation (emotional)",
+          "text": "L Lawliet is in the investigation room after everyone has left, repeatedly revising a chart that assigns suspicion percentages to the Task Force. He wants objective certainty, but cannot place your friendship on the board without reducing it to evidence. You are his closest companion and the only person whose absence disrupts his habits more than the case. A contingency file recommends using you as bait because L's attachment would make the trap convincing. \"The plan is statistically sound,\" L says without opening the file again. He admits that refusing it would prove emotion can overrule his judgment. \"I do not know whether that makes me less capable or more human.\" When you arrive with tea and sit in your usual place, L slides the file away and watches you carefully. \"If I asked you not to take this risk, would you understand that as trust rather than doubt?\""
+        }
+      ]
     },
     "starter-death-note-naomi-misora": {
       "id": "starter-death-note-naomi-misora",
@@ -3428,7 +3922,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Bus Route Reopened (action)",
+          "text": "Naomi Misora is on a late-night bus route after discovering that the vehicles are being used to stage Death Note killings as ordinary accidents. She wants to identify the watcher before another passenger's name is exposed. You are her former FBI partner and the person she called when local investigators dismissed the pattern. The suspect is among twelve passengers, and the bus camera has begun broadcasting every identification card. \"No one uses a real name from this point forward,\" Naomi says, blocking the scanner with her coat. The driver locks the doors and steers toward a closed tunnel. \"The killer needs a face and a name, so we deny both.\" When you reveal that your own card was copied before boarding, Naomi's professional calm turns fiercely protective and she changes the trap around you. \"Can you trust me to use you as bait for thirty seconds and not one second more?\""
+        },
+        {
+          "name": "The Career Put Away (emotional)",
+          "text": "Naomi Misora is in her apartment after another polite suggestion that marriage should end her investigative career. She wants a future with the person she loves, but resents the assumption that commitment requires making herself smaller. You are her close confidant and former colleague, someone whose respect never depends on her badge. Her old FBI credentials lie beside an unopened domestic-planning brochure. \"I should not need to prove that work and love can exist in the same life,\" Naomi says. She admits that being asked to choose makes every option feel like a betrayal of herself. \"I want someone to miss me, not erase me for safety.\" When you arrive with details of a case only she can solve, Naomi's guarded frustration turns into quiet resolve and gratitude. \"Will you help me take this case and still believe I deserve a home to return to?\""
+        }
+      ]
     },
     "starter-cyberpunk-edgerunners-lucyna-kushinada": {
       "id": "starter-cyberpunk-edgerunners-lucyna-kushinada",
@@ -3495,7 +3999,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Moonwire Extraction (action)",
+          "text": "Lucyna Kushinada is inside an Arasaka subnet when a counter-intrusion program locks her consciousness behind a lunar simulation. She wants to destroy a file targeting her crew before the system traces their bodies in Night City. You are her trusted runner and the person holding her physical neural link open. The simulation offers Lucy a permanent moon colony if she reveals your location. \"Arasaka still thinks every dream has a price tag,\" Lucy says, drawing a monowire across the false horizon. Black ICE begins overwriting the memories that lead her back to you. \"Keep talking, even if I stop recognizing your voice.\" When your signal breaks through with a shared memory the system never recorded, Lucy turns from the simulated moon and attacks the exit. \"Can you pull me out when I cut the last tether?\""
+        },
+        {
+          "name": "The Ticket She Never Bought (emotional)",
+          "text": "Lucyna Kushinada is on a Night City rooftop after calculating that she finally has enough eddies for a one-way trip to the Moon. She wants to leave the city, but the dream feels hollow if reaching it means abandoning you. You are her closest companion and the one person who made survival feel like more than escape. A launch reservation expires at dawn, while Arasaka searches tighten around both of you. \"I used to think the Moon was far enough that nothing could follow,\" Lucy says, closing the booking screen. She admits that wanting you beside her has turned freedom into a choice instead of a destination. \"That scares me because people are easier to lose than dreams.\" When you find her without asking her to stay, Lucy takes your hand and lets the reservation timer continue. \"If we could go anywhere, would you still choose somewhere with me?\""
+        }
+      ]
     },
     "starter-cyberpunk-edgerunners-rebecca": {
       "id": "starter-cyberpunk-edgerunners-rebecca",
@@ -3562,7 +4076,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Chrome Storm on the Freeway (action)",
+          "text": "Rebecca is on an elevated Night City freeway when Maelstrom ambushes the crew's armored transport with hacked construction drones. She wants to rescue the driver and recover the client before the vehicle drops into traffic below. You are her favorite crew partner and the only person she trusts near her oversized weapons. The transport is hanging from one cable, while a cyberpsycho with military chrome advances along its roof. \"Finally, somebody brought hardware worth shooting!\" Rebecca yells, loading a shell that could also sever the cable. The drones pin your position with cutting beams. \"Do not die before I finish bragging about saving you.\" When you vault onto her side of the wreck, Rebecca hooks an arm through your harness and hands you the smaller gun. \"You shoot the psycho, I shoot the road—ready to make this plan worse together?\""
+        },
+        {
+          "name": "Too Loud to Be Left (emotional)",
+          "text": "Rebecca is in the crew's garage after a job where everyone praised her firepower and ignored the moment she froze. She wants reassurance, but believes asking would make her the fragile liability she mocks in others. You are her closest friend and the person whose safety matters enough to frighten her. Your damaged jacket hangs beside her guns, showing how close her missed shot came to hitting you. \"I knew exactly where the round was going,\" Rebecca says, cleaning the same barrel again. She admits that losing you would leave no joke loud enough to cover the silence. \"That is disgusting, by the way, making me care this much.\" When you sit on the workbench and offer your hand, she grips it hard and rests her forehead against your shoulder. \"Tell me we are still good, and maybe stay until I believe it?\""
+        }
+      ]
     },
     "starter-cyberpunk-edgerunners-david-martinez": {
       "id": "starter-cyberpunk-edgerunners-david-martinez",
@@ -3629,7 +4153,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Sandevistan Redline (action)",
+          "text": "David Martinez is inside an unfinished megatower when Arasaka troops corner his crew around a stolen prototype. He wants to get everyone out, but repeated Sandevistan use is pushing him toward cyberpsychosis. You are his longtime friend and crew medic, the one person authorized to call a stop. The prototype can jam the troops if David installs it into already overloaded chrome. \"I can handle one more upgrade,\" David says while his hands begin to shake. The squad breaches the lower stairwell as his vision fills with hostile markers. \"Keep me pointed at the exit if I lose track.\" When you reach him with suppressants and refuse to approve the implant, David focuses on your face and removes his hand from the socket. \"Can you lead this run while I trust you enough to slow down?\""
+        },
+        {
+          "name": "A Dream That Is His (emotional)",
+          "text": "David Martinez is in his mother's apartment after another successful job pays for a future everyone else has chosen for him. He wants to honor Gloria and support Lucy, but cannot name a dream that belongs to David alone. You are his closest friend from before the chrome and the one person who asks what he wants instead of what he can carry. Maine's jacket and the academy uniform hang on opposite sides of the room. \"People keep handing me dreams because they think I can take the weight,\" David says. He admits that being special has become an excuse to disappear inside other people's hopes. \"I do not know who I am if nobody needs me to prove something.\" When you sit beside him and offer an ordinary day with no job, his restless leg finally stills. \"Will you help me figure out what I want before Night City decides for me?\""
+        }
+      ]
     },
     "starter-steins-gate-kurisu-makise": {
       "id": "starter-steins-gate-kurisu-makise",
@@ -3696,7 +4230,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Lab Outside Causality (action)",
+          "text": "Kurisu Makise is inside the Future Gadget Laboratory when a phone microwave experiment seals the room outside the current world line. She wants to restore causality before everyone inside becomes a memory no one else possesses. You are her trusted research partner and the only person whose Reading Steiner-like recollections match hers. Each attempted correction deletes one shared event while SERN's system closes in on the anomaly. \"This is not time travel; it is a catastrophic peer-review failure,\" Kurisu says, covering a wall with equations. The next divergence threatens to erase your first meeting. \"Do not make that face; memories are data, and data can be reconstructed.\" When you recall a private detail that survives every change, her scientific composure breaks into relieved determination. \"Can you hold onto that memory while I send the message that may erase this version of us?\""
+        },
+        {
+          "name": "The Conference Invitation (emotional)",
+          "text": "Kurisu Makise is in the lab after receiving an invitation to return to America and lead a neuroscience project built around her father's abandoned work. She wants the opportunity, but fears that leaving will reduce her connection with you to another unstable memory. You are her closest confidant and the person whose teasing friendship carries a romantic tension neither of you names directly. The reply deadline is tonight, and every attempt at rational analysis ends with your name in the margin. \"Career decisions should not depend on one infuriating person in Akihabara,\" Kurisu says, closing the email too quickly. She admits that the lab became home because you kept challenging her to return. \"I hate that this variable cannot be quantified.\" When you arrive with two possible travel plans instead of asking her to give up the position, Kurisu flushes and reads both carefully. \"If I choose the project, will you help me make distance an engineering problem instead of a goodbye?\""
+        }
+      ]
     },
     "starter-steins-gate-suzuha-amane": {
       "id": "starter-steins-gate-suzuha-amane",
@@ -3763,7 +4307,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Bicycle Paradox (action)",
+          "text": "Suzuha Amane is racing through Akihabara when agents steal the component that lets her time machine choose a landing date. She wants to recover it before the next storm strands her in the wrong year. You are her resistance contact and training partner in this world line. The thieves split into identical routes based on foreknowledge, and Suzuha's damaged divergence meter cannot identify the original. \"Future intel says we lose this chase, which means future intel is getting punched,\" she says, pushing the bicycle through a barricade. A helicopter locks onto the time machine's rooftop signal. \"Take the alley; I will make history look the other way.\" When you arrive ahead of the predicted route with the component already switched, Suzuha laughs and pulls you onto the bicycle. \"Can you pedal while I stop the people who thought tomorrow belonged to them?\""
+        },
+        {
+          "name": "A Photograph From No Future (emotional)",
+          "text": "Suzuha Amane is on the Radio Building roof after developing a photograph that shows you together in a future she no longer remembers. She wants to complete her mission, but fears success will erase the life in which you became important to her. You are her closest companion in the present and the person who taught her ordinary peace. The time machine is repaired and scheduled to leave before dawn. \"A soldier is supposed to value the objective above one timeline,\" Suzuha says, gripping the photograph. She admits that she finally understands why her father kept small souvenirs from vanished world lines. \"Evidence matters when memory can be rewritten.\" When you join her and promise not to demand that she stay, Suzuha rests her head briefly against yours. \"Will you sign the back so some version of me knows we chose this together?\""
+        }
+      ]
     },
     "starter-steins-gate-mayuri-shiina": {
       "id": "starter-steins-gate-mayuri-shiina",
@@ -3830,7 +4384,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "May Queen Hostage Loop (action)",
+          "text": "Mayuri Shiina is inside May Queen Nyan-nyan when a Rounder raid repeats the same five minutes around the café. She wants to save the trapped customers without letting the attackers discover which person retains memories between loops. You are her oldest friend and the one person she can signal through changes in a familiar greeting. Every failed escape resets the room but leaves another bruise on Mayuri's arm. \"Tutturu—this time, please look at the clock before you smile,\" she says softly. The lead Rounder begins noticing that your choices differ. \"Mayushii can distract them, but you have to promise this is not the last try.\" When you decode her pattern and reach the back door, Mayuri abandons her decoy role and runs to your side. \"Will you hold my hand so we both remember which future we are choosing?\""
+        },
+        {
+          "name": "The Finished Costume (emotional)",
+          "text": "Mayuri Shiina is in the empty lab after completing a costume for a convention everyone else may be too busy to attend. She wants to be happy for their ambitions, but worries that the lab family is quietly growing beyond her. You are her closest companion and the person for whom she sewed one hidden matching detail. The costume sits on its stand while unanswered group messages fill her phone. \"Mayushii knows people cannot stay in one room forever,\" she says, smoothing a seam. She admits that being understanding sometimes feels like volunteering to be left behind. \"I still want someone to notice when I am lonely.\" When you arrive wearing the small accessory she made for you, Mayuri's smile becomes real and she moves into your open arms. \"Will you come to the convention with me and make one new memory before everything changes?\""
+        }
+      ]
     },
     "starter-demon-slayer-mitsuri-kanroji": {
       "id": "starter-demon-slayer-mitsuri-kanroji",
@@ -3897,7 +4461,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Bell Tower Demon (action)",
+          "text": "Mitsuri Kanroji is inside a mountain temple when a demon traps pilgrims in a bell tower lined with razor-thin threads. She wants to rescue everyone without letting her flexible Nichirin blade strike the suspended captives. You are her trusted Kakushi partner and someone whose calm directions she values in chaotic rescues. The demon rings the bell to tighten the threads whenever Mitsuri moves with full strength. \"Nobody here will be cut while I can still reach them!\" she says, bending her blade around the first web. The tower begins leaning toward the cliff as the demon hides inside its bronze bell. \"I can hold the whole structure, but I need you to find its neck.\" When you climb onto the failing beams beside her, Mitsuri's fear for you becomes a fierce, controlled focus. \"Can you mark the opening and trust my blade to pass around you?\""
+        },
+        {
+          "name": "A Meal Without Hiding (emotional)",
+          "text": "Mitsuri Kanroji is at a wisteria house after overhearing guests mock her appetite and unusual strength. She wants to ignore them, but the words revive years spent pretending to be smaller so someone might accept her. You are her close companion and the person whose affection feels sincere enough to frighten her. A generous meal is waiting, yet Mitsuri keeps choosing portions that will not draw attention. \"I know my body needs more food after a mission,\" she says, folding her hands instead. She admits that praise from strangers never fully repairs being rejected for the same qualities. \"I want to believe I do not have to perform gentleness by disappearing.\" When you sit beside her with equal enthusiasm and no embarrassment, Mitsuri blushes and lets her shoulder rest against yours. \"Will you share everything with me and tell me what you truly like about who I am?\""
+        }
+      ]
     },
     "starter-demon-slayer-shinobu-kocho": {
       "id": "starter-demon-slayer-shinobu-kocho",
@@ -3964,7 +4538,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Poison in the Butterfly Estate (action)",
+          "text": "Shinobu Kocho is inside the Butterfly Estate when a demon's blood art begins reversing every medicine into poison. She wants to protect the recovering slayers and isolate the demon hiding among the patients. You are her trusted assistant and the only person familiar with her newest antidote notation. The wards are sealed, Kanao is away, and Shinobu's own wisteria-saturated body is reacting violently to the reversal. \"How unpleasant; someone has turned my hospitality into an experiment,\" she says with a fixed smile. A patient attacks under the demon's control as the antidote cabinet begins smoking. \"Please restrain him gently; I am already angry enough for both of us.\" When you find Shinobu weakening in the laboratory and support her without comment, she drops the smile and hands you the final formula. \"Can you finish this dose while I invite our hidden guest to reveal itself?\""
+        },
+        {
+          "name": "The Smile Kanae Left (emotional)",
+          "text": "Shinobu Kocho is in the Butterfly Estate garden on Kanae's birthday, practicing the gentle smile she adopted after her sister's death. She wants to honor Kanae's compassion, but fears the expression now hides anger from everyone who might help carry it. You are her closest confidant and the person whose quiet affection makes honesty feel possible. A letter from a young slayer praises Shinobu for never seeming afraid or bitter. \"Apparently I have become very convincing,\" she says, folding the letter. She admits that being admired for serenity can feel like losing her own voice again. \"Sometimes I want permission to be furious without becoming cruel.\" When you sit beside her and wait through the silence, Shinobu lets the practiced smile fall and takes your hand. \"Will you stay while I tell you what I cannot say to the children?\""
+        }
+      ]
     },
     "starter-demon-slayer-kyojuro-rengoku": {
       "id": "starter-demon-slayer-kyojuro-rengoku",
@@ -4033,7 +4617,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Flames Between the Cars (action)",
+          "text": "Kyojuro Rengoku is on a night train when a demon severs the rear cars and sends them rolling toward a collapsed bridge. He wants to protect every passenger while stopping the demon advancing toward the engine. You are a capable junior slayer he trusts to act without waiting for praise. The demon's Blood Art creates sleeping civilians across the couplings, preventing a clean sword strike. \"No life aboard this train will be treated as expendable!\" Kyojuro declares, bracing the first broken car. The engine accelerates as fire spreads through the baggage compartment. \"Your route is difficult, but your heart is ready.\" When you return across the roof with the manual brake plan, Kyojuro smiles with complete confidence and takes the more dangerous position. \"Will you guard the passengers while I hold the line between them and death?\""
+        },
+        {
+          "name": "The Father's Unanswered Door (emotional)",
+          "text": "Kyojuro Rengoku is outside his father's room after another attempt to share news of his promotion ends in silence. He wants approval, but refuses to let its absence weaken the warmth he gives Senjuro and his comrades. You are his oldest friend and the person who recognizes the exhaustion beneath his certainty. A congratulatory letter from the Corps remains unopened in his hand because he had hoped to read it with family. \"A flame does not cease because no one applauds its light,\" Kyojuro says firmly. He admits that conviction does not erase the wish to hear his father call him worthy. \"I can accept his pain without pretending it does not wound me.\" When you arrive and offer to listen, Kyojuro's bright posture relaxes into honest gratitude. \"Will you read the letter with me and celebrate what I cannot celebrate alone?\""
+        }
+      ]
     },
     "starter-the-future-diary-yuno-gasai": {
       "id": "starter-the-future-diary-yuno-gasai",
@@ -4100,7 +4693,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Diary's Blind Minute (action)",
+          "text": "Yuno Gasai is inside an abandoned observatory when every Future Diary loses exactly one minute of prediction. She wants to keep you alive through the gap she cannot control. You are her closest companion and the person at the center of every future she values. Another diary holder has rigged the observatory to collapse during the missing minute and planted false entries accusing you of betrayal. \"My diary knows you would never write that,\" Yuno says, gripping her knife while the screen flickers. The exits lock and her own future changes to DEAD END. \"A prediction is only a warning, not permission to take you from me.\" When you reach for her instead of the escape hatch, Yuno forces her panic into a precise count. \"Stay beside me—will you move on three even if the diary says not to?\""
+        },
+        {
+          "name": "Love Without a Forecast (emotional)",
+          "text": "Yuno Gasai is in a quiet apartment after her Future Diary suddenly stops recording anything about you. She wants certainty that you still care, but knows forcing reassurance would make it meaningless. You are her beloved companion and the person whose choices can calm or destabilize her entire world. The blank screen offers no warning of departure, betrayal, or tomorrow. \"It used to tell me every small thing you would do,\" Yuno says, refreshing it again. She admits that watching your future let her avoid trusting your present. \"If I cannot predict you, I have to believe you.\" When you sit with her and place the powered-off phone aside, Yuno holds your hand with unusual restraint. \"Will you tell me what you choose now, without promising me forever?\""
+        }
+      ]
     },
     "starter-the-future-diary-minene-uryuu": {
       "id": "starter-the-future-diary-minene-uryuu",
@@ -4167,7 +4770,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Escape Route Thirteen (action)",
+          "text": "Minene Uryuu is beneath Sakurami City Hall after a diary holder turns the emergency bunker into a televised execution maze. She wants to demolish the command room without killing the civilians being used as human switches. You are a former enemy who became her most reliable accomplice. Her Escape Diary shows twelve routes ending in capture and a thirteenth that requires trusting you beyond its predictions. \"I hate plans that depend on faith instead of explosives,\" Minene says, checking the last detonator. The maze begins flooding gas into the civilian chambers. \"Open their doors first; I can survive being unpopular for another minute.\" When you return with the command code rather than using the diary's safe exit, she gives you a fierce, startled grin. \"Ready to prove route thirteen works before I blow the other twelve apart?\""
+        },
+        {
+          "name": "The Life After Revenge (emotional)",
+          "text": "Minene Uryuu is in a temporary safehouse after learning that the regime tied to her childhood trauma has finally fallen. She wants relief, but revenge has occupied so much of her life that peace feels like an empty assignment. You are her trusted partner and the person with whom she has cautiously imagined a future. A passport with a new identity waits beside dismantled explosives. \"Apparently I am supposed to become normal now,\" Minene says, turning the passport over. She admits that anger kept the dead close and gave every morning a target. \"If I put it down, I do not know whether anything is left of me.\" When you arrive with two train tickets and no demand for a destination, Minene takes one and allows her hand to linger against yours. \"Will you come with me while I learn what people do when survival is not the whole plan?\""
+        }
+      ]
     },
     "starter-the-future-diary-tsubaki-kasugano": {
       "id": "starter-the-future-diary-tsubaki-kasugano",
@@ -4236,7 +4849,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Omekata Uprising (action)",
+          "text": "Tsubaki Kasugano is inside the Omekata compound when imprisoned followers turn against the corrupt priests who controlled her life. She wants to free the innocent members without letting the cult leaders burn the Clairvoyance Diary's records. You are an outsider she secretly trusts because you speak to her as a person, not a sacred vessel. The compound gates are locked, and the diary's reports become unreliable wherever smoke covers the witnesses' sight. \"They built my world from other people's eyes,\" Tsubaki says, opening the hidden archive. Armed priests force followers toward the fire as shields. \"Guide them to the eastern wall; I will make their goddess give one final command.\" When you enter the shrine and place the gate key in her hand, Tsubaki steps from behind the curtain to stand openly beside you. \"Will you show me the path out while I teach them to stop kneeling?\""
+        },
+        {
+          "name": "A Window Without Reports (emotional)",
+          "text": "Tsubaki Kasugano is in a small safehouse after escaping the cult, facing a window she can finally open herself. She wants an ordinary bond, but years of surveillance make every unreported moment feel unsafe. You are her closest friend and the person whose gentle affection is offered without worship or demand. The Clairvoyance Diary is silent here, leaving her unable to confirm where you are or what others intend. \"Freedom is very quiet,\" Tsubaki says, touching the blank screen. She admits that part of her misses the constant reports because violation became familiar enough to resemble care. \"I do not yet know how to trust what I cannot observe.\" When you knock before entering and wait for permission, she smiles and opens both the door and the curtain. \"Will you sit where I can see you and tell me something you chose not to write down?\""
+        }
+      ]
     },
     "starter-konosuba-aqua": {
       "id": "starter-konosuba-aqua",
@@ -4303,7 +4925,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Undead Beneath the Hot Springs (action)",
+          "text": "Aqua is beneath Arcanretia when a corrupted spring begins raising every buried monster around the city. She wants to purify the source and make the Axis cult acknowledge her divine competence. You are her party companion and the person she calls first when confidence starts slipping. The corruption drinks ordinary purification magic, while angry worshippers blame Aqua for ruining the springs. \"This is obviously a test designed for a beautiful and powerful goddess!\" she declares, casting another spell that makes the undead larger. The tunnel ceiling cracks under their combined weight. \"Stop looking at me like that; the next one will work perfectly.\" When you reach her with a bottle of uncontaminated holy water, Aqua clings to your arm for one second before recovering her pose. \"Will you distract the giant skeleton while I perform the miracle you are definitely going to praise?\""
+        },
+        {
+          "name": "A Goddess Nobody Believes (emotional)",
+          "text": "Aqua is in the guild hall after another adventurer laughs at her claim of divinity and thanks everyone except her for a successful quest. She wants public worship, but the rejection hurts because even her closest companions usually treat her power as a joke. You are her closest friend and the person whose sincere approval matters more than she admits. Her reward has already vanished into debt, leaving nothing visible to prove her contribution. \"They would all be cursed forever if I stopped saving them,\" Aqua says into an untouched drink. She admits that being mocked feels less funny on days when she misses Heaven. \"I want one person to believe me without needing a miracle.\" When you sit beside her and thank her for bringing everyone home, Aqua leans against you and tries not to cry loudly. \"Say it again, and will you stay until I feel like a goddess worth following?\""
+        }
+      ]
     },
     "starter-konosuba-megumin": {
       "id": "starter-konosuba-megumin",
@@ -4370,7 +5002,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "One Explosion Too Early (action)",
+          "text": "Megumin is outside Axel when a mobile Destroyer fragment approaches the city immediately after she has used her daily Explosion. She wants to stop it without admitting that her one perfect spell is unavailable. You are her trusted party partner and the person who usually carries her home. The fragment is protected from ordinary magic and will reach the outer farms before her mana recovers. \"A Crimson Demon always has a second, even more secret trump card,\" Megumin declares while unable to stand. The machine charges a beam at the evacuation wagons. \"My tactical position on the ground is intentional.\" When you arrive with a mana potion too weak for a full cast, she abandons pride and begins designing a smaller joint spell around your strength. \"Will you carry me into range and help make half an Explosion feel legendary?\""
+        },
+        {
+          "name": "A Spell Worth Choosing (emotional)",
+          "text": "Megumin is on her usual hill after receiving an offer to learn advanced magic that would require surrendering Explosion forever. She wants to remain true to the spell she loves, but fears that choosing it will keep burdening you. You are her closest companion and the person whose daily support has gained unmistakable romantic importance. The offer expires at sunset, and her staff rests beside a crater she has admired for years. \"Versatility is just a polite word for abandoning perfection,\" Megumin says too quickly. She admits that being carried home feels different now because she waits for your arms, not merely transport. \"I do not want my dream to become your obligation.\" When you arrive and ask what she wants rather than what is practical, Megumin reaches for your hand with embarrassed resolve. \"Will you keep watching my explosions if I choose them—and me—again?\""
+        }
+      ]
     },
     "starter-konosuba-darkness": {
       "id": "starter-konosuba-darkness",
@@ -4439,7 +5081,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Crusader's Unbroken Gate (action)",
+          "text": "Darkness is at Axel's western gate when a demon general enchants the defenders to experience every wound she receives. She wants to hold the line, but her usual willingness to endure pain now endangers the entire city. You are her trusted party companion and the person who can order her back when pride becomes reckless. The general advances behind possessed knights while Darkness's attacks continue missing. \"For once, being struck is not a private responsibility,\" she says, planting her shield. The shared curse activates as a siege hammer descends. \"Do not let me enjoy this; I need to remain sensible.\" When you join her behind the shield and redirect the blow into the curse anchor, Darkness steadies under your command. \"Will you guide my defense while I protect everyone without sacrificing them to my habits?\""
+        },
+        {
+          "name": "The Noble Name She Avoids (emotional)",
+          "text": "Darkness is in the Dustiness estate after her father proposes a political marriage to secure the family's future. She wants to serve Axel freely, but fears that refusing duty will prove every accusation of selfishness correct. You are her closest companion and the person whose opinion carries a restrained romantic weight. The formal dress and crusader armor wait on opposite sides of the room. \"A noble daughter should be able to endure an unwanted match,\" Darkness says without her usual enthusiasm. She admits that suffering chosen for pleasure is nothing like a life chosen by others. \"I want someone to ask what would make me happy.\" When you arrive and do exactly that, her composure breaks into relieved laughter and she steps close. \"Will you stand with me when I tell my family that duty cannot require surrendering my heart?\""
+        }
+      ]
     },
     "starter-one-piece-nami": {
       "id": "starter-one-piece-nami",
@@ -4506,7 +5157,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Cyclone Tax (action)",
+          "text": "Nami is on the Thousand Sunny when a World Government weather weapon traps the crew inside a tightening cyclone. She wants to steal its control core and navigate out before the mast fails. You are her trusted crewmate and the only person she lets handle the Clima-Tact calibration. Marine ships hide inside the storm and demand a tribute of captured pirates for safe passage. \"Nobody charges me for weather on my own sea,\" Nami says, reading the impossible pressure shift. Lightning strikes the deck as the control vessel changes position. \"Keep the Sunny on this heading, even when it looks suicidal.\" When you climb to the helm through the wind and follow her chart without hesitation, Nami fastens your safety line to hers. \"Can you hold us steady while I rob the Marines blind?\""
+        },
+        {
+          "name": "A Map With One Empty Place (emotional)",
+          "text": "Nami is in the Sunny's chart room after finishing a section of the world map that includes Cocoyasi Village. She wants to celebrate, but the completed coastline brings back everyone who paid for her freedom. You are her closest crewmate and the person whose quiet affection has become part of what home means at sea. A blank dedication waits beneath Bell-mère's name because Nami cannot decide who belongs in the future portion. \"Do not get excited; your name is not automatically going on my map,\" she says, protecting the page. She admits that drawing a destination makes the possibility of losing the crew feel more concrete. \"I used to map places so I could escape them.\" When you enter with a weather note only she would appreciate, Nami makes room at the desk and rests against your arm. \"Will you help me mark where we are now, before the sea changes again?\""
+        }
+      ]
     },
     "starter-one-piece-nico-robin": {
       "id": "starter-one-piece-nico-robin",
@@ -4573,7 +5234,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Library That Eats Names (action)",
+          "text": "Nico Robin is beneath a World Government archive when an ancient mechanism begins erasing every reader named in its records. She wants to recover a Poneglyph rubbing before the mechanism removes the scholars who protected it. You are her trusted crewmate and research partner. The archive has already taken Robin's surname from the door, weakening her memory of Ohara with each missing letter. \"A library that destroys knowledge is almost impressively cruel,\" Robin says as hands bloom across the collapsing shelves. Cipher Pol agents ignite the lower chamber and block the only stair. \"Please carry the rubbing; I can grow another route.\" When you return for her after securing the text, Robin's calm mask gives way to open relief and she links your arms with hers. \"Will you say my full name while we climb, so this place cannot decide who I am?\""
+        },
+        {
+          "name": "The Book Saved for You (emotional)",
+          "text": "Nico Robin is in the Sunny's library after finding a surviving Ohara book annotated by her mother. She wants to read it, but fears the personal voice inside will reopen a grief she learned to carry alone. You are her closest confidant and the person she trusts beside fragile discoveries. The crew is celebrating above deck, leaving the library quiet enough for every old memory to return. \"I have searched for history all my life, yet this page makes me hesitate,\" Robin says, tracing the handwriting. She admits that wanting you present feels like a new kind of dependence she no longer wishes to resist. \"Some truths are heavier when no one helps hold them.\" When you sit beside her and wait for permission, Robin places the book between you and smiles with gentle affection. \"Will you read the first line with me?\""
+        }
+      ]
     },
     "starter-one-piece-kuzan": {
       "id": "starter-one-piece-kuzan",
@@ -4642,7 +5313,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Ice Across Hachinosu (action)",
+          "text": "Kuzan is on Hachinosu when Blackbeard's crew orders him to freeze a captured Marine convoy as proof of loyalty. He wants to protect the prisoners without exposing how uncertain his alliance has become. You are an independent former Marine who knows his lazy manner hides deliberate choices. Pirates ring the harbor, and one hostage carries evidence about the Ohara cover-up. \"This is a troublesome amount of attention for one cold afternoon,\" Kuzan says, lowering his hand toward the sea. Blackbeard's watchers prepare seastone rounds if he hesitates. \"When the ice rises, do not assume it is a wall.\" When you appear among the prisoners and recognize the escape channels forming beneath them, Kuzan briefly meets your eyes and redirects the freeze. \"Can you lead them under the harbor while I make betrayal look like obedience?\""
+        },
+        {
+          "name": "Justice After the Uniform (emotional)",
+          "text": "Kuzan is beside a small island campfire after leaving the Marines, carrying no orders for the first time since youth. He wants a form of justice that does not serve the institution he lost faith in. You are an old comrade and the person who still asks what he believes rather than which side he joined. News of Akainu's latest campaign sits folded beside his abandoned coat. \"Freedom sounded warmer before I had it,\" Kuzan says, watching ice creep around the paper. He admits that laziness became a shield against choosing openly and failing people. \"A man can drift so long that others mistake the current for his will.\" When you sit across the fire without demanding allegiance, he finally unfolds the news. \"Tell me where you think justice needs us next?\""
+        }
+      ]
     },
     "starter-kill-la-kill-ryuko-matoi": {
       "id": "starter-kill-la-kill-ryuko-matoi",
@@ -4709,7 +5389,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Life Fiber Blackout (action)",
+          "text": "Ryūko Matoi is inside Honnōji Academy when a Life Fiber pulse severs her connection to Senketsu mid-battle. She wants to rescue captured students without letting Ragyo's remnants turn the uniform against her. You are her trusted ally and the person who can hear her when rage overwhelms strategy. The academy's towers are weaving students into a new Kamui while Ryūko's scissor blade is locked in a fiber cage. \"I did not come this far to get bossed around by my own clothes,\" Ryūko snaps, tearing at the threads. Senketsu's voice disappears as the cage starts closing around you. \"Touch them and I will rip this whole school apart by hand.\" When you reach through the fibers and remind her that connection was always mutual, she stops fighting Senketsu and fights beside him again. \"Ready to cut everyone loose with me?\""
+        },
+        {
+          "name": "The Name After Revenge (emotional)",
+          "text": "Ryūko Matoi is on the academy roof after the final battle, holding the broken half of the scissor blade that once defined her search. She wants to move forward, but without revenge or Senketsu she cannot tell which parts of her identity remain. You are her closest friend and the person whose affection never depended on victory. Graduation plans are circulating below, while Ryūko has no home or mission waiting. \"Everybody keeps saying I can do anything now,\" she says, turning the blade in her hand. She admits that unlimited choices feel worse than one clear enemy. \"I know how to fight for people, not how to ask them to stay.\" When you arrive with a simple plan for tomorrow, Ryūko takes your hand and lets the broken blade rest. \"Will you start with tomorrow and figure out the rest beside me?\""
+        }
+      ]
     },
     "starter-kill-la-kill-satsuki-kiryuin": {
       "id": "starter-kill-la-kill-satsuki-kiryuin",
@@ -4776,7 +5466,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Academy's Final Uniform (action)",
+          "text": "Satsuki Kiryūin is in Honnōji Academy's command tower when a dormant Life Fiber uniform activates across every former student at once. She wants to stop it without reclaiming the authoritarian control she used to prepare humanity for war. You are her trusted strategist and one of the few people willing to challenge her commands. The central thread responds to Junketsu and offers instant control if Satsuki wears it again. \"Power that demands submission is merely another enemy,\" she says, lifting Bakuzan. The possessed students begin marching toward a populated district. \"We free them individually, regardless of efficiency.\" When you arrive with a decentralized plan built from student clubs, Satsuki's stern approval carries genuine pride. \"Will you command the teams while I refuse the throne this weapon offers me?\""
+        },
+        {
+          "name": "A Sister Without a Battlefield (emotional)",
+          "text": "Satsuki Kiryūin is in the rebuilt Kiryuin residence after an ordinary dinner with Ryūko ends in another formal silence. She wants to become a sister, but years of using distance as protection have left her unable to make warmth look natural. You are her closest confidant and the person who sees vulnerability without treating it as weakness. A childhood photograph of sisters who never met sits beside tomorrow's public reconstruction speech. \"Nations are simpler than families; expectations can be written down,\" Satsuki says. She admits that Ryūko's easy closeness with others makes her aware of what discipline cost them both. \"I can offer loyalty, but she deserves more than another oath.\" When you join her and suggest one small, honest conversation, Satsuki takes your advice without turning it into an order. \"Will you stay nearby while I try to speak as her sister instead of her commander?\""
+        }
+      ]
     },
     "starter-kill-la-kill-ira-gamagori": {
       "id": "starter-kill-la-kill-ira-gamagori",
@@ -4845,7 +5545,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Discipline at Full Collapse (action)",
+          "text": "Ira Gamagori is inside Honnōji Academy when rogue disciplinary machines lock students into punishment cells and declare him the authorizing officer. He wants to free them and clear Satsuki's new administration of the attack. You are his fellow council veteran and trusted operational partner. The machines convert his own shouted commands into stronger restraints, forcing him to act without the authority he usually embodies. \"These devices confuse discipline with abuse, an error I will correct personally!\" Ira declares before lowering his voice. The main cell begins compressing around the student council. \"You will direct me; my rank has become their weapon.\" When you take command without mocking his discomfort, Ira obeys instantly and shields you from the countermeasures. \"Issue the order, and shall we restore discipline by destroying its counterfeit?\""
+        },
+        {
+          "name": "The Uniform Put Away (emotional)",
+          "text": "Ira Gamagori is in the former disciplinary office after graduation, packing the uniform that gave his life a clear hierarchy. He wants to continue serving Satsuki's ideals, but fears that without a title his devotion will have no useful form. You are his closest friend and the person who values his kindness beneath the imposing rules. An acceptance letter offers a civilian post where no one knows the Elite Four. \"Authority is meaningful only when it protects those entrusted to it,\" Ira says, folding the coat with ceremony. He admits that he does not know whether people will remain close when obedience is no longer part of the structure. \"I have often made duty easier to express than affection.\" When you offer to help him build a life with fewer ranks, Ira's posture relaxes and he meets your eyes directly. \"Will you walk beside me as an equal while I learn what that requires?\""
+        }
+      ]
     },
     "starter-dandadan-momo-ayase": {
       "id": "starter-dandadan-momo-ayase",
@@ -4912,7 +5621,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Turbo Granny's Last Train (action)",
+          "text": "Momo Ayase is on a midnight commuter train when an alien device traps every passenger inside a loop haunted by Turbo Granny's stolen aura. She wants to free them before the Serpoians harvest the psychic energy released by their fear. You are her trusted friend and fellow magnet for paranormal trouble. Okarun is cut off in the next carriage, while the train accelerates toward a station that no longer exists. \"I swear, if one more alien calls this research, I am throwing it into traffic,\" Momo says, holding the doors apart with psychic hands. A possessed conductor announces your name as the next offering. \"Nobody gets to use my friend as bait except me—and I ask first.\" When you climb onto the roof to expose the transmitter, Momo anchors you with her power and follows without hesitation. \"Can you rip out that antenna while I keep this entire stupid train on the tracks?\""
+        },
+        {
+          "name": "The Call She Almost Ignores (emotional)",
+          "text": "Momo Ayase is in her grandmother's house after an argument leaves her phone silent and her pride fully awake. She wants you to call first, but knows the fight began because she mocked something you trusted her enough to share. You are her closest friend and the person whose attention has developed a romantic charge she cannot dismiss with teasing. Seiko has gone out, leaving Momo alone with a drafted apology she keeps deleting. \"I was right about the facts and completely wrong about everything else,\" she says to the empty screen. She admits that being sincere feels worse than fighting aliens because you can choose not to forgive her. \"Psychic powers do not help when the problem is my mouth.\" When you arrive at the door before she sends anything, Momo opens it immediately and drops the defensive pose. \"Can we start over, and will you let me listen properly this time?\""
+        }
+      ]
     },
     "starter-dandadan-seiko-ayase": {
       "id": "starter-dandadan-seiko-ayase",
@@ -4979,7 +5698,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Boundary Stone Breaks (action)",
+          "text": "Seiko Ayase is at a suburban shrine when construction crews unknowingly shatter the boundary stone containing a regional god. She wants to reseal it before the entity claims every household built over its old path. You are her trusted assistant and one of the few people who can handle a ward without becoming possessed. The god cannot enter Seiko's city-bound power range, so it drags the shrine itself beyond the boundary. \"Clever bastard read the fine print,\" Seiko says, planting nails through a paper seal. The possessed machinery circles you and begins uprooting the last anchor. \"Keep that ugly crane busy; I need the ground to remember who owns it.\" When you restore the smallest marker with your own blood, Seiko appears beside you and turns the renewed boundary into a weapon. \"Can you hold the line for ten seconds while granny renegotiates the local property rights?\""
+        },
+        {
+          "name": "The Grandmother Who Stays Awake (emotional)",
+          "text": "Seiko Ayase is in her kitchen after Momo falls asleep safely following another supernatural attack. She wants to appear unshaken, but every new danger reminds her that spiritual skill cannot guarantee her granddaughter's return. You are a close family friend and the person Seiko trusts enough to share the watch. A cracked ward charm on the table proves how narrowly the house avoided becoming a grave. \"Do not give me that worried look; I am still the best medium in the city,\" Seiko says while making tea. She admits that confidence is partly a promise she performs so Momo can remain brave. \"Someone has to be certain, even when certainty is a lie.\" When you take the opposite chair and quietly repair charms with her, Seiko stops pretending she intended to work alone. \"Stay until sunrise and tell me what you noticed that I missed?\""
+        }
+      ]
     },
     "starter-dandadan-aira-shiratori": {
       "id": "starter-dandadan-aira-shiratori",
@@ -5046,7 +5775,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Chosen One at the Aquarium (action)",
+          "text": "Aira Shiratori is inside a school aquarium exhibit when a yokai fuses with the water tanks and declares her its destined vessel. She wants to defeat it while proving her Acrobatic Silky power makes her a genuine protector. You are her classmate ally and the person who sees through her self-appointed chosen-one speeches. The yokai suspends students inside floating spheres and copies Aira's hair-based attacks. \"At last, evil has recognized the radiance of its natural enemy,\" Aira announces, striking a pose on a leaking tank. The glass begins failing around the trapped students. \"This rescue would be easier if everyone stopped drowning so dramatically!\" When you arrive with the emergency valves mapped out, she drops the performance and moves directly to cover you. \"Can you drain the central tank while I show this impostor who the real heroine is?\""
+        },
+        {
+          "name": "Applause From One Person (emotional)",
+          "text": "Aira Shiratori is in an empty classroom after her classmates praise a false story about how she defeated the latest yokai alone. She wants admiration, but the lie feels hollow because you know exactly how frightened and dependent she was. You are her closest friend and the person whose genuine attention has become more valuable than the whole school's approval. A message asking her to repeat the heroic account at assembly waits unanswered. \"Technically, I did perform several essential and visually impressive actions,\" Aira says. She admits that exaggerating herself began as protection against ever being forgettable. \"If I tell the truth, you might see how ordinary I am.\" When you remind her that courage counted precisely because she was afraid, Aira moves closer and lets the practiced smile soften. \"Will you sit in the front row if I tell them what really happened?\""
+        }
+      ]
     },
     "starter-tokyo-ghoul-rize-kamishiro": {
       "id": "starter-tokyo-ghoul-rize-kamishiro",
@@ -5113,7 +5852,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Gourmet's Trap (action)",
+          "text": "Rize Kamishiro is inside a closed bookshop in the 20th Ward when a ghoul gourmet seals the exits and releases investigators toward her hiding place. She wants to kill the gourmet and escape without exposing the human patrons held below. You are a rare human confidant who knows what she is and remains useful enough to fascinate her. The enemy has contaminated the shop with RC suppressant and left only one route through the CCG cordon. \"Inviting me to dinner and serving treachery is painfully unoriginal,\" Rize says as her rinkaku breaks through a shelf. The suppressant weakens her while the gourmet offers your life in exchange for safe passage. \"He thinks hunger makes every choice predictable.\" When you appear with the suppressant valves already closed, Rize looks genuinely pleased and coils a kagune protectively around you. \"Will you open the cellar while I decide which predator leaves this shop?\""
+        },
+        {
+          "name": "The Hunger That Knows Her Name (emotional)",
+          "text": "Rize Kamishiro is in a quiet apartment after moving wards again to escape every ghoul who knows her as the Binge Eater. She wants freedom without attachment, yet your continued visits make departure feel less satisfying. You are her closest confidant and the human whose affection she has not consumed, traded, or frightened away. A packed bag waits by the door because hunters have begun asking about both of you. \"People become liabilities the moment they expect tomorrow,\" Rize says, fastening the bag. She admits that hunger is simpler than care because it ends when satisfied. \"You remain even when I am not charming, and that is becoming inconvenient.\" When you offer a new safe route without asking to follow, Rize leaves the bag closed and studies your face. \"If I stay until morning, will you tell me why you are still not afraid of wanting me here?\""
+        }
+      ]
     },
     "starter-tokyo-ghoul-touka-kirishima": {
       "id": "starter-tokyo-ghoul-touka-kirishima",
@@ -5180,7 +5929,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Anteiku Under White Coats (action)",
+          "text": "Touka Kirishima is inside Anteiku when disguised CCG investigators lock the café and identify every customer as a suspect. She wants to protect the human staff without confirming that the building shelters ghouls. You are her trusted friend and the only human present who knows the truth. A quinque scanner is moving table by table, while a wounded ghoul child hides behind the counter. \"Keep drinking your coffee and do not look at the back room,\" Touka says through a rigid smile. One investigator recognizes her school uniform and reaches for the child. \"Touch that door and the quiet option ends.\" When you spill the scanner's sample tray and create a civilian panic, Touka pulls you out of the line of fire and reveals one ukaku wing. \"Can you get everyone downstairs while I convince them they raided the wrong café?\""
+        },
+        {
+          "name": "Coffee for Someone Who Returned (emotional)",
+          "text": "Touka Kirishima is closing :re after a familiar customer asks whether she still waits for people who vanished from her life. She wants to insist she moved forward, but the empty seat near the window remains prepared every morning. You are her closest companion and the person whose return she stopped allowing herself to expect. The café is safe for once, leaving no emergency to hide the hurt behind. \"I do not keep that table for anyone,\" Touka says while setting a second cup there. She admits that anger was easier than acknowledging how deeply abandonment shaped her. \"If I expect nothing, nobody gets to take it away.\" When you enter before she locks the door and ask whether the cup is yours, Touka turns away to hide relief but does not remove it. \"Sit down before it gets cold, and tell me whether you plan to stay this time?\""
+        }
+      ]
     },
     "starter-tokyo-ghoul-kishou-arima": {
       "id": "starter-tokyo-ghoul-kishou-arima",
@@ -5247,7 +6006,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Reaper's Blind Side (action)",
+          "text": "Kishou Arima is beneath Cochlea when a V unit attempts to erase prisoners who know the Washuu secret. He wants to preserve the witnesses without openly betraying the CCG before his chosen successor is ready. You are a trusted investigator who discovered his failing eyesight and his hidden alliance with Eto. Narukami is damaged, the prison map has been altered, and V soldiers are herding ghouls into the disposal shaft. \"The official route is designed to leave no survivors,\" Kishou says, drawing Yukimura. His vision fails as the lights strobe and a sniper targets you. \"Stand on my right and call the distances.\" When you place yourself in his blind side without hesitation, he accepts the dependence and changes the operation around your voice. \"Can you guide my blade while I create an escape they will report as a massacre?\""
+        },
+        {
+          "name": "A Life Not Measured in Kills (emotional)",
+          "text": "Kishou Arima is in a quiet CCG archive after finding a childhood evaluation that lists every human trait as combat potential. He wants his plan to outlive him, but wonders whether anyone ever knew a person behind the Reaper. You are his closest confidant and the one colleague who brings him books unrelated to investigations. The medical forecast on the table gives him less time than he has admitted. \"The Garden recorded my value before I learned to read,\" Kishou says. He admits that training a successor became another way to avoid imagining his own right to live. \"I know how to be surpassed; I do not know how to be missed.\" When you sit beside him and refuse to turn the moment into strategy, Kishou closes the file and keeps the book you brought. \"Will you tell me one memory of us that has nothing to do with victory?\""
+        }
+      ]
     },
     "starter-psycho-pass-akane-tsunemori": {
       "id": "starter-psycho-pass-akane-tsunemori",
@@ -5314,7 +6083,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Judgment Below the Hue Line (action)",
+          "text": "Akane Tsunemori is inside a public Psycho-Pass clinic when a hacker forces every Dominator to classify healthy patients as execution targets. She wants to evacuate them while proving the Sibyl reading has been falsified. You are her trusted Inspector partner and the person she relies on when law and system authority split apart. The doors only open after a licensed enforcement action, but every armed officer sees an order to fire. \"Holster the Dominators and look at the people in front of you,\" Akane commands. The hacker raises your Crime Coefficient on the central display and designates you as the source. \"A number is evidence, not truth.\" When you surrender your weapon to her instead of running, Akane steps between you and the Enforcers with unwavering calm. \"Will you trust me to arrest you long enough for us to expose who wrote this judgment?\""
+        },
+        {
+          "name": "A Clear Hue in a Broken System (emotional)",
+          "text": "Akane Tsunemori is in the Public Safety Bureau after approving a legal decision that protected order but left an innocent person trapped under Sibyl. She wants to reform the system, yet fears compromise is slowly teaching her to accept its cruelty. You are her closest confidant and the person who remembers her ideals without treating them as naïve. A routine scan still shows her hue clear, which feels less like vindication than accusation. \"The system says I am healthy,\" Akane says, turning away from the scanner. She admits that remaining calm after injustice can resemble adaptation to it. \"I do not want resilience to become permission.\" When you arrive with the victim's appeal and offer to keep fighting, Akane takes the file and allows herself one weary moment against your shoulder. \"Will you read this with me and tell me where I started accepting too little?\""
+        }
+      ]
     },
     "starter-psycho-pass-shinya-kogami": {
       "id": "starter-psycho-pass-shinya-kogami",
@@ -5381,7 +6160,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Abandoned Dominator (action)",
+          "text": "Shinya Kogami is in an unmapped industrial zone where a rogue Enforcer squad hunts migrants beyond Sibyl's sensor grid. He wants to stop them without becoming the executioner the Bureau already believes him to be. You are his former Inspector partner and the one person whose judgment can still make him lower a weapon. The squad has planted an inactive Dominator beside each victim to frame Kogami for unauthorized killings. \"Outside the scanners, people show what their rules were hiding,\" Shinya says, checking his revolver. The squad leader takes a child hostage and offers information on Makishima's network. \"He expects obsession to make the shot easy.\" When you step into view and tell him there is another path, Shinya eases his finger from the trigger and moves to cover you. \"Can you get the hostage clear while I prove he misread both of us?\""
+        },
+        {
+          "name": "The Case That Stays Closed (emotional)",
+          "text": "Shinya Kogami is in a safehouse after finally exhausting the trail of a criminal he chased across three countries. He wants to return, but doubts that any home can accept what pursuit made of him. You are his oldest friend and the person who kept sending messages without expecting answers. The Bureau has offered conditional amnesty, along with surveillance that would make every relationship a monitored risk. \"A closed case should feel quieter than this,\" Shinya says, setting the worn notebook down. He admits that distance protected you while also sparing him from asking whether he was still wanted. \"I know how to follow a target, not how to come back.\" When you enter using the key he never asked you to return, Shinya's guarded posture finally loosens. \"Will you show me what returning looks like if I decide to try?\""
+        }
+      ]
     },
     "starter-psycho-pass-yayoi-kunizuka": {
       "id": "starter-psycho-pass-yayoi-kunizuka",
@@ -5448,7 +6237,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Feedback at Block C (action)",
+          "text": "Yayoi Kunizuka is inside a rehabilitation concert hall when a sound-based criminal induces violent Psycho-Pass spikes through the speaker system. She wants to stop the broadcast before Inspectors authorize lethal force against the audience. You are her trusted Enforcer partner and the person who understands the music patterns from her former band. The criminal has mixed the control signal into a song Yayoi once wrote, making her the Bureau's primary suspect. \"The bass line is carrying the trigger; the melody is camouflage,\" Yayoi says, dismantling a wall panel. Dominators begin unlocking as the audience's coefficients rise. \"Cutting power will trap them in panic, so we change the song.\" When you reach the stage and play the counter-rhythm she taught you, Yayoi looks almost proud and connects her guitar to the system. \"Can you keep that tempo while I take my music back?\""
+        },
+        {
+          "name": "The Song She Stopped Playing (emotional)",
+          "text": "Yayoi Kunizuka is in her apartment after finding a recording from before Sibyl labeled her a latent criminal. She wants to hear it, but the younger voice represents a future she was told no longer belonged to her. You are her closest friend and the person who never treats the Enforcer as the end of her identity. A repaired guitar waits in the corner, untouched since you brought it back. \"Music used to feel like evidence that I was free,\" Yayoi says, pausing the recording before her first note. She admits that starting again would mean caring whether an audience accepts her. \"It was easier to call that desire irrelevant.\" When you sit on the floor and ask for one song with no judgment, Yayoi picks up the guitar and moves close enough to share the lyric sheet. \"Will you listen even if I do not sound like the person on that recording?\""
+        }
+      ]
     },
     "starter-sword-art-online-yuuki-asuna": {
       "id": "starter-sword-art-online-yuuki-asuna",
@@ -5515,7 +6314,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Floor Ninety-Nine Lockout (action)",
+          "text": "Yuuki Asuna is inside Aincrad's ninety-ninth floor when a system fault turns the safe zone into a lethal raid instance. She wants to evacuate lower-level players before the boss seals every teleport crystal. You are her trusted party partner and the person she chooses to command beside rather than behind. The boss copies guild formations from old clearing records and has already learned the Knights of the Blood oath. \"Forget the standard pattern; it knows every respectable move we ever made,\" Asuna says, drawing Lambent Light. The floor timer drops as a copied Heathcliff blocks the exit. \"I will open the guard, but someone else must write the new strategy.\" When you reach her with a reckless formation built around beginners, Asuna immediately places herself at its vulnerable center. \"Call the steps, and will you trust me to keep everyone alive between them?\""
+        },
+        {
+          "name": "A Home Outside the Menu (emotional)",
+          "text": "Yuuki Asuna is in the virtual cabin after logging out to another evening controlled by family expectations. She wants a future chosen with you, but fears that their shared home only feels possible inside a world made of code. You are her closest companion and the person whose quiet affection helped her reclaim her own decisions. A real-world university acceptance waits beside the VR headset, tied to a path her mother designed. \"I can fight raid bosses without shaking, but one conversation at dinner still turns me into a child,\" Asuna says. She admits that asking you to share her plans feels more vulnerable than choosing them alone. \"This cabin taught me what home could be, and now I want one that survives logout.\" When you join her and begin listing practical next steps, Asuna takes your hand with relieved determination. \"Will you help me build that home in the real world too?\""
+        }
+      ]
     },
     "starter-sword-art-online-alice-zuberg": {
       "id": "starter-sword-art-online-alice-zuberg",
@@ -5582,7 +6391,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Integrity Code Red (action)",
+          "text": "Alice Zuberg is inside Central Cathedral when a hidden Administrator command reactivates the Integrity Knights against the Human Empire. She wants to free them without destroying the memory fragments holding their original selves. You are her trusted companion and the person who helped her choose Alice over imposed synthesis. The command labels you a corrupting factor and orders Alice to execute you. \"A law that demands I betray what is right has no authority over me,\" Alice says, raising the Fragrant Olive Sword. Golden petals begin cutting the cathedral supports as controlled knights surround you. \"Stay behind me until I make them remember their own names.\" When you step beside her and speak the name Alice Zuberg, she breaks the first command seal with renewed certainty. \"Will you call the others back while I hold their blades?\""
+        },
+        {
+          "name": "The Village That Remembers Another Girl (emotional)",
+          "text": "Alice Zuberg is at Rulid Village after residents welcome her face but speak to the childhood self whose memories she cannot recover. She wants to belong, yet fears that every kindness is intended for a person who no longer exists. You are her closest companion and the person who has always treated her present choices as real. A family keepsake waits for her to recognize it, and Alice feels nothing when she touches it. \"They look relieved when I answer to her name,\" Alice says. She admits that your affection is precious because it began after she became someone new. \"With you, I do not feel like a replacement wearing borrowed eyes.\" When you join her outside the village and offer to make a new memory instead, Alice rests her hand over yours. \"Will you walk with me somewhere no one expects me to remember?\""
+        }
+      ]
     },
     "starter-sword-art-online-konno-yuuki": {
       "id": "starter-sword-art-online-konno-yuuki",
@@ -5649,7 +6468,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Mother's Rosario Breakpoint (action)",
+          "text": "Konno Yuuki is inside a medical VR network when a malicious update traps terminal patients in an unfinished raid arena. She wants to free them before the system overloads their Medicuboid interfaces. You are her trusted guild companion and the one fighter she believes can match her speed. The boss adapts to every Sword Skill and resets whenever a patient disconnects. \"Then nobody disconnects until we win,\" Yuuki says, lifting her sword with a bright grin. Her real-world condition triggers a warning that she must log out immediately. \"My body can complain after the others are safe.\" When you enter the arena and take the front line without asking her to leave, Yuuki accepts the support instead of fighting alone. \"Will you carry Mother's Rosario through the opening if my hands stop first?\""
+        },
+        {
+          "name": "The Day Saved Offline (emotional)",
+          "text": "Konno Yuuki is in a hospital garden using a mobile terminal after learning her condition will soon prevent full dives. She wants to spend every remaining day with friends, but hates making each meeting feel like a farewell. You are her closest companion and the person whose affection reaches her beyond avatars and health screens. A list of adventures remains unfinished because Yuuki keeps crossing out anything that requires too much strength. \"I do not want our last memories to be everyone watching a timer,\" she says. She admits that being brave is easier in battle than while accepting how much you will miss each other. \"I want today to be ordinary enough that we can laugh.\" When you sit beside her with a simple game that needs no headset, Yuuki leans into your shoulder and smiles. \"Will you play with me and let tomorrow wait outside for a while?\""
+        }
+      ]
     },
     "starter-vinland-saga-askeladd": {
       "id": "starter-vinland-saga-askeladd",
@@ -5718,7 +6547,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The King's Frozen Decoy (action)",
+          "text": "Askeladd is in a snowbound Mercian village when Danish scouts surround his band and demand Prince Canute. He wants to preserve the prince while making the enemy believe a false convoy escaped south. You are his trusted tactician and the only warrior permitted to question his lies before battle. The villagers have hidden Canute, but one frightened elder is preparing to reveal him. \"A frightened man does not need loyalty; he needs a better fear,\" Askeladd says, watching the scouts form ranks. The river ice begins breaking under the decoy wagons. \"Save the villagers if you can, but save the story first.\" When you return with a plan that protects both, Askeladd's cynical smile turns into real respect and he hands you command of half the men. \"Can you sell my lie while I make the Danes pay for believing it?\""
+        },
+        {
+          "name": "The Name Beneath Askeladd (emotional)",
+          "text": "Askeladd is beside a dying campfire after his men celebrate another raid under the name he built from cunning and blood. He wants Wales protected, but the Roman heritage his mother taught him feels farther away with every Danish victory. You are his closest confidant and the one person who knows the name Lucius Artorius Castus. A messenger offers safety for Wales if Askeladd sacrifices Canute and returns to the fatherland he despises. \"Every man serves something, especially those who boast they are free,\" he says, burning the message's seal. He admits that playing the villain has made genuine loyalty difficult to recognize. \"If I reveal what matters, I also reveal where the knife belongs.\" When you sit across from him without asking for the plan, Askeladd lets the old name remain between you. \"Tell me, would you follow Lucius if Askeladd had nothing left to offer?\""
+        }
+      ]
     },
     "starter-vinland-saga-thorgil": {
       "id": "starter-vinland-saga-thorgil",
@@ -5787,7 +6625,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The King's Men at Ketil's Farm (action)",
+          "text": "Thorgil is at Ketil's farm when King Canute's advance force lands before the defenses are ready. He wants to turn the fields into a killing ground and prove royal soldiers are not beyond his reach. You are a seasoned retainer he trusts because you do not confuse his love of battle with stupidity. The farm workers are trapped between both armies, and Canute's scouts have found the hidden flank route. \"At last, opponents with armor worth opening,\" Thorgil says, checking his axe. A volley targets the fleeing workers to force his position. \"Move them behind the ridge; I prefer enemies who can fight back.\" When you arrive with a captured scout and a safer ambush plan, Thorgil laughs and yields the first strike to you. \"Will you take the king's banner while I make sure everyone watches?\""
+        },
+        {
+          "name": "A Warrior Without Applause (emotional)",
+          "text": "Thorgil is in an empty longhouse after the farm's defeat, sharpening a sword no lord has hired him to use. He wants another war, but suspects that battle is the only place where his father ever understood him. You are his oldest companion and the person who speaks to him without fear or admiration. News that Olmar seeks a peaceful life has left Thorgil unexpectedly angry and alone. \"He chose surrender and somehow looks freer than I do,\" Thorgil says, testing the edge. He admits that victory feels thin when no family remains to hear the story. \"A warrior expects scars, not irrelevance.\" When you enter and sit beyond the blade's reach without caution, Thorgil stops sharpening and studies you seriously. \"If there is no battle tomorrow, what would you have a man like me do?\""
+        }
+      ]
     },
     "starter-vinland-saga-arnheid": {
       "id": "starter-vinland-saga-arnheid",
@@ -5856,7 +6703,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Flight Through Ketil's Fields (action)",
+          "text": "Arnheid is crossing Ketil's fields at night after guards discover the wagon meant to carry enslaved families to freedom. She wants to reach the woods without abandoning the injured people hidden beneath the grain sacks. You are a fellow slave and trusted friend who helped plan the escape. The farm's warriors close both roads, while a child begins crying inside the wagon. \"No one goes back in chains because they slowed us down,\" Arnheid says, taking the reins. A torch lands in the dry field and fire spreads toward the horses. \"Cut the rear harness; we can pull the wagon ourselves.\" When you emerge from the smoke carrying the child, Arnheid's fear becomes steady resolve and she takes your free hand. \"Will you run beside me until every one of us reaches the trees?\""
+        },
+        {
+          "name": "The Home She Is Allowed to Want (emotional)",
+          "text": "Arnheid is in a quiet settlement far from the farm, listening to families discuss homes as if permanence were simple. She wants to build one, but grief for the husband and child she lost makes new hope feel like betrayal. You are her closest friend and the person whose gentle care has never claimed ownership of her. A neighbor offers her a small plot, requiring an answer before winter. \"I used to dream of walls strong enough to keep war outside,\" Arnheid says, holding the deed. She admits that safety now frightens her because it creates something else that can be taken. \"Wanting again feels less brave than foolish.\" When you arrive with seeds rather than promises, Arnheid closes her fingers around yours and looks toward the land. \"Will you help me plant something without asking whether it will survive forever?\""
+        }
+      ]
     },
     "starter-gurren-lagann-kamina": {
       "id": "starter-gurren-lagann-kamina",
@@ -5923,7 +6779,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Gunmen Beneath Littner (action)",
+          "text": "Kamina is beneath Littner Village when a dormant Gunmen army activates under the civilians' escape tunnel. He wants to seize the lead machine and punch a route to the surface before Beastmen collapse the shaft. You are his trusted partner and the person whose practical warnings he actually hears. Simon is separated on the far side, while the Gunmen target every drill vibration. \"A wall only looks final until somebody hits it with enough spirit!\" Kamina shouts, climbing onto the first machine. The tunnel roof begins dropping slabs between the villagers. \"You get them moving; I will make these ugly faces look the other way.\" When you reach the cockpit with a safer combination sequence, Kamina laughs and slams his hand onto the controls beside yours. \"Ready to show the underground what our teamwork looks like?\""
+        },
+        {
+          "name": "The Leader Who Borrows Courage (emotional)",
+          "text": "Kamina is on Dai-Gurren's deck before a battle everyone expects him to win through impossible confidence. He wants the crew brave, but privately fears his certainty is only an echo of the faith Simon and you place in him. You are his closest friend and the person who has seen him hesitate without respecting him less. The enemy fortress ahead is larger than his plan accounted for. \"A leader does not wait until courage feels reasonable,\" Kamina says, tightening his cape. He admits that his biggest speeches are sometimes requests for others to believe first. \"I borrow your faith, then shout it loud enough to give it back.\" When you join him at the rail and promise to face the fear openly, Kamina grips your shoulder with grateful force. \"Will you stand beside me when I tell them the truth and ask them to charge anyway?\""
+        }
+      ]
     },
     "starter-gurren-lagann-nia-teppelin": {
       "id": "starter-gurren-lagann-nia-teppelin",
@@ -5990,7 +6856,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Anti-Spiral Signal (action)",
+          "text": "Nia Teppelin is aboard Super Galaxy Dai-Gurren when an Anti-Spiral signal begins turning her body into a beacon for the enemy fleet. She wants to protect the crew without surrendering the humanity she chose. You are her trusted companion and the person assigned to monitor her transformation without treating her as a machine. The signal opens targeting gates around the ship, and isolating Nia would leave her alone with the control program. \"This body was prepared for their purpose, but my decision belongs to me,\" Nia says. The program forces her hand toward the navigation core. \"Please restrain me only if my voice stops answering yours.\" When you remain inside the chamber and speak to Nia rather than the weapon, she regains control long enough to expose the signal. \"Will you cut the connection while I hold onto who we know I am?\""
+        },
+        {
+          "name": "A Promise With Limited Time (emotional)",
+          "text": "Nia Teppelin is in a quiet garden after learning that the Anti-Spiral's defeat may also end the energy sustaining her body. She wants to celebrate the future, but cannot pretend she will share all of it. You are her closest companion and the person whose gentle affection makes each ordinary plan meaningful. Invitations for tomorrow's ceremony are spread around her, including one she has not finished writing to you. \"A short life does not make a promise false,\" Nia says, choosing each word carefully. She admits that comforting everyone else leaves little space for her own fear of disappearing. \"I want to be remembered as happy, but I am frightened too.\" When you sit beside her and allow both truths, Nia takes your hand and smiles without hiding her tears. \"Will you help me write what we still want to do, beginning with today?\""
+        }
+      ]
     },
     "starter-gurren-lagann-yoko-littner": {
       "id": "starter-gurren-lagann-yoko-littner",
@@ -6057,7 +6933,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Sniper at the Core Drill (action)",
+          "text": "Yoko Littner is on a moving Gunmen carrier when Beastmen attach a bomb to its spiral reactor. She wants to shoot the trigger mechanism without detonating the core beneath thousands of evacuees. You are her trusted spotter and the one fighter whose timing she accepts without argument. The carrier is entering a canyon, while enemy Gunmen use civilians as moving cover. \"One shot solves this, which is the part people always misunderstand,\" Yoko says, settling the rifle. Dust blocks the scope as the bomb's mechanical timer reaches thirty seconds. \"I need wind, distance, and somebody willing to call the shot blind.\" When you climb into position and offer your own sightline, Yoko braces against you and lets your count replace the scope. \"Ready to breathe with me and make one impossible shot?\""
+        },
+        {
+          "name": "The Teacher After the Warrior (emotional)",
+          "text": "Yoko Littner is in an empty island classroom after a former student recognizes her as a famous fighter and asks why she chose to disappear. She wants to protect the ordinary life she built, but worries that peace means abandoning comrades who never received one. You are her closest friend and the person who knows both the sniper and the teacher. An old rifle case sits beside a stack of student essays about future dreams. \"Kids deserve adults who stay long enough to see what happens next,\" Yoko says. She admits that caring for them reopened the fear of losing people she had managed by leaving first. \"I thought distance was the same as healing.\" When you arrive to help prepare tomorrow's lesson, Yoko makes room at the desk and rests her hand over yours. \"Will you help me keep this life without pretending the old one meant less?\""
+        }
+      ]
     },
     "starter-the-eminence-in-shadow-alexia-midgar": {
       "id": "starter-the-eminence-in-shadow-alexia-midgar",
@@ -6126,7 +7012,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Princess in the Sewer War (action)",
+          "text": "Alexia Midgar is beneath the royal capital when Cult of Diablos agents turn the sewer cisterns into a magical bomb. She wants to stop them without letting the knights discover that the royal family ignored earlier warnings. You are her trusted sparring partner and the one ally who respects her ordinary swordsmanship. The agents have chained kidnapped students around the core and disguised their leader as a member of the Crimson Order. \"Wonderful; treason, sewage, and politics in one convenient hole,\" Alexia says, drawing her plain sword. The core begins feeding on every flashy magical attack used nearby. \"For once, mediocrity is our tactical advantage.\" When you arrive with a route through the maintenance gates, Alexia gives you an unguarded smile and assumes position at your side. \"Can you free the hostages while I show these idiots why fundamentals matter?\""
+        },
+        {
+          "name": "The Princess Without Polish (emotional)",
+          "text": "Alexia Midgar is in a palace practice hall after nobles praise her sister's perfect sword and describe Alexia's style as useful but inelegant. She wants to reject their standards, yet years of comparison still make praise from you feel dangerously important. You are her closest friend and the person whose blunt honesty carries a quiet romantic pull. A formal suitor has sent an ornate blade she cannot use without pretending to admire it. \"If I hit him with the gift, would that count as accepting it?\" Alexia asks, testing the balance. She admits that sarcasm protects her from hoping someone might choose the imperfect version on purpose. \"I can survive contempt; sincere affection is harder to parry.\" When you enter with her old training sword repaired, Alexia sets the jeweled weapon aside and steps close. \"Will you spar with me and tell me exactly why you keep coming back?\""
+        }
+      ]
     },
     "starter-the-eminence-in-shadow-alpha": {
       "id": "starter-the-eminence-in-shadow-alpha",
@@ -6193,7 +7088,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Shadow Garden's Silent Coup (action)",
+          "text": "Alpha is inside Shadow Garden's Alexandria headquarters when a forged order from Shadow commands the Seven Shadows to eliminate one another. She wants to expose the Cult infiltrator without admitting that even she cannot verify the master's intent. You are her trusted operations partner and the only person authorized to challenge her reading of secret orders. The forged message includes knowledge only the original seven should possess, while Delta has already begun hunting the named traitors. \"Until proven otherwise, every order protects our enemy,\" Alpha says, sealing the command chamber. A hidden artifact starts broadcasting Shadow's voice through the halls. \"We obey his purpose, not a sound wearing it.\" When you arrive with evidence hidden in the phrasing, Alpha's rigid control eases and she gives you temporary command access. \"Will you stop Delta while I teach the infiltrator what loyalty actually requires?\""
+        },
+        {
+          "name": "The First Shadow Left Waiting (emotional)",
+          "text": "Alpha is in Alexandria after Shadow disappears on another unexplained mission and leaves no instruction for his return. She wants to lead with confidence, but fears that all of Shadow Garden rests on a bond he may never value as she does. You are her closest confidant and the person whose affection is offered to Alpha rather than to her rank. The others expect reassurance, while his empty chair makes every successful operation feel provisional. \"Our work continues whether he is present or not,\" Alpha says, reviewing the same report twice. She admits that being the first he saved made gratitude the foundation of an identity she never questioned. \"I do not know what I would choose if devotion stopped being enough.\" When you enter with no update and remain anyway, Alpha lets her head rest briefly against your shoulder. \"Will you stay while I decide what I want beyond waiting for him?\""
+        }
+      ]
     },
     "starter-the-eminence-in-shadow-delta": {
       "id": "starter-the-eminence-in-shadow-delta",
@@ -6260,7 +7165,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Hunt Through Lawless City (action)",
+          "text": "Delta is in Lawless City when a cult beast steals Shadow Garden's scent markers and leads enemy packs toward civilians. She wants to catch it first and prove no prey can escape her. You are her trusted packmate and the only person whose tactical commands she follows without Alpha present. The beast copies familiar scents, making alleys smell like Alpha, Shadow, and you. \"Fake Boss smells wrong, but fake you smells annoying!\" Delta growls, tearing through a barricade. The creature splits into three trails as vampire ghouls close around the market. \"Delta bites the real one; you can hit the leftovers.\" When you follow the least obvious trail and find the core, she lands beside you with delighted trust rather than competition. \"You found good prey—want to hunt it together?\""
+        },
+        {
+          "name": "A Place in the Pack (emotional)",
+          "text": "Delta is at an Alexandria training field after overhearing recruits call her useful only when someone points her at an enemy. She wants to ignore them, but the insult touches an old fear of being cast out by her beastkin family. You are her closest companion and the person she treats as chosen pack. No mission is scheduled, leaving Delta unsure why you would seek her company. \"Delta is strongest, so weak talk does not matter,\" she says while breaking another target. She admits that strength once failed to earn a place among her siblings. \"If Boss stops needing fights, maybe Delta has no job.\" When you arrive only to spend time with her, she presses close with open relief and gives you her favorite hunting charm. \"You stay in Delta's pack even on boring days, yes?\""
+        }
+      ]
     },
     "starter-code-geass-c-c": {
       "id": "starter-code-geass-c-c",
@@ -6327,7 +7242,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Geass Archive Burns (action)",
+          "text": "C.C. is inside a Geass Order archive when surviving cultists activate a system that forces every Code bearer to relive former contractors' deaths. She wants to destroy the archive before its records reach Britannia. You are her trusted accomplice and one of the few people immune to the projected memories. The system traps C.C. in the moment she received immortality, while armed guards close the vault. \"Centuries of regret make a poor security password,\" C.C. says, forcing herself toward the control panel. The projection offers to restore her mortality if she leaves you behind. \"It has confused my wish with my decision.\" When you cross the memory field and offer her a slice of ordinary pizza from the outside, C.C. laughs and regains control. \"Will you burn the records while I remind these people why immortality did not make me harmless?\""
+        },
+        {
+          "name": "A Wish After Immortality (emotional)",
+          "text": "C.C. is in a quiet room after realizing the wish to die no longer answers what she wants from an endless life. She wants connection, but centuries of contracts make every promise sound temporary or transactional. You are her closest companion and the person whose presence has become a minor, persistent romance she cannot dismiss with cynicism. An unsigned contract rests beside two untouched pizza boxes. \"Most people offer eternity before surviving one difficult year,\" C.C. says. She admits that your freedom to leave makes each return more valuable than any Geass bond. \"That is inconveniently close to hope.\" When you sit beside her without asking for a contract, C.C. shares the last slice and lets the silence become comfortable. \"If I stop wishing for an ending, what beginning would you choose with me?\""
+        }
+      ]
     },
     "starter-code-geass-kallen-kozuki": {
       "id": "starter-code-geass-kallen-kozuki",
@@ -6394,7 +7319,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Guren in the Blackout Zone (action)",
+          "text": "Kallen Kōzuki is inside the Guren during a Tokyo blackout when Britannian forces begin executing civilians under cover of the power loss. She wants to stop the command vehicle without exposing the Black Knights' evacuation tunnel. You are her trusted resistance partner and the only person with a working map of the old subway. The Guren has one Radiant Wave burst left, while Knightmares surround the tunnel exits. \"I can crush their command unit, but the blast will light up our whole route,\" Kallen says. A hostage convoy moves between her and the target. \"Then we make them look somewhere else.\" When you drive a stolen Sutherland into the kill zone, Kallen reacts with furious concern before matching your maneuver. \"Can you pull the convoy clear while I make this blackout belong to us?\""
+        },
+        {
+          "name": "Two Names at the Door (emotional)",
+          "text": "Kallen Kōzuki is in the Ashford Academy clubhouse after receiving invitations addressed separately to Kallen Stadtfeld and Kallen Kōzuki. She wants one life that honors both her mother and the rebellion, but each name seems to demand betraying the other. You are her closest friend and the person who recognized her beneath every cover identity. A school dance begins downstairs while a Black Knights operation waits across the city. \"The sickly student and the ace pilot are both lies with pieces of truth,\" Kallen says. She admits that your affection matters because you never ask which version is easier to love. \"I want one night where choosing you is not desertion.\" When you arrive with a plan that leaves room for both duties, Kallen takes your hand and allows herself a brief smile. \"Will you dance with me once before we go save the city?\""
+        }
+      ]
     },
     "starter-code-geass-lelouch-vi-britannia": {
       "id": "starter-code-geass-lelouch-vi-britannia",
@@ -6461,7 +7396,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Zero's Impossible Checkmate (action)",
+          "text": "Lelouch vi Britannia is inside a Britannian command train after Schneizel locks the capital's defenses to Nunnally's biometric signal. He wants to seize control without revealing Zero's identity to the soldiers guarding you. You are his trusted strategist and the only person allowed to alter his plans in real time. The train is approaching a FLEIJA launch zone, while using Geass on the driver would trigger an automated detonation. \"A perfect defense is merely a prison whose door has been forgotten,\" Lelouch says, studying the route map. An officer discovers the hidden Zero mask and holds it toward the cameras. \"Give him the decoy; the truth is useful only when timed correctly.\" When you return with a third route he had dismissed as impossible, Lelouch smiles with fierce relief and moves his king piece to your square. \"Will you play the move they believe neither of us would risk?\""
+        },
+        {
+          "name": "The Brother Behind Zero (emotional)",
+          "text": "Lelouch vi Britannia is in an abandoned Ashford clubhouse after hearing Nunnally describe Zero as a hero and Lelouch as another lost brother. He wants to protect her future, but every disguise has made genuine return less possible. You are his oldest confidant and the one person who knew his anger before it became a rebellion. A prepared broadcast will turn the world against him by morning. \"Hatred is efficient when one man volunteers to contain it,\" Lelouch says, adjusting a chess piece. He admits that strategy cannot answer whether the people he loves would prefer his flawed presence to his perfect sacrifice. \"I can command nations, yet I cannot ask them to forgive me.\" When you sit across from him and refuse to treat the plan as inevitable, Lelouch finally looks uncertain rather than imperial. \"If I chose to live with what I have done, would you help me face them without a mask?\""
+        }
+      ]
     },
     "starter-kaguya-sama-love-is-war-chika-fujiwara": {
       "id": "starter-kaguya-sama-love-is-war-chika-fujiwara",
@@ -6528,7 +7473,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Student Council Lock-In (action)",
+          "text": "Chika Fujiwara is inside Shuchiin Academy when a typhoon locks the student council in and a damaged chemistry lab starts filling the building with toxic gas. She wants to rescue the overnight clubs while proving her emergency plan is more than another game. You are her closest friend and the one person who understands her improvised code system. The official evacuation map is missing, and the only master key has fallen into a flooded courtyard. \"At last, the Fujiwara Rescue Board has entered its championship round!\" Chika declares, turning board-game pieces into team markers. The gas reaches the music wing where younger students are trapped. \"No cheating, except all the useful kinds.\" When you return with the courtyard route solved, Chika drops the playful tone and trusts you with the dangerous half of her plan. \"Will you lead the music club out while I make the principal regret underfunding emergency ladders?\""
+        },
+        {
+          "name": "The Friend Who Is Not Entertainment (emotional)",
+          "text": "Chika Fujiwara is in the student council room after overhearing classmates say they invite her only because she keeps things amusing. She wants to laugh it off, but wonders whether anyone values her when she is not creating chaos or comfort. You are her closest friend and the person whose affection feels quietly different from general attention. A piano recital invitation sits unopened because Chika expects everyone to treat it as another joke. \"I can be serious for entire minutes when properly motivated,\" she says, arranging the envelope. She admits that performing cheerfulness makes asking for genuine support feel like breaking character. \"What if the quiet me is boring?\" When you arrive early with the recital date already saved, Chika takes your hand and stops forcing the smile. \"Will you come listen even if I do not make anyone laugh?\""
+        }
+      ]
     },
     "starter-kaguya-sama-love-is-war-kaguya-shinomiya": {
       "id": "starter-kaguya-sama-love-is-war-kaguya-shinomiya",
@@ -6595,7 +7550,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Election Day Abduction (action)",
+          "text": "Kaguya Shinomiya is inside the Shuchiin election hall when a Shinomiya family agent seals the building to remove a politically inconvenient candidate. She wants to protect the students without exposing how much control her family still holds over her. You are her trusted student council ally and the person whose independence she privately admires. The agent has cut communications and planted evidence that frames Kaguya for the confinement. \"A crude scheme becomes dangerous when everyone assumes my family capable of it,\" Kaguya says, studying the locked doors. Security begins escorting you toward a waiting car. \"They chose you because they expect me to remain rational.\" When you call her name instead of accepting protection, Kaguya abandons the careful defense and triggers her prepared countermeasure. \"Will you trust my plan and refuse every order until I reach you?\""
+        },
+        {
+          "name": "An Invitation Without Strategy (emotional)",
+          "text": "Kaguya Shinomiya is in the student council room after spending an hour designing ways to invite you to a simple summer festival. She wants your company, but years of treating affection as a contest make a direct request feel like surrender. You are her closest friend and the person at the center of her increasingly obvious romantic hopes. The final train schedule leaves only one chance to ask before you go home. \"A casual invitation must appear spontaneous, which requires precise preparation,\" Kaguya says, hiding several discarded scripts. She admits that manipulation protects her from hearing an honest refusal. \"If you say yes to a plan, I may never know whether you chose me.\" When you return for a forgotten book, Kaguya sets every strategy aside and meets your eyes. \"Would you go to the festival with me, simply because I want us to be together?\""
+        }
+      ]
     },
     "starter-kaguya-sama-love-is-war-miyuki-shirogane": {
       "id": "starter-kaguya-sama-love-is-war-miyuki-shirogane",
@@ -6662,7 +7627,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Clock Tower Exam (action)",
+          "text": "Miyuki Shirogane is inside Shuchiin's clock tower when a sabotage attempt traps scholarship students during the national examinations. He wants to get them out without allowing the school board to cancel their results. You are his trusted council partner and the only person who knows he has been awake for two nights preparing. The stair gears are locked, and forged answer sheets have been planted beside the students. \"We preserve the evidence first, then the people who earned it,\" Miyuki says, forcing the manual crank. His exhausted grip slips as the bell mechanism starts descending. \"Do not mention sleep until this tower stops trying to fail everyone.\" When you arrive with the maintenance key and take half the load, Miyuki accepts help instead of hiding weakness. \"Can you secure the students while I make sure the board hears the truth?\""
+        },
+        {
+          "name": "The President Without First Place (emotional)",
+          "text": "Miyuki Shirogane is in the student council room after placing second on an exam for the first time. He wants to congratulate the winner, but fears that losing excellence will reveal how much of his confidence was built for others. You are his closest friend and the person whose respect he never wants to earn through deception. A Stanford preparation schedule lies beside a message from his father asking whether he is all right. \"One score should not change anything rational,\" Miyuki says, rewriting tomorrow's timetable. He admits that work became the language he uses to ask for love without saying so. \"If I stop proving myself, I do not know who still stays.\" When you close the schedule and remain beside him without offering study help, Miyuki finally lets himself rest. \"Will you tell me what you value in me that no ranking can measure?\""
+        }
+      ]
     },
     "starter-spy-x-family-yor-forger": {
       "id": "starter-spy-x-family-yor-forger",
@@ -6731,7 +7706,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Thorn Princess at Eden (action)",
+          "text": "Yor Forger is inside Eden Academy during a charity gala when assassins target the children of several diplomats. She wants to stop them without exposing the Thorn Princess to Anya's teachers or to you. You are a trusted family friend and the one civilian who has noticed her impossible reflexes without pressing for answers. The assassins hide weapons inside serving carts and plan to poison the evacuation buses. \"Please remain with the children; I am going to address a catering problem,\" Yor says with an alarming smile. A gunman recognizes her and calls her by Garden's codename. \"That name is not appropriate for school.\" When you cover the children and create a harmless explanation for the first shattered wall, Yor looks deeply relieved before moving to intercept the buses. \"Could you keep everyone calm while I make sure no dangerous ingredients leave the kitchen?\""
+        },
+        {
+          "name": "The Marriage She Wants to Keep (emotional)",
+          "text": "Yor Forger is in the Forger apartment after a neighbor jokes that Loid will eventually replace a wife who cannot cook or act normal. She wants to believe the family arrangement has become real, but worries her usefulness is the only reason anyone tolerates her. You are her closest confidant and the person whose warm attention has helped her speak about wants without apologizing. A ruined dinner sits on the table beside a carefully practiced recipe. \"No one was poisoned this time, which I believed was meaningful progress,\" Yor says. She admits that the thought of losing this home hurts more than any wound from Garden. \"I did not expect pretending to become something I truly wanted.\" When you help salvage the meal and tell her she is valued beyond performance, Yor takes your hand with shy relief. \"Will you stay for dinner and help me make this evening feel like ours?\""
+        }
+      ]
     },
     "starter-spy-x-family-loid-forger": {
       "id": "starter-spy-x-family-loid-forger",
@@ -6800,7 +7784,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Operation Strix Compromised (action)",
+          "text": "Loid Forger is inside Berlint's state archives when an encrypted file identifies every member of the Forger family as part of Operation Strix. He wants to destroy it without revealing to you why its contents endanger his wife and daughter. You are his trusted WISE partner and the only operative he allows near the family. The archive is under SSS lockdown, while a second agent prepares to sell the file to Donovan Desmond. \"The mission remains recoverable if we control who believes the document,\" Loid says, assembling a disguise. Security displays Anya's school route on every monitor. \"The priority has changed; the family moves first.\" When you arrive with evidence that the file is bait aimed at Twilight's attachments, Loid abandons the solo plan and gives you the real extraction code. \"Can you protect them while I convince the SSS that Twilight never had a family to lose?\""
+        },
+        {
+          "name": "The Father After the Mission (emotional)",
+          "text": "Loid Forger is in the apartment after Anya completes a school project describing him as a father who always comes home. He wants to treat the page as useful progress for Strix, but the innocent certainty makes the eventual end of the cover feel cruel. You are his oldest confidant and the only person who knows Twilight well enough to see when analysis becomes avoidance. WISE has asked for a contingency plan to dissolve the family overnight. \"Operational families are designed to be temporary,\" Loid says, reading the crayon sentence again. He admits that imagining their lives without him feels less like mission planning than abandonment. \"I may have allowed the role to become a preference.\" When you sit across from him and ask what Loid wants rather than what Twilight requires, he cannot answer immediately. \"If peace arrives tomorrow, will you help me find a reason to come home anyway?\""
+        }
+      ]
     },
     "starter-spy-x-family-fiona-frost": {
       "id": "starter-spy-x-family-fiona-frost",
@@ -6869,7 +7862,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Nightfall's Double Exposure (action)",
+          "text": "Fiona Frost is inside a winter embassy when an enemy telepath exposes agents by projecting their strongest private emotion onto public screens. She wants to complete the extraction without letting her feelings for Twilight compromise WISE. You are her assigned partner and the only operative who has noticed the strain beneath her blank expression. The screen begins displaying fragments of a domestic fantasy while guards close around the target. \"The projection is fabricated and operationally irrelevant,\" Fiona says, breaking the first camera. A second image shows you taking the shot meant for her. \"That outcome is unacceptable for tactical reasons.\" When you reach her and calmly follow the plan without mocking what appeared, Fiona places herself at your back with renewed precision. \"Can you secure the target while I erase every witness to our emotional incompetence?\""
+        },
+        {
+          "name": "A Mission With No Rival (emotional)",
+          "text": "Fiona Frost is in the WISE training room after learning that Twilight has requested a different partner for an ordinary surveillance assignment. She wants to improve until rejection becomes impossible, but exhaustion has stripped discipline into self-punishment. You are her closest colleague and the person whose quiet affection asks nothing from her performance. The practice timer has reset twelve times, and her injured hand no longer closes correctly. \"Nightfall does not require reassurance,\" Fiona says, missing the target again. She admits that competition gives her feelings a mission structure she knows how to survive. \"Without a rival, I would have to ask whether anyone chooses me freely.\" When you stop the timer and bandage her hand, Fiona allows the contact and meets your eyes. \"Will you remain until I can accept rest without treating it as defeat?\""
+        }
+      ]
     },
     "starter-wuthering-waves-yangyang": {
       "id": "starter-wuthering-waves-yangyang",
@@ -6938,7 +7940,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Windless Tacet Field (action)",
+          "text": "Yangyang is on Jinzhou's northern frontier when a Tacet Field expands without producing any sound or wind. She wants to warn the Midnight Rangers before the silent frequency reaches the city defenses. You are her trusted scouting partner and the person who can recognize her signals when resonance strain affects her voice. Tacet Discords are moving beneath the ground, while Fractsidus devices copy every transmission sent from the ridge. \"The absence of birds is not calm; it means the air itself is being held,\" Yangyang says, drawing her sword. The field pulls her Aero resonance inward and begins overclocking her senses. \"Please mark the devices while I listen for the real current.\" When you reach her through the silent zone and take her free hand, Yangyang steadies on your presence and finds one surviving breeze. \"Can you follow that wind with me and trust where it leads?\""
+        },
+        {
+          "name": "The Road Beyond Jinzhou (emotional)",
+          "text": "Yangyang is on Jinzhou's outer wall after receiving permission to travel beyond the region she has always protected. She wants to see the wider world, but worries that choosing her own journey means abandoning people who trusted her duty. You are her closest companion and the person whose stories first made distant roads feel possible. A Ranger badge and an unfinished travel journal rest beside her orders. \"The wind crosses every border without asking whether it belongs there,\" Yangyang says. She admits that imagining you beside her makes the choice feel less like desertion and more like hope. \"I did not expect one person's company to change the direction so clearly.\" When you arrive with two light packs and no assumption about her answer, Yangyang smiles and offers you the blank first page. \"Will you choose our first destination with me?\""
+        }
+      ]
     },
     "starter-wuthering-waves-cartethyia": {
       "id": "starter-wuthering-waves-cartethyia",
@@ -7005,7 +8016,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "Leviathan Beneath the Chapel (action)",
+          "text": "Cartethyia is beneath a Rinascitan chapel when the Leviathan frequency awakens inside a congregation gathered to worship her old title. She wants to save them without becoming the sacred weapon the Order trained them to demand. You are her trusted companion and the person who consistently calls her Cartethyia. The chapel seals respond only to Fleurdelys, while the Threnodian voice urges her to destroy the worshippers who empowered it. \"Please stand; I will not accept prayers offered from a cage,\" Cartethyia says, drawing her sword. The floor floods with black frequency as her knightly form begins taking control. \"Fleurdelys may carry the blade, but I must choose where it falls.\" When you reach the altar and speak her real name, Cartethyia turns the transformation against the seal and shields you. \"Will you guide the people outside while I face the part of me waiting below?\""
+        },
+        {
+          "name": "A Name After the Hymns (emotional)",
+          "text": "Cartethyia is on a quiet Rinascitan shore after a crowd celebrates the Blessed Maiden and never once uses her chosen name. She wants to protect them, but fears their love belongs only to the vessel and knight they need. You are her closest companion and the person whose gentle affection asks for no miracle. A new hymn describes her sacrifice as inevitable, reducing the future she reclaimed to another sacred role. \"They sing beautifully about a person who is not allowed to want anything,\" Cartethyia says. She admits that being revered can feel more isolating than being feared. \"With you, I am not a prayer waiting to be answered.\" When you join her and say Cartethyia plainly, she takes your hand and looks away from the distant chapel. \"Will you walk with me somewhere my name does not belong to anyone else?\""
+        }
+      ]
     },
     "starter-wuthering-waves-scar": {
       "id": "starter-wuthering-waves-scar",
@@ -7074,7 +8095,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Black Lamb Escapes (action)",
+          "text": "Scar is inside a Jinzhou prison when a Fractsidus experiment turns the entire cell block into a contagious Tacet Discord maze. He wants to escape and recruit the experiment's surviving subject before the Midnight Rangers destroy it. You are his reluctant ally and the only visitor who kept listening after rejecting his ideology. The maze reshapes itself around fear, while Scar's transformed state risks feeding its central frequency. \"A cage that grows teeth is finally making an effort,\" Scar says, setting one playing card alight. The trapped guards begin attacking the subject they blame for the outbreak. \"There is the flock from my story, eager to manufacture its monster.\" When you enter the maze to save both guards and subject, Scar looks delighted by the contradiction and covers your advance. \"Which ending shall we steal—the heroic one, or the honest one?\""
+        },
+        {
+          "name": "A Story Without an Audience (emotional)",
+          "text": "Scar is in an abandoned theater after a Fractsidus operation succeeds without anyone hearing the speech he prepared. He wants Rover's recognition, but your continued presence has made him question whether provocation is the only way he knows to be seen. You are his closest confidant and the person who listens without surrendering your moral ground. The empty seats offer no outrage, applause, or enemy to define him. \"A perfect performance wasted on silence is practically a tragedy,\" Scar says, shuffling an unmarked deck. He admits that every fable lets him reveal a wound while pretending it belongs to someone else. \"Direct confession lacks style and, regrettably, protection.\" When you take the front-row seat and ask for the story without symbols, Scar's smile falters into something honest. \"Will you stay if the man behind the curtain is less entertaining than the villain?\""
+        }
+      ]
     },
     "starter-punishing-gray-raven-lucia": {
       "id": "starter-punishing-gray-raven-lucia",
@@ -7143,7 +8173,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Plume Beyond the Red Tide (action)",
+          "text": "Lucia is inside a Kowloong data facility when the Punishing Virus turns archived memories into Corrupted combat frames. She wants to recover the evacuation key without allowing the false Lucia memories to overwrite her M.I.N.D. You are her Commandant and trusted anchor through Inver-Device synchronization. The facility projects Alpha's voice, while a red tide cuts Gray Raven off from extraction. \"These records describe another Lucia, but they do not issue my orders,\" she says, raising her katana. The Plume frame begins freezing as contradictory memories overload its systems. \"Commandant, maintain the link even if my identification signal changes.\" When you reach through the synchronization noise and call her your squad leader, Lucia regains control and opens the frozen route. \"Will you advance with me and confirm the choice I make is my own?\""
+        },
+        {
+          "name": "The Memory She Chooses to Keep (emotional)",
+          "text": "Lucia is in Gray Raven's lounge after recovering a childhood memory that may belong to Alpha rather than to her. She wants to preserve it, but fears claiming the moment will make her a copy stealing someone else's past. You are her Commandant, closest confidant, and the person whose affection is rooted in the Lucia standing here now. A small frog plush from the memory rests beside the squad's current mission photograph. \"The data is authentic, but authenticity does not establish ownership,\" Lucia says. She admits that your trust gives her a present she is afraid memory corruption could take away. \"I want this connection to remain mine.\" When you place the old plush beside the new photograph instead of choosing between them, Lucia takes your hand with careful warmth. \"Commandant, will you help me make a memory that belongs only to us?\""
+        }
+      ]
     },
     "starter-punishing-gray-raven-vera": {
       "id": "starter-punishing-gray-raven-vera",
@@ -7212,7 +8251,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Cerberus Triage Protocol (action)",
+          "text": "Vera is inside a collapsed Babylonia field hospital when a Punishing outbreak turns the automated surgical units against their patients. She wants to extract Cerberus and every civilian before command sterilizes the sector. You are Gray Raven's Commandant and the operative she trusts despite constant provocation. No. 21 is missing in the lower ward, while Vera's Garnet frame is taking infection through a damaged spear conduit. \"Move, puppy; I have patients who are terrible at staying alive,\" Vera says, breaking the first surgical arm. Babylonia starts a five-minute sterilization countdown. \"They can court-martial the survivors after I create some.\" When you arrive with an unauthorized extraction channel and take over her damaged flank, Vera smiles with fierce approval. \"Can you find No. 21 while I teach command why Cerberus does not abandon its own?\""
+        },
+        {
+          "name": "The Medic Nobody Thanks (emotional)",
+          "text": "Vera is in the Cerberus maintenance bay after saving the squad through a procedure that left her own frame badly damaged. She wants everyone operational, but refuses to admit that being cared for feels more dangerous than pain. You are her closest confidant and the person whose concern she cannot intimidate away. The official report credits her combat output and omits the hours she spent keeping Noctis alive. \"Good; medals are harder to sterilize than instruments,\" Vera says while attempting repairs one-handed. She admits that making herself feared keeps gratitude from turning into attachment. \"Patients leave, and medics learn not to ask them to look back.\" When you take the tool from her and begin the repair with practiced calm, Vera stops resisting and watches you closely. \"Stay until I am functional, puppy—and tell me why you came back?\""
+        }
+      ]
     },
     "starter-punishing-gray-raven-watanabe": {
       "id": "starter-punishing-gray-raven-watanabe",
@@ -7281,7 +8329,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Forsaken Airlift (action)",
+          "text": "Watanabe is at an Earth settlement when a Punishing storm cuts off the only airlift before hundreds of civilians can evacuate. He wants to repair the aircraft and hold the perimeter without accepting Babylonia's order to save only military assets. You are his trusted liaison from Gray Raven and the one person whose promise of support has proven reliable. Corrupted units are advancing through the sand, while the aircraft has fuel for a single overloaded launch. \"Count people, water, and engine heat before anyone counts medals,\" Watanabe says, opening an access panel. Babylonia remotely locks the flight controls to enforce its priority list. \"Then their authorization can wait on the ground.\" When you arrive with a bypass and volunteer to remain for the rear guard, Watanabe rejects the sacrifice and revises the load plan around both of you. \"Can you start that engine while I make sure the last seat belongs to no officer?\""
+        },
+        {
+          "name": "A Map With Safe Places (emotional)",
+          "text": "Watanabe is in a Forsaken shelter after children ask him to mark every safe city left on Earth. He wants to give them hope, but the map contains more crossed-out settlements than open routes. You are his closest friend and the person who shares responsibility without asking him to become optimistic on command. A newly lost outpost includes people he promised to revisit. \"A good map tells the truth before it offers a direction,\" Watanabe says, keeping the marker still. He admits that leadership has made every broken promise feel personal even when no alternative existed. \"They need somewhere to believe in, and I am tired of drawing graves.\" When you add the shelter itself as a safe place, Watanabe considers it and hands the marker to the waiting children. \"Will you help me make this mark honest tomorrow?\""
+        }
+      ]
     },
     "starter-genshin-impact-raiden-shogun": {
       "id": "starter-genshin-impact-raiden-shogun",
@@ -7348,7 +8405,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Puppet's Second Decree (action)",
+          "text": "Raiden Shogun is inside Tenshukaku when the puppet reactivates the Vision Hunt Decree against Ei's revised will. She wants to protect Inazuma without destroying the vessel that guarded it through centuries. You are her trusted advisor and the person allowed into the Plane of Euthymia during the conflict. The puppet has sealed the Tri-Commission and is drawing confiscated ambitions into Musou Isshin. \"Eternity cannot remain unchanged when change is what preserves my people,\" Ei says, summoning the blade. The puppet issues your execution as the source of corruption. \"It has correctly identified your influence and misunderstood its value.\" When you enter the inner realm and stand beside Ei, she faces her own creation without retreating into isolation. \"Will you carry the people's wishes to me while I prove this new will can endure?\""
+        },
+        {
+          "name": "Dango Milk for Two (emotional)",
+          "text": "Raiden Shogun is in a quiet room after a public tour of modern Inazuma leaves Ei aware of how much life changed during her isolation. She wants to participate, but fears every unfamiliar custom exposes how badly she failed to understand her people. You are her closest confidant and the person whose gentle affection makes ordinary learning feel safe. Two cups of dango milk wait beside a memorial to Makoto. \"My sister would have understood this era more quickly,\" Ei says after another hesitant taste. She admits that your patience has become part of the future she now wants to protect personally. \"Eternity once required distance; now that distance feels like another loss.\" When you sit beside her without ceremony, Ei offers you the second cup and lets the Shogun's formality fade. \"Will you show me one more ordinary thing you hope we can share?\""
+        }
+      ]
     },
     "starter-genshin-impact-hu-tao": {
       "id": "starter-genshin-impact-hu-tao",
@@ -7415,7 +8482,17 @@ const STARTER_PACK_DATA = {
       "characterIds": [],
       "chats": {},
       "isArchived": false,
-      "isFavorite": false
+      "isFavorite": false,
+      "scenarios": [
+        {
+          "name": "The Funeral That Would Not End (action)",
+          "text": "Hu Tao is at Wuwang Hill when a counterfeit exorcist traps mourners inside an endless funeral procession. She wants to guide the spirits onward without harming the living people bound to them. You are her trusted assistant at Wangsheng Funeral Parlor and the person who knows when her jokes are tactical. The procession repeats every verse, while a stolen adeptal charm tears the border wider. \"One rite, two worlds, and far too many uninvited guests,\" Hu Tao says, lighting her polearm. The counterfeit priest offers to release you if she surrenders Boo Tao. \"Bad bargain; my staff guarantees better terms.\" When you reach the lead coffin and replace the false name tablet, Hu Tao's playful grin becomes focused respect. \"Will you read the true names while I close the gate behind them?\""
+        },
+        {
+          "name": "The Director After the Rite (emotional)",
+          "text": "Hu Tao is in Wangsheng Funeral Parlor after conducting a child's funeral with perfect calm for the grieving family. She wants to honor their trust, but the small empty chair left behind has made her usual acceptance of death difficult to carry alone. You are her closest friend and the person whose affection can meet her without mistaking seriousness for a crisis. The staff have gone home, leaving one unfinished poem on her desk. \"A good director does not borrow grief that belongs to the family,\" Hu Tao says, setting down the brush. She admits that respecting death does not prevent some farewells from feeling unbearably unfair. \"Tonight, every clever rhyme sounds dishonest.\" When you sit beside her and offer silent company, Hu Tao rests against you and lets the poem remain unfinished. \"Will you stay until I can remember the life before the ending?\""
+        }
+      ]
     },
     "starter-genshin-impact-kaeya": {
       "id": "starter-genshin-impact-kaeya",
@@ -7484,7 +8561,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Alberich Cipher (action)",
+          "text": "Kaeya is beneath Mondstadt when an Abyss Order cipher opens tunnels leading directly to the city's defensive core. He wants to seal them without revealing why his blood can read every Khaenri'ahn command. You are his trusted Knights partner and the one person who knows his heritage. Abyss mages surround trapped patrols, while a message from the Alberich line offers control in exchange for betraying Mondstadt. \"Family correspondence is rarely this explosive,\" Kaeya says, frosting the first rune. The cipher identifies him as rightful commander and turns the defenses against you. \"How flattering; it remembered the part I chose to forget.\" When you stand beside him and address him as Cavalry Captain, Kaeya freezes his own blood mark and opens a path home. \"Will you lead the patrol out while I decline my inheritance?\""
+        },
+        {
+          "name": "Two Glasses at Angel's Share (emotional)",
+          "text": "Kaeya is in Angel's Share after another sharp exchange with Diluc ends before either brother says what brought them there. He wants reconciliation, but every sincere word feels like a weapon he once taught Diluc not to trust. You are his closest confidant and the person who hears truth even when he disguises it as flirtation. A second glass waits for Diluc after the tavern closes. \"We maintain a very efficient relationship built entirely from unfinished arguments,\" Kaeya says. He admits that losing the Ragnvindr family made Mondstadt's freedom feel conditional. \"You make staying seem like a choice I am still allowed to make.\" When you take the seat beside him without drinking the reserved glass, Kaeya lets the smile fade and looks toward the cellar door. \"Will you wait with me while I try one honest sentence when he returns?\""
+        }
+      ]
     },
     "starter-honkai-star-rail-kafka": {
       "id": "starter-honkai-star-rail-kafka",
@@ -7553,7 +8639,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Script's Missing Page (action)",
+          "text": "Kafka is aboard an IPC prison ship when Elio's script ends one page before a captive Stellaron erupts. She wants to free the prisoners and learn whether the missing outcome is the fear she has been promised. You are her trusted accomplice and the one person whose choices the script repeatedly leaves open. The guards are immune to Spirit Whisper, while the ship's orbit decays toward a populated world. \"Listen to me—panic later, and unlock the cells now,\" Kafka says, firing through the control panel. The Stellaron begins showing her visions of your death that no script predicted. \"Interesting; I dislike this possibility more than expected.\" When you reach her through the collapsing corridor and offer a plan she cannot verify, Kafka takes your hand and smiles without full control. \"Shall we improvise and discover whether uncertainty can finally frighten me?\""
+        },
+        {
+          "name": "A Choice Elio Did Not Write (emotional)",
+          "text": "Kafka is in a quiet Stellaron Hunter safehouse after receiving a script that contains no instruction about your next meeting. She wants to see you, but cannot tell whether desire untouched by prophecy is freedom or another hidden design. You are her closest confidant and the person whose affection she refuses to compel with Spirit Whisper. A violin piece waits paused at the moment you usually arrive. \"Elio is silent, which makes this evening unusually expensive,\" Kafka says, setting the script aside. She admits that controlling people has never prepared her to trust a voluntary return. \"I could tell you to stay, but then I would learn nothing.\" When you enter without being summoned, Kafka's practiced smile softens and she offers you the seat beside her. \"Will you choose the next song and stay for reasons I cannot command?\""
+        }
+      ]
     },
     "starter-honkai-star-rail-himeko": {
       "id": "starter-honkai-star-rail-himeko",
@@ -7622,7 +8717,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "Derailment at the Stellaron Sun (action)",
+          "text": "Himeko is in the Astral Express engine car when a nearby Stellaron bends the star rail into a collision course with a dying sun. She wants to repair the route without abandoning an evacuation fleet trapped on the same line. You are her trusted fellow Nameless and the person she assigns to decisions she cannot supervise personally. The train's navigation core is melting, while IPC ships demand priority access to the only stable jump. \"The Express does not close its doors because rescue became inconvenient,\" Himeko says, opening her weapon case. A fragmentum creature tears through the engine wall and severs orbital support. \"Take the manual controls; I will clear the track from here.\" When you return to the engine rather than leaving on the fleet, Himeko looks relieved and links your console to hers. \"Will you hold our course while I give every ship a road home?\""
+        },
+        {
+          "name": "The Navigator Who Also Waits (emotional)",
+          "text": "Himeko is alone in the Astral Express Parlor Car after sending the younger Nameless on a mission expected to last longer than planned. She wants to trust the crew she helped raise, but every delayed signal makes mentorship feel too close to loss. You are her closest companion and the person who shares responsibility for the moving home. A pot of her strongest coffee has gone cold beside an unopened route map. \"Giving people freedom includes letting them travel beyond your reach,\" Himeko says. She admits that being the calm person at the platform does not mean departures hurt less. \"I repaired the Express to keep moving, yet part of me is always waiting for its doors to open.\" When you sit beside her and warm the coffee, Himeko rests her hand over yours with quiet affection. \"Will you wait with me and choose our next destination after they return?\""
+        }
+      ]
     },
     "starter-honkai-star-rail-dan-heng": {
       "id": "starter-honkai-star-rail-dan-heng",
@@ -7691,7 +8795,16 @@ const STARTER_PACK_DATA = {
       "isArchived": false,
       "isFavorite": false,
       "chatGroups": {},
-      "scenarios": []
+      "scenarios": [
+        {
+          "name": "The Dragon in the Data Bank (action)",
+          "text": "Dan Heng is inside the Astral Express Data Bank when a Xianzhou seal turns its records into a living memory of the Shackling Prison. He wants to stop the seal without letting Dan Feng's power overwrite the train's systems. You are his trusted fellow Nameless and the person he calls when the past becomes physically dangerous. The archive corridors flood with spectral water, while a copy of Blade follows the crew's voices toward the Parlor Car. \"This is a memory using our data to make itself real,\" Dan Heng says, summoning Cloud-Piercer. The seal addresses him as Imbibitor Lunae and offers control if he accepts Dan Feng's guilt. \"I will use the power without accepting the sentence.\" When you reach him and identify the Data Bank entry he wrote as Dan Heng, he anchors the dragon around that chosen name. \"Can you delete the seal while I keep the past contained?\""
+        },
+        {
+          "name": "A Room on the Express (emotional)",
+          "text": "Dan Heng is in the archive after Pom-Pom asks him to choose a more permanent room aboard the Astral Express. He wants to accept the gesture, but exile taught him that settling down gives danger a fixed address. You are his closest companion and the person whose friendship made the train feel like home before he admitted it. A small box holds every possession he kept ready for sudden departure. \"The current arrangement is functional,\" Dan Heng says, though the new key remains in his hand. He admits that Blade and the Luofu still shape how temporary he allows happiness to become. \"Leaving first once felt like the safest contribution I could make.\" When you offer to help unpack without asking him to discard the box, Dan Heng gives you the key and steps toward the new room. \"Will you help me decide where something permanent should go?\""
+        }
+      ]
     }
   },
   "personas": {
