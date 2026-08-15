@@ -478,6 +478,14 @@ h1 {
        GPU by its blur layer) and the painted card body can drift apart by a
        subpixel during scroll, and hover-time layer promotion adds snapping. */
     transform: translateZ(0);
+    /* Cards outside the viewport skip layout, paint and raster. A full library
+       is 100+ cards, each holding a multi-megapixel avatar scaled down to a
+       162px box; rastering all of them at once is what makes a dragged
+       scrollbar stall and the grid appear to lag behind the scroll. The leading
+       'auto' keeps each card's last real size, so the scroll height stays put
+       even on the <=1024px breakpoint where the card height is auto. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 162px auto 225px;
 }
 
 .character-card::before {
@@ -3196,6 +3204,16 @@ max-height: 27em;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.8s ease-in-out;
+  /* The sky gets a compositing layer of its own. It is position:fixed behind a
+     scrolling screen, and without this it is painted into the same surface as
+     that screen -- so every scrolled frame re-rasters these gradients for the
+     newly exposed strip, which halved the frame rate while dragging the
+     scrollbar. Promoted, it is rastered once and simply re-used. One
+     viewport-sized layer, and the sky never changes, so nothing re-rasters it.
+     (This is why the app felt smooth only after visiting a chat list: that sets
+     a background-image on the full-screen #chat-list-screen overlay, which
+     happened to force the same layer split by accident.) */
+  will-change: transform;
   /* The whole sky is one static paint: base gradient, nebula accents and a
      whisper of a milky band. No animation, no oversized layers, no filters. */
   background:
@@ -3783,9 +3801,13 @@ max-height: 27em;
     right: 5px;
     width: 25px;
     height: 25px;
-    background-color: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    /* Deliberately no backdrop-filter. Two of these sit on every card, so a
+       full library meant ~200 extra render surfaces, each re-sampling the
+       pixels behind it every frame. That sampling runs a frame behind a
+       compositor-driven scrollbar drag, which is exactly why these buttons
+       used to smear across the card while dragging. At 25px the blur was
+       never legible anyway; a slightly denser fill reads the same. */
+    background-color: rgba(0, 0, 0, 0.62);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     color: white;
     border: 1px solid transparent;
@@ -3968,9 +3990,8 @@ html {
     left: 5px;
     width: 25px;
     height: 25px;
-    background-color: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    /* No backdrop-filter, for the same reason as .favorite-btn above. */
+    background-color: rgba(0, 0, 0, 0.62);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     color: white;
     border: 1px solid transparent;
@@ -4335,7 +4356,11 @@ hr.settings-separator {
   filter: contrast(1.05) saturate(1.04);
   image-rendering: auto !important;
   -webkit-font-smoothing: antialiased;
-  backface-visibility: hidden;
+  /* No backface-visibility hack here: it promoted every card image to its own
+     GPU layer, so the image and the card frame around it were moved by the
+     compositor as two separate things and could visibly drift apart mid-scroll.
+     The card's own translateZ(0) above already keeps frame, image and name
+     field on one layer, which is what makes them move as a unit. */
 }
 
 
@@ -5213,6 +5238,11 @@ body.image-gen-off .generate-image-btn {
   .character-card {
     width: 100%;
     height: auto;
+    /* No content-visibility below this breakpoint. Here a card's height follows
+       its grid column width, so it changes with the viewport and no single
+       contain-intrinsic-size is correct; guessing one makes the scroll height
+       -- and so the scrollbar thumb -- resize as unseen cards are reached. */
+    content-visibility: visible;
   }
   .card-image-container {
     height: 150px;
