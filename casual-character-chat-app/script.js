@@ -11314,7 +11314,7 @@ const tutorialTours = {
                 targetId: 'app-settings-btn',
                 position: 'bottom',
                 title: 'Enter your API key first',
-                text: 'Open Global App Settings to add your AI API key and choose a default model. This is your first stop — no key, no AI chat.',
+                text: 'Open Global App Settings to add your AI API key. This is your first stop — no key, no AI chat.',
             },
             {
                 targetId: 'new-character-btn',
