@@ -6657,6 +6657,50 @@ document.getElementById('random-chat-btn')?.addEventListener('click', startRando
 
 
 
+// The context length is an Ollama setting, and Ollama runs on a machine the
+// user controls, so the field is only worth showing once the model points
+// somewhere other than a normal online provider: localhost, a LAN or VPN
+// address, or a name that only resolves on the local network. OpenRouter and
+// the other hosted providers ignore num_ctx, so there the field stays hidden.
+function isLocalProviderUrl(url) {
+    const raw = (url || '').trim();
+    if (!raw) return false;
+    let hostname;
+    try {
+        // Users often type "localhost:11434/..." without a scheme.
+        hostname = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `http://${raw}`).hostname.toLowerCase();
+    } catch (_) {
+        return false;
+    }
+    if (!hostname) return false;
+
+    // The URL parser hands IPv6 back wrapped in brackets.
+    if (hostname.startsWith('[')) {
+        const v6 = hostname.slice(1, -1);
+        return v6 === '::1'             // loopback
+            || /^f[cd]/.test(v6)        // fc00::/7, the private range
+            || /^fe[89ab]/.test(v6);    // fe80::/10, link-local
+    }
+
+    const v4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (v4) {
+        const a = Number(v4[1]);
+        const b = Number(v4[2]);
+        return a === 0                          // 0.0.0.0, "this machine"
+            || a === 10                         // private
+            || a === 127                        // loopback
+            || (a === 100 && b >= 64 && b <= 127) // carrier-grade NAT, what Tailscale hands out
+            || (a === 169 && b === 254)         // link-local
+            || (a === 172 && b >= 16 && b <= 31) // private
+            || (a === 192 && b === 168);        // private
+    }
+
+    // A bare name with no dot only resolves on the local network, and these
+    // suffixes are reserved for it.
+    return !hostname.includes('.')
+        || /\.(localhost|local|lan|home|internal|intranet|arpa)$/.test(hostname);
+}
+
 function createModelEntry(model = {}) {
     const entryDiv = document.createElement('div');
     entryDiv.className = 'model-entry';
@@ -6700,6 +6744,16 @@ function createModelEntry(model = {}) {
     </div>
     <button type="button" class="delete-model-btn" title="Delete Model"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
     `;
+
+    const targetApiUrlInput = entryDiv.querySelector('.model-target-api-url-input');
+    const numCtxInput = entryDiv.querySelector('.model-num-ctx-input');
+    const syncNumCtxVisibility = () => {
+        numCtxInput.classList.toggle('hidden', !isLocalProviderUrl(targetApiUrlInput.value));
+    };
+    // Hidden only, never removed: an entry that already has a context length
+    // keeps it if the URL is edited away and back again.
+    targetApiUrlInput.addEventListener('input', syncNumCtxVisibility);
+    syncNumCtxVisibility();
 
     const textareas = entryDiv.querySelectorAll('.global-prompts-content textarea');
     textareas.forEach(textarea => {
@@ -11314,7 +11368,7 @@ const tutorialTours = {
                 targetId: 'app-settings-btn',
                 position: 'bottom',
                 title: 'Enter your API key first',
-                text: 'Open Global App Settings to add your AI API key. This is your first stop — no key, no AI chat.',
+                text: 'Open Global App Settings to add your API key. This is your first stop — no key, no AI chat.',
             },
             {
                 targetId: 'new-character-btn',
