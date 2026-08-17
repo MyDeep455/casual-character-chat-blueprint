@@ -28618,9 +28618,58 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     // it the right to skip the confirm below.
     let converterWin = null;
 
+    // The same proof in a form that survives this page being reloaded, which
+    // the window reference above does not. A refresh here leaves the tool open
+    // in its own tab, still holding a live handle to this one, while this side
+    // forgets it ever opened anything - so every later import was met with a
+    // confirm dialog, on the tab the user had just navigated away from.
+    // Refreshing the app is a normal thing to do; it should not quietly cost
+    // the tool its welcome.
+    //
+    // sessionStorage is exactly the lifetime wanted: per tab, kept across a
+    // reload, gone when the tab is. The token is no weaker than the window
+    // check it stands in for - it is handed over in the tool's URL hash, which
+    // is never sent to a server, is wiped from the address bar the moment the
+    // tool reads it, and is unreadable to every other page. Nothing that did
+    // not receive it from this tab can produce it.
+    const CONVERTER_TOKEN_KEY = 'cccConverterToken';
+
+    function readConverterToken() {
+        try {
+            return sessionStorage.getItem(CONVERTER_TOKEN_KEY) || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // Minted on the way out and only there, so an import from somewhere else
+    // never creates the very thing it would have to match.
+    function converterToken() {
+        const existing = readConverterToken();
+        if (existing) return existing;
+
+        // getRandomValues rather than randomUUID: the latter is refused outside
+        // a secure context, and a copy of this app served over plain http on a
+        // home network is a case the blueprint expects to work.
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        const token = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+
+        try {
+            sessionStorage.setItem(CONVERTER_TOKEN_KEY, token);
+        } catch (e) {
+            // Storage turned off. Handing out a token this page cannot remember
+            // would only produce a mismatch later, so hand out nothing and let
+            // the window check carry it as it always did.
+            return '';
+        }
+        return token;
+    }
+
     function openCardConverter() {
         const url = CARD_CONVERTER_URL
-            + '#ccc-import-from=' + encodeURIComponent(location.origin);
+            + '#ccc-import-from=' + encodeURIComponent(location.origin)
+            + '&ccc-import-token=' + encodeURIComponent(converterToken());
         converterWin = window.open(url, 'rcc-card-converter');
         if (converterWin) {
             converterWin.focus();
@@ -28675,7 +28724,17 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
             // different hat. Anything else has to say who it is and be let in
             // by hand: postMessage is open to every page on the web, and
             // silently writing into someone's collection is not on.
-            if (event.source !== converterWin) {
+            //
+            // Either proof will do. The window handle answers for as long as
+            // this page has been sitting here; the token answers afterwards,
+            // once a refresh has taken that handle away. An empty token is not
+            // a match for anything - a page sending none, and a page whose
+            // storage is switched off, both fall through to the question.
+            const known = readConverterToken();
+            const vouched = event.source === converterWin
+                || (known !== '' && msg.token === known);
+
+            if (!vouched) {
                 const count = Object.keys(backup.characters).length;
                 const ok = await showCustomConfirm(
                     `${event.origin || 'Another page'} wants to add ${count} character(s) to your collection.\n\nImport them?`
