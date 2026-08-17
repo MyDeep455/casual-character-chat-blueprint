@@ -29274,8 +29274,9 @@ helpBtn.addEventListener('click', () => {
 // off mid-tour and waiting for the user to navigate — separate tours per screen
 // are short, and nothing is left hanging.
 //
-// Finishing a tour only marks that tour seen. "Skip Tour" marks all of them,
-// because a user who skips is saying they don't want onboarding at all.
+// Ending a tour marks only that tour seen, whether it was walked to the end or
+// skipped. Skipping the main menu tour still leaves the chat list and chat tours
+// to start on their own screens, and each of those is skipped separately.
 const tutorialTours = {
     'character-selection': {
         storageKey: 'tourSeenMain',
@@ -29380,8 +29381,9 @@ const tutorialTours = {
     },
 };
 
-// Set once by the old single tour when it was completed or skipped. Anyone
-// carrying it has already been onboarded, so they are not shown the new tours.
+// Written by the old single tour when it was completed or skipped; nothing sets
+// it any more. Anyone carrying it has already been onboarded, so they are not
+// shown the new tours.
 const TUTORIAL_LEGACY_KEY = 'tutorialCompleted';
 
 // Numbering the steps here rather than in the data keeps "Step 3 of 7" honest
@@ -29508,13 +29510,9 @@ function tutorialRevealTarget(step) {
     }
 }
 
-function tutorialFinish(skipEverything) {
+function tutorialFinish() {
     const tour = tutorialTours[tutorialData.tourName];
     if (tour) localStorage.setItem(tour.storageKey, 'true');
-    if (skipEverything) {
-        Object.values(tutorialTours).forEach(t => localStorage.setItem(t.storageKey, 'true'));
-        localStorage.setItem(TUTORIAL_LEGACY_KEY, 'true');
-    }
     tutorialData.active = false;
     tutorialData.tourName = null;
     tutorialSpotlight.classList.remove('tutorial-visible');
@@ -29533,7 +29531,7 @@ function tutorialShowStep(stepIndex) {
     while (stepIndex < steps.length && !tutorialTargetUsable(steps[stepIndex])) stepIndex++;
 
     if (stepIndex >= steps.length) {
-        tutorialFinish(false);
+        tutorialFinish();
         return;
     }
 
@@ -29607,7 +29605,7 @@ function tutorialInit() {
 }
 
 tutorialSkipBtn.addEventListener('click', () => {
-    tutorialFinish(true);
+    tutorialFinish();
 });
 
 tutorialNextBtn.addEventListener('click', () => {
