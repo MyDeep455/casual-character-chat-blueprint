@@ -884,10 +884,28 @@ h1 {
     letter-spacing: 0.015em;
     color: #fff;
     text-shadow: 0 2px 5px rgba(0,0,0,0.55), 0 8px 28px rgba(0,0,0,0.4);
-    min-width: 0; 
+    min-width: 0;
     overflow: hidden;
     overflow-wrap: break-word;
-    hyphens: auto; 
+    hyphens: auto;
+}
+
+/* The header reuses the cards' two-line title, so a trailing "(Series)" sits on
+   its own line under the name. The heading is far bigger than a card's, so the
+   series line is halved rather than the cards' 0.68em. */
+#chat-list-character-name .card-title-lines {
+    display: block;
+}
+
+#chat-list-character-name .card-title-character {
+    font-weight: inherit;
+}
+
+#chat-list-character-name .card-title-series {
+    margin-top: 4px;
+    font-size: 0.5em;
+    font-weight: 600;
+    letter-spacing: 0.05em;
 }
 
 
@@ -19892,10 +19910,13 @@ function formatCardTitle(name) {
     const characterName = seriesMatch ? seriesMatch[1].trim() : fullName;
     const seriesName = seriesMatch ? seriesMatch[2] : '';
 
-    return `<span class="card-title-lines">
-        <span class="card-title-character">${escapeHtml(characterName)}</span>
-        ${seriesName ? `<span class="card-title-series">${escapeHtml(seriesName)}</span>` : ''}
-    </span>`;
+    // No whitespace between the spans: the chat list header keeps names with
+    // real line breaks readable via white-space: pre-line, and inside a flex
+    // box that would turn the indentation into an extra blank line.
+    return `<span class="card-title-lines">`
+        + `<span class="card-title-character">${escapeHtml(characterName)}</span>`
+        + (seriesName ? `<span class="card-title-series">${escapeHtml(seriesName)}</span>` : '')
+        + `</span>`;
 }
 
 
@@ -20078,7 +20099,7 @@ if (dashboardAvatarUrl) {
     chatListAvatarPlaceholder.textContent = isWorldChatList ? '🌍' : '👤';
     avatarContainer.style.backgroundImage = 'none';
 }
-  nameH2.textContent = character.name;
+  nameH2.innerHTML = formatCardTitle(character.name);
 
   // Use "World" wording on the dashboard buttons for world cards.
   const cardNoun = isWorldChatList ? 'World' : 'Character';
@@ -29373,7 +29394,7 @@ const tutorialTours = {
             {
                 targetId: 'settings-btn',
                 position: 'bottom',
-                title: "Useful chat settings and great features!",
+                title: "Chat settings and features",
                 text: 'Customize your chat design, control AI models, get reply suggestions, or even use image generation - all in here.',
                 nextLabel: 'Done',
             },

@@ -1967,10 +1967,13 @@ function formatCardTitle(name) {
     const characterName = seriesMatch ? seriesMatch[1].trim() : fullName;
     const seriesName = seriesMatch ? seriesMatch[2] : '';
 
-    return `<span class="card-title-lines">
-        <span class="card-title-character">${escapeHtml(characterName)}</span>
-        ${seriesName ? `<span class="card-title-series">${escapeHtml(seriesName)}</span>` : ''}
-    </span>`;
+    // No whitespace between the spans: the chat list header keeps names with
+    // real line breaks readable via white-space: pre-line, and inside a flex
+    // box that would turn the indentation into an extra blank line.
+    return `<span class="card-title-lines">`
+        + `<span class="card-title-character">${escapeHtml(characterName)}</span>`
+        + (seriesName ? `<span class="card-title-series">${escapeHtml(seriesName)}</span>` : '')
+        + `</span>`;
 }
 
 
@@ -2153,7 +2156,7 @@ if (dashboardAvatarUrl) {
     chatListAvatarPlaceholder.textContent = isWorldChatList ? '🌍' : '👤';
     avatarContainer.style.backgroundImage = 'none';
 }
-  nameH2.textContent = character.name;
+  nameH2.innerHTML = formatCardTitle(character.name);
 
   // Use "World" wording on the dashboard buttons for world cards.
   const cardNoun = isWorldChatList ? 'World' : 'Character';
@@ -11448,7 +11451,7 @@ const tutorialTours = {
             {
                 targetId: 'settings-btn',
                 position: 'bottom',
-                title: "Useful chat settings and great features!",
+                title: "Chat settings and features",
                 text: 'Customize your chat design, control AI models, get reply suggestions, or even use image generation - all in here.',
                 nextLabel: 'Done',
             },
