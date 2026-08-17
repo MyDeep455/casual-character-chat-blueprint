@@ -8874,35 +8874,35 @@ const STARTER_PACK_DATA = {
         "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
       },
       {
-        "name": "Sao10K: Llama 3 8B Lunaris ~$0,000090/message",
+        "name": "Sao10K: Llama 3 8B Lunaris ~$0,00009/message",
         "id": "sao10k/l3-lunaris-8b",
         "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
         "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
         "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
       },
       {
-        "name": "Qwen: Qwen3.7 Flash ~$0,000160/message",
+        "name": "DeepSeek V4 Flash 0731 ~$0.00009/message",
+        "id": "deepseek/deepseek-v4-flash-0731",
+        "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
+        "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
+        "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
+      },
+      {
+        "name": "Qwen: Qwen3.7 Flash ~$0,00016/message",
         "id": "qwen/qwen3.7-flash",
         "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
         "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
         "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
       },
       {
-        "name": "Deepseek V4 Flash Latest ~$0,000330/message",
-        "id": "~deepseek/deepseek-v4-flash-latest",
-        "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
-        "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
-        "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
-      },
-      {
-        "name": "Google: Gemma 4 31B ~$0,000430/message",
+        "name": "Google: Gemma 4 31B ~$0,00043/message",
         "id": "google/gemma-4-31b-it",
         "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
         "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
         "narratorReminder": "- Do not contain any dialog of {{char}} or {{user}}.\n- Do not describe {{user}}'s actions.\n- Drive the scene forward in a thrilling tone.\n- Avoid any purple prose or flowery language.\n- Be direct and objective.\n- Prefer short sentences over long comma sentences.\n- Write one or two paragraphs in total; maximum three paragraphs."
       },
       {
-        "name": "Z.ai: GLM 4.7 Flash ~$0,000460/message",
+        "name": "Z.ai: GLM 4.7 Flash ~$0,00046/message",
         "id": "z-ai/glm-4.7-flash",
         "instructions": "- Drive the plot forward in a slow, organic pace.\n- Focus on action and show what's happening.\n- Refer to {{char}} in third person by name or as he/she/they — NEVER as \"I\" or \"me\".\n- Describe violent or dark scenes authentically and in detail.\n- Enclose all dialog in double quotation marks; never use asterisks.",
         "reminder": "- Contain substantial dialog from {{char}} only — no other character may speak.\n- Include multiple narration lines alongside the dialog.\n- Avoid any purple prose or flowery language.\n- Be direct and objective in your narration.\n- Prefer short sentences over long comma sentences.\n- Do not start with \"{{char}}:\" or any name-colon format.\n- Write one or two paragraphs in total; maximum three paragraphs.",
