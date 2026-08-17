@@ -8553,27 +8553,118 @@ personaEditorAvatarImg.onerror = () => {
     if (_initMusicUrl && currentCharacterId) playMusic(_initMusicUrl);
 
     // ── Feature C: TTS ──
+    // The dropdown lists English and Japanese for everyone, plus the language of wherever
+    // the user is. Their browser locales answer that for most people; the time zone's
+    // country covers someone living abroad on an English-language browser, which is the
+    // case navigator.languages gets wrong. Zones whose language is English or Japanese are
+    // left out of the table below — those two are always listed anyway.
+    const TTS_ZONE_REGIONS = {
+        // Europe
+        'Europe/Amsterdam': 'NL', 'Europe/Andorra': 'AD', 'Europe/Athens': 'GR', 'Europe/Belgrade': 'RS',
+        'Europe/Berlin': 'DE', 'Europe/Bratislava': 'SK', 'Europe/Brussels': 'BE', 'Europe/Bucharest': 'RO',
+        'Europe/Budapest': 'HU', 'Europe/Busingen': 'DE', 'Europe/Chisinau': 'MD', 'Europe/Copenhagen': 'DK',
+        'Europe/Helsinki': 'FI', 'Europe/Istanbul': 'TR', 'Asia/Istanbul': 'TR', 'Europe/Kaliningrad': 'RU',
+        'Europe/Kyiv': 'UA', 'Europe/Kiev': 'UA', 'Europe/Lisbon': 'PT', 'Europe/Ljubljana': 'SI',
+        'Europe/Luxembourg': 'LU', 'Europe/Madrid': 'ES', 'Europe/Malta': 'MT', 'Europe/Minsk': 'BY',
+        'Europe/Monaco': 'MC', 'Europe/Moscow': 'RU', 'Europe/Nicosia': 'CY', 'Asia/Nicosia': 'CY',
+        'Europe/Oslo': 'NO', 'Europe/Paris': 'FR', 'Europe/Podgorica': 'ME', 'Europe/Prague': 'CZ',
+        'Europe/Riga': 'LV', 'Europe/Rome': 'IT', 'Europe/Samara': 'RU', 'Europe/San_Marino': 'SM',
+        'Europe/Sarajevo': 'BA', 'Europe/Skopje': 'MK', 'Europe/Sofia': 'BG', 'Europe/Stockholm': 'SE',
+        'Europe/Tallinn': 'EE', 'Europe/Tirane': 'AL', 'Europe/Vaduz': 'LI', 'Europe/Vatican': 'VA',
+        'Europe/Vienna': 'AT', 'Europe/Vilnius': 'LT', 'Europe/Volgograd': 'RU', 'Europe/Warsaw': 'PL',
+        'Europe/Zagreb': 'HR', 'Europe/Zurich': 'CH', 'Atlantic/Canary': 'ES', 'Atlantic/Madeira': 'PT',
+        'Atlantic/Reykjavik': 'IS',
+        // Russia east of the Urals
+        'Asia/Yekaterinburg': 'RU', 'Asia/Omsk': 'RU', 'Asia/Novosibirsk': 'RU', 'Asia/Krasnoyarsk': 'RU',
+        'Asia/Irkutsk': 'RU', 'Asia/Yakutsk': 'RU', 'Asia/Vladivostok': 'RU', 'Asia/Kamchatka': 'RU',
+        // Latin America
+        'America/Mexico_City': 'MX', 'America/Monterrey': 'MX', 'America/Tijuana': 'MX', 'America/Cancun': 'MX',
+        'America/Merida': 'MX', 'America/Chihuahua': 'MX', 'America/Mazatlan': 'MX', 'America/Guatemala': 'GT',
+        'America/El_Salvador': 'SV', 'America/Tegucigalpa': 'HN', 'America/Managua': 'NI',
+        'America/Costa_Rica': 'CR', 'America/Panama': 'PA', 'America/Havana': 'CU',
+        'America/Santo_Domingo': 'DO', 'America/Puerto_Rico': 'PR', 'America/Bogota': 'CO',
+        'America/Lima': 'PE', 'America/Guayaquil': 'EC', 'America/Caracas': 'VE', 'America/La_Paz': 'BO',
+        'America/Asuncion': 'PY', 'America/Montevideo': 'UY', 'America/Santiago': 'CL',
+        'America/Argentina/Buenos_Aires': 'AR', 'America/Buenos_Aires': 'AR', 'America/Argentina/Cordoba': 'AR',
+        'America/Argentina/Mendoza': 'AR', 'America/Sao_Paulo': 'BR', 'America/Bahia': 'BR',
+        'America/Fortaleza': 'BR', 'America/Recife': 'BR', 'America/Belem': 'BR', 'America/Manaus': 'BR',
+        // Asia
+        'Asia/Shanghai': 'CN', 'Asia/Chongqing': 'CN', 'Asia/Harbin': 'CN', 'Asia/Urumqi': 'CN',
+        'Asia/Hong_Kong': 'HK', 'Asia/Macau': 'MO', 'Asia/Taipei': 'TW', 'Asia/Seoul': 'KR',
+        'Asia/Pyongyang': 'KP', 'Asia/Bangkok': 'TH', 'Asia/Ho_Chi_Minh': 'VN', 'Asia/Saigon': 'VN',
+        'Asia/Jakarta': 'ID', 'Asia/Pontianak': 'ID', 'Asia/Makassar': 'ID', 'Asia/Jayapura': 'ID',
+        'Asia/Kuala_Lumpur': 'MY', 'Asia/Kuching': 'MY', 'Asia/Manila': 'PH', 'Asia/Kolkata': 'IN',
+        'Asia/Calcutta': 'IN', 'Asia/Colombo': 'LK', 'Asia/Dhaka': 'BD', 'Asia/Karachi': 'PK',
+        'Asia/Kathmandu': 'NP', 'Asia/Thimphu': 'BT', 'Asia/Yangon': 'MM', 'Asia/Rangoon': 'MM',
+        'Asia/Phnom_Penh': 'KH', 'Asia/Vientiane': 'LA', 'Asia/Ulaanbaatar': 'MN', 'Asia/Almaty': 'KZ',
+        'Asia/Tashkent': 'UZ', 'Asia/Bishkek': 'KG', 'Asia/Dushanbe': 'TJ', 'Asia/Ashgabat': 'TM',
+        'Asia/Baku': 'AZ', 'Asia/Tbilisi': 'GE', 'Asia/Yerevan': 'AM', 'Asia/Kabul': 'AF',
+        // Middle East
+        'Asia/Tehran': 'IR', 'Asia/Baghdad': 'IQ', 'Asia/Riyadh': 'SA', 'Asia/Dubai': 'AE',
+        'Asia/Qatar': 'QA', 'Asia/Kuwait': 'KW', 'Asia/Bahrain': 'BH', 'Asia/Muscat': 'OM',
+        'Asia/Aden': 'YE', 'Asia/Amman': 'JO', 'Asia/Beirut': 'LB', 'Asia/Damascus': 'SY',
+        'Asia/Jerusalem': 'IL', 'Asia/Tel_Aviv': 'IL', 'Asia/Gaza': 'PS', 'Asia/Hebron': 'PS',
+        // Africa
+        'Africa/Cairo': 'EG', 'Africa/Casablanca': 'MA', 'Africa/Algiers': 'DZ', 'Africa/Tunis': 'TN',
+        'Africa/Tripoli': 'LY', 'Africa/Khartoum': 'SD', 'Africa/Addis_Ababa': 'ET', 'Africa/Nairobi': 'KE',
+        'Africa/Dar_es_Salaam': 'TZ', 'Africa/Kinshasa': 'CD', 'Africa/Abidjan': 'CI', 'Africa/Dakar': 'SN',
+        'Africa/Douala': 'CM', 'Africa/Luanda': 'AO', 'Africa/Maputo': 'MZ', 'Indian/Antananarivo': 'MG',
+    };
+
+    // Languages to offer on top of English and Japanese, most-local-looking first.
+    function getLocalVoiceLangs() {
+        const langs = [];
+        const addLang = code => {
+            const lang = String(code || '').toLowerCase().split(/[-_]/)[0];
+            if (lang && lang !== 'und' && !langs.includes(lang)) langs.push(lang);
+        };
+        // 'AT' → 'de': the language that belongs to a place, which is what a region code or
+        // a time zone tells us. Intl.Locale is missing on older browsers, hence the catch.
+        const addRegionLang = region => {
+            try { addLang(new Intl.Locale('und-' + String(region).toUpperCase()).maximize().language); } catch { }
+        };
+        [navigator.language, ...(navigator.languages || [])].forEach(tag => {
+            if (!tag) return;
+            addLang(tag);
+            const region = String(tag).split(/[-_]/)[1] || '';
+            if (/^[A-Za-z]{2}$/.test(region)) addRegionLang(region);
+        });
+        try {
+            const region = TTS_ZONE_REGIONS[Intl.DateTimeFormat().resolvedOptions().timeZone];
+            if (region) addRegionLang(region);
+        } catch { }
+        return langs;
+    }
+
+    function ttsLanguageLabel(lang) {
+        try {
+            const name = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang);
+            if (name && name.toLowerCase() !== lang) return name;
+        } catch { }
+        return lang.toUpperCase();
+    }
+
     function populateTTSVoices() {
         if (!('speechSynthesis' in window)) return;
         const sel = document.getElementById('tts-voice-select');
         if (!sel) return;
         const voices = speechSynthesis.getVoices();
         sel.innerHTML = '<option value="">(Default voice)</option>';
-        const groups = [
-            { prefix: 'en', label: 'English', voices: [] },
-            { prefix: 'de', label: 'German', voices: [] },
-            { prefix: 'ja', label: 'Japanese', voices: [] },
-        ];
-        voices.forEach(v => {
-            const lang = v.lang.toLowerCase();
-            const g = groups.find(gr => lang.startsWith(gr.prefix));
-            if (g) g.voices.push(v);
-        });
-        groups.forEach(g => {
-            if (!g.voices.length) return;
+        // Android voices report 'en_US' rather than 'en-US', so split on both.
+        const langOf = v => String(v.lang || '').toLowerCase().split(/[-_]/)[0];
+        const langs = ['en', 'ja'];
+        getLocalVoiceLangs().forEach(lang => { if (!langs.includes(lang)) langs.push(lang); });
+        // A voice chosen earlier — on another machine, or before a move abroad — keeps its
+        // group even when its language is in none of the above, so the saved selection is
+        // never silently dropped from the dropdown.
+        const saved = ttsCurrentVoiceURI ? voices.find(v => v.voiceURI === ttsCurrentVoiceURI) : null;
+        if (saved && !langs.includes(langOf(saved))) langs.push(langOf(saved));
+        langs.forEach(lang => {
+            const inLang = voices.filter(v => langOf(v) === lang);
+            if (!inLang.length) return;
             const og = document.createElement('optgroup');
-            og.label = g.label;
-            g.voices.forEach(v => {
+            og.label = ttsLanguageLabel(lang);
+            inLang.forEach(v => {
                 const opt = document.createElement('option');
                 opt.value = v.voiceURI;
                 opt.textContent = `${v.name} (${v.lang})`;
