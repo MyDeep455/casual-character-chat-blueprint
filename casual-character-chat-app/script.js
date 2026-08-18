@@ -3374,6 +3374,19 @@ function createTypewriter() {
             onRender = renderer;
             if (text.length > target.length) {
                 target = text;
+                // A tab in the background is served no animation frames at all, so the reveal
+                // froze mid-reply and then replayed the whole backlog in one burst when the tab
+                // was looked at again. Nobody is watching a hidden tab, so there is nothing to
+                // animate: show the text in full as it arrives and let the animation pick up
+                // again on return. Chunks keep arriving while hidden, so this keeps the bubble
+                // current until the stream ends.
+                if (document.hidden) {
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                    lastFrameAt = 0;
+                    shown = target.length;
+                    onRender(target);
+                    return;
+                }
                 // A fresh timestamp, or the gap since the last run would count as elapsed time.
                 if (!rafId) { lastFrameAt = 0; rafId = requestAnimationFrame(tick); }
             }
