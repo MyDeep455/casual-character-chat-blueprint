@@ -3330,33 +3330,59 @@ function showImagePendingBlock(messageElement, { providerLabel, onCancel }) {
     };
 }
 
-function createTypewriter(charsPerFrame = 3) {
+// Text is revealed at the rate it is arriving, not at a fixed number of characters per
+// frame. Models deliver a token at a time in an uneven rhythm, and a fixed rate empties
+// the buffer between tokens, so the reply appeared in bursts with dead stops in between -
+// and could never keep up with a fast model, which left a large jump at the end instead.
+// Spending a constant window on whatever text is waiting settles the reveal at the speed
+// the model is actually producing: the bubble keeps a little text in hand and keeps moving.
+function createTypewriter() {
+    const CATCH_UP_WINDOW = 0.25;      // seconds to spend on the text currently waiting
+    const MIN_CHARS_PER_SECOND = 14;   // so the last characters cannot crawl to a halt
+    const MAX_CHARS_PER_SECOND = 1600; // an upper bound for the very fastest models
+    const MAX_FRAME_SECONDS = 0.25;    // a long frame must not release a burst at once
+
     let target = '';
-    let displayed = 0;
+    let shown = 0;        // fractional, so the pace does not depend on the frame rate
     let rafId = null;
+    let lastFrameAt = 0;
     let onRender = null;
 
-    function tick() {
-        if (displayed < target.length && onRender) {
-            displayed = Math.min(displayed + charsPerFrame, target.length);
-            onRender(target.slice(0, displayed));
+    function tick(now) {
+        const dt = lastFrameAt ? Math.min((now - lastFrameAt) / 1000, MAX_FRAME_SECONDS) : 1 / 60;
+        lastFrameAt = now;
+
+        const waiting = target.length - shown;
+        if (waiting > 0) {
+            const speed = Math.min(Math.max(waiting / CATCH_UP_WINDOW, MIN_CHARS_PER_SECOND), MAX_CHARS_PER_SECOND);
+            const before = Math.floor(shown);
+            shown = Math.min(shown + speed * dt, target.length);
+            if (onRender && Math.floor(shown) > before) onRender(target.slice(0, Math.floor(shown)));
         }
-        rafId = displayed < target.length ? requestAnimationFrame(tick) : null;
+
+        if (shown < target.length) {
+            rafId = requestAnimationFrame(tick);
+        } else {
+            rafId = null;
+            lastFrameAt = 0;
+        }
     }
 
     return {
-        init(text) { target = text; displayed = text.length; },
+        init(text) { target = text; shown = text.length; },
         update(text, renderer) {
             onRender = renderer;
             if (text.length > target.length) {
                 target = text;
-                if (!rafId) rafId = requestAnimationFrame(tick);
+                // A fresh timestamp, or the gap since the last run would count as elapsed time.
+                if (!rafId) { lastFrameAt = 0; rafId = requestAnimationFrame(tick); }
             }
         },
         flush(text, renderer) {
             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            lastFrameAt = 0;
             target = text;
-            displayed = text.length;
+            shown = text.length;
             renderer(text);
         }
     };
@@ -4670,6 +4696,12 @@ continue;
                 finalVariant.think = finalThink;
                 newVariant = { main: finalMainText, think: finalThink };
 
+                // Retire the typewriter on the finished text before the reply is announced.
+                // Left running it keeps repainting the bubble with a partial slice for as long
+                // as it lags the stream, so the notification sound fired while the message still
+                // appeared to be typing itself out.
+                mainTypewriter.flush(finalMainText || '', t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
+
                 if (thinkBlockEl) {
                     if (finalThink) {
                         thinkBlockEl.classList.remove('hidden');
@@ -5233,6 +5265,9 @@ if (!finalThink) {
                         thinkBlockEl.open = false;
                     }
                 }
+                // Same as regeneration: finish the typewriter first, or the sound announces a
+                // reply whose bubble is still visibly typing.
+                mainTypewriter.flush(activeVariant.main || '', t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
                 playNotificationSound();
                 updateTokenCount();
                 break; 
