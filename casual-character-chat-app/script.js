@@ -84,9 +84,59 @@ function openDB() {
 
 
 
-const availableModels = [
-  { id: "z-ai/glm-4.5-air:free", name: "Z.AI: GLM 4.5 Air (free)" }
-];
+// The starter pack is the single source of truth for the models the app ships
+// with: it carries each one's instructions and reminders, so reading the list
+// from there is what keeps a second, hand-kept copy from going stale.
+const STARTER_PACK_MODELS = (() => {
+    if (typeof STARTER_PACK_DATA === 'undefined') return [];
+    const packModels = STARTER_PACK_DATA?.appSettings?.availableModels;
+    if (!Array.isArray(packModels)) return [];
+    return packModels.filter(m => m && m.id).map(m => ({ ...m }));
+})();
+
+// Preselected in chat settings, and the fallback whenever the selector is
+// holding an id that the model list no longer contains.
+const DEFAULT_MODEL_ID = "deepseek/deepseek-v4-flash-0731";
+
+// Only reached when starter_pack_data.js is missing, which is why it is one
+// usable model rather than a second copy of the pack.
+const availableModels = STARTER_PACK_MODELS.length > 0
+    ? STARTER_PACK_MODELS
+    : [{ id: DEFAULT_MODEL_ID, name: "DeepSeek V4 Flash 0731 ~$0.00009/message" }];
+
+// Installs made before the model list was taken from the starter pack hold a
+// single entry for the retired GLM 4.5 Air default. This id exists only so that
+// leftover can be recognised and replaced; it is never offered as a model.
+const RETIRED_DEFAULT_MODEL_ID = "z-ai/glm-4.5-air:free";
+
+// True only for that untouched one-entry list. Anyone who has added, renamed or
+// removed a model no longer matches, so a curated list is never overwritten.
+function isUntouchedRetiredModelList(models) {
+    return Array.isArray(models)
+        && models.length === 1
+        && models[0]
+        && models[0].id === RETIRED_DEFAULT_MODEL_ID;
+}
+
+function resolveDefaultModelId(models) {
+    const list = Array.isArray(models) ? models : [];
+    if (list.some(m => m && m.id === DEFAULT_MODEL_ID)) return DEFAULT_MODEL_ID;
+    return list.length > 0 ? list[0].id : DEFAULT_MODEL_ID;
+}
+
+// Selects the first candidate id the <select> actually holds. Assigning an id
+// that is not among the options leaves the select blank, which is how a single
+// stale saved model used to hide the whole list.
+function setSelectValueWithFallback(select, candidates) {
+    if (!select) return '';
+    for (const candidate of candidates) {
+        if (!candidate) continue;
+        select.value = candidate;
+        if (select.value === candidate) return select.value;
+    }
+    if (select.options.length > 0) select.selectedIndex = 0;
+    return select.value;
+}
 
 
 
@@ -284,7 +334,7 @@ function mergeContinuationText(originalText, continuationText) {
 const defaultSettings = {
         fontSize: '18',
         temperature: '0.70',
-        model: availableModels[0].id,
+        model: resolveDefaultModelId(availableModels),
         mainTextColor: '#FFFFFF',
         dialogueColor: '#ffd952',
         userBubbleColor: '#141414',
@@ -1194,7 +1244,7 @@ async function saveAppSettings() {
 
 async function loadAppSettingsFromDB() {
     const defaultSettings = {
-        availableModels: availableModels
+        availableModels: availableModels.map(m => ({ ...m }))
     };
 
     if (db) {
@@ -1209,6 +1259,14 @@ async function loadAppSettingsFromDB() {
         appSettings = settingsRecord ? settingsRecord.value : defaultSettings;
     } else {
         appSettings = defaultSettings;
+    }
+
+    if (isUntouchedRetiredModelList(appSettings.availableModels)) {
+        appSettings = { ...appSettings, availableModels: defaultSettings.availableModels };
+        if (db) {
+            const writeTransaction = db.transaction(['settings'], 'readwrite');
+            writeTransaction.objectStore('settings').put({ key: 'appSettings', value: appSettings });
+        }
     }
 
     document.getElementById('api-key-input').value = appSettings.apiKey || '';
@@ -1226,9 +1284,9 @@ async function resetAppSettings() {
     availableModels.forEach(m => createModelEntry({
       name: m.name,
       id: m.id,
-      instructions: '',
-      reminder: '',
-      narratorReminder: ''
+      instructions: m.instructions || '',
+      reminder: m.reminder || '',
+      narratorReminder: m.narratorReminder || ''
     }));
     await saveAppSettings();
   }
@@ -1441,6 +1499,11 @@ async function resetAppSettings() {
         }
         applySetting(key, value);
     }
+
+    // The loop above assigns the saved model id blind. If it predates a change
+    // to the model list it is no longer one of the options and the selector goes
+    // blank, so settle it against what the list actually holds.
+    setSelectValueWithFallback(modelSelect, [savedSettings['model'], defaultSettings.model]);
 
     if (savedSettings['suggestionModelId']) {
         applySetting('suggestionModelId', savedSettings['suggestionModelId']);
@@ -1926,7 +1989,7 @@ function populateModelSelector() {
         modelSelect.appendChild(option);
     });
 
-    modelSelect.value = previouslySelectedModel || defaultSettings.model;
+    setSelectValueWithFallback(modelSelect, [previouslySelectedModel, defaultSettings.model]);
 
     if (suggestionModelSelect) {
         const prevSuggModel = suggestionModelSelect.value;
@@ -11417,11 +11480,36 @@ async function loadStarterPack() {
             await saveCharactersToDB();
 
             const starterAppSettings = data.appSettings;
-            if (starterAppSettings && db) {
+            if (starterAppSettings) {
                 console.log('First launch: Loading app settings from starter pack...');
-                const transaction = db.transaction(['settings'], 'readwrite');
-                const store = transaction.objectStore('settings');
-                store.put({ key: 'appSettings', value: starterAppSettings });
+                const starterModels = Array.isArray(starterAppSettings.availableModels)
+                    ? starterAppSettings.availableModels.filter(m => m && m.id).map(m => ({ ...m }))
+                    : [];
+
+                // An API key typed before any character existed belongs to the
+                // user, not to the pack.
+                appSettings = {
+                    ...starterAppSettings,
+                    availableModels: starterModels,
+                    apiKey: (appSettings && appSettings.apiKey) || starterAppSettings.apiKey || ''
+                };
+
+                if (db) {
+                    const transaction = db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    store.put({ key: 'appSettings', value: appSettings });
+                }
+
+                // The settings list and the selector were already built from the
+                // first-run defaults by the time this runs, so the pack has to be
+                // pushed into them here; otherwise its models only showed up
+                // after a reload.
+                if (starterModels.length > 0) {
+                    modelListContainer.innerHTML = '';
+                    starterModels.forEach(model => createModelEntry(model));
+                    populateModelSelector();
+                    setSelectValueWithFallback(modelSelect, [resolveDefaultModelId(starterModels)]);
+                }
             }
         }
 
