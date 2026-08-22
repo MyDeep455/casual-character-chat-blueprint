@@ -96,13 +96,13 @@ const STARTER_PACK_MODELS = (() => {
 
 // Preselected in chat settings, and the fallback whenever the selector is
 // holding an id that the model list no longer contains.
-const DEFAULT_MODEL_ID = "deepseek/deepseek-v4-flash-0731";
+const DEFAULT_MODEL_ID = "openrouter/free";
 
 // Only reached when starter_pack_data.js is missing, which is why it is one
 // usable model rather than a second copy of the pack.
 const availableModels = STARTER_PACK_MODELS.length > 0
     ? STARTER_PACK_MODELS
-    : [{ id: DEFAULT_MODEL_ID, name: "DeepSeek V4 Flash 0731 ~$0.00009/message" }];
+    : [{ id: DEFAULT_MODEL_ID, name: "Openrouter: Free (random free model)" }];
 
 // Installs made before the model list was taken from the starter pack hold a
 // single entry for the retired GLM 4.5 Air default. This id exists only so that
