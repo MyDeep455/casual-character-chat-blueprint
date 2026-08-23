@@ -482,16 +482,36 @@ No one else, including the developer, can access your characters or conversation
 </ul>
 
     <h3>Dynamic Scenario Management</h3>
-    <p>Scenarios are pre-written starting points for a chat. This is perfect for setting up a specific scene or situation. Each scenario consists of a <strong>Title</strong> (for your own reference) and a <strong>Description</strong>, which usually contains the opening message of the chat.</p>
+    <p>Scenarios are pre-written starting points for a chat. This is perfect for setting up a specific scene or situation. Each scenario is a <strong>Title</strong> (for your own reference) and two text fields.</p>
+    <ul>
+        <li><strong>Greeting:</strong> the opening message of the chat - the first scene, and your character's first words. It is sent <em>once</em>, and then scrolls out of the AI's attention as the chat grows. That is why anything written here as "and later they discover the betrayal" gets played in the very next reply, however firmly you asked the AI to wait.</li>
+        <li><strong>Story Line:</strong> where the story should go, in the order it should get there. This one is sent with <em>every</em> message, so it keeps working long after the greeting has scrolled away. It is also the right home for standing context - the situation, who wants what, what is at stake - and for what people used to put in an OOC note at the top of a scenario.</li>
+    </ul>
+    <p>Both are optional. If the order things happen in does not matter to you, write everything into the Greeting and leave the Story Line empty - nothing changes from how scenarios have always worked.</p>
+
+    <h3>🗺️ Story Line</h3>
+    <p>There is nothing to tick, time or manage. The AI reads the conversation so far, works out how far along the story line it already is, and steers gradually toward the next thing that has not happened yet - taking many replies over it, letting ordinary scenes happen in between, and never reaching past it. When it has all happened, the story simply carries on.</p>
+    <p>It therefore works best as clear, separate turning points, one per line, rather than fine detail: "a letter arrives that names the keeper" is something the AI can recognise as done, "they grow closer" is not. For example:</p>
+    <code>A coastal town in late autumn. You have come looking for work and know nobody.
+<br>
+<br>1. They share a meal and one of them lets something slip.
+<br>2. A letter arrives that names the keeper.
+<br>3. The lighthouse burns down.</code>
     <blockquote>
-        <p>Optional: At the beginning of the scenario description, you can add an "Out-of-character note" for the AI with important meta information about the scenario. It has usually even higher priority for the AI than the character description. For example: If your character description says that the character is good, then you can simply write in an OOC-note that the chracter is evil in this scenario. You can add other OOC-notes also in your messages during the chat anytime, whenever you need to clarify things for the AI. A note could look like this for example:</p>
+        <p>A scenario's story line is a <em>template</em>. Starting a chat from it gives that chat its own copy, so you can re-steer one story mid-chat without touching the scenario or any other chat started from it.</p>
+    </blockquote>
+
+    <h3>More on Scenarios</h3>
+    <blockquote>
+        <p>Optional (and largely replaced by the <strong>Story Line</strong> field above, which does this properly): At the beginning of the greeting, you can add an "Out-of-character note" for the AI with important meta information about the scenario. It has usually even higher priority for the AI than the character description. For example: If your character description says that the character is good, then you can simply write in an OOC-note that the chracter is evil in this scenario. You can add other OOC-notes also in your messages during the chat anytime, whenever you need to clarify things for the AI. A note could look like this for example:</p>
         <code>### OOC: {{user}} is the equivalent of Natsuki Subaru and replaces him in this scenario. Emilia plays a cold and detached opponent of {{user}}. Elsa Granhiert plays a trustful and loyal ally of {{user}}.
 <br>---
 <br>Scenario: [Here comes your actual scenario description with a starting scene, including first message of your character if you want.]</code>
     </blockquote>
     <ul>
         <li>Click the <code>+ Add Scenario</code> button to add a new, empty scenario block.</li>
-        <li>Click the <code>✨ AI Generate Scenario</code> button to have an AI write an opening scenario for you. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. If the AI provider fails, an informative error message is displayed.</li>
+        <li>Scenarios you already had are untouched by the split - their existing text is simply shown in the <strong>Greeting</strong> box, with an empty <strong>Story Line</strong> underneath. The same is true for characters imported from a card or brought in through the Character Card Browser.</li>
+        <li>Click the <code>✨ Generate Greeting</code> button to have an AI write an opening scene for you, straight into the <strong>Greeting</strong> box. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. If the AI provider fails, an informative error message is displayed.</li>
         <li>Click the <code>🗑️</code> button next to a scenario to delete that scenario.</li>
     </ul>
 
@@ -505,7 +525,8 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
         <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
         <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history.</li>
-        <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, or reminders the AI tends to forget over long conversations. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
+        <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, or reminders the AI tends to forget over long conversations. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.
+            <br><br>Underneath sits <strong>🗺️ Story Line</strong>: this chat's own copy of the story line from the scenario, and the only other thing in this panel. Rewrite it mid-chat to change where things are heading. A chat started empty, or started before you wrote one, can get a story line here too. Saving the panel saves both fields together.</li>
         <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>

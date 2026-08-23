@@ -179,7 +179,7 @@
                 <button type="button" id="music-stop-btn">⏹ Stop</button>
             </div>
         </div>
-        <button id="chat-memories-btn" title="Chat Memories">🧠</button>
+        <button id="chat-memories-btn" title="Memories & Story Line">🧠</button>
         <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
         <button id="select-persona-btn" title="Select Persona">🎭</button>
         <button id="settings-btn" title="Chat Settings">⚙️</button>
@@ -382,6 +382,11 @@
             <p class="chat-memories-hint">High-priority notes for this chat. They are sent with every request.</p>
             <button type="button" id="summarize-memories-btn" class="settings-action-btn summarize-btn">✨ Auto-summarize Chat</button>
             <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and story beats to remember..."></textarea>
+
+            <div class="chat-story-line-section">
+                <textarea id="chat-story-line-textarea" rows="4" placeholder="Story Line: where the story should go, in order."></textarea>
+            </div>
+
             <div class="editor-action-row">
                 <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
                     <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
@@ -525,7 +530,7 @@
     </div>
 <div class="scenario-action-row">
     <button type="button" id="add-scenario-btn" class="add-scenario-button">+ Add Scenario</button>
-    <button type="button" id="ai-scenario-btn" class="add-scenario-button ai-generate-btn">✨ AI Generate Scenario</button>
+    <button type="button" id="ai-scenario-btn" class="add-scenario-button ai-generate-btn">✨ Generate Greeting</button>
 </div>
        
                <div class="form-buttons">

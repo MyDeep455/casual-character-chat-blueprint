@@ -49,6 +49,100 @@ Treat this as the character's current emotional state. Consistently but naturall
 `;
 }
 
+/* ===========================================================================
+ * SCENARIO STORY LINE
+ * ===========================================================================
+ * A scenario used to be one blob of text that became the chat's first message.
+ * It is now two fields:
+ *
+ *   Greeting   - the first message, and nothing else. It scrolls out of the
+ *                model's attention as the chat grows, which is exactly why
+ *                anything written into it as "later" gets played immediately.
+ *   Story Line - the course the story should take, sent with every request.
+ *
+ * Nothing here is tracked, ticked, timed or counted. The story line goes to the
+ * model as written and it works out from the conversation itself how far along
+ * it the story already is. So the wording below is the only thing holding the
+ * model back from playing the end of it at once: it is blunt about what is off
+ * limits, and it is repeated on the last user turn, where it is felt most.
+ * ======================================================================== */
+
+function normalizeStoryLine(value) {
+    if (typeof value === 'string') return value.trim();
+    // The shape this replaced: a General Plot plus an ordered milestone list.
+    // Fold it back into one block of text rather than dropping it.
+    if (value && typeof value === 'object') {
+        const plot = typeof value.generalPlot === 'string' ? value.generalPlot.trim() : '';
+        const steps = Array.isArray(value.milestones)
+            ? value.milestones
+                .map(m => (typeof m === 'string' ? m : ((m && typeof m.text === 'string') ? m.text : '')).trim())
+                .filter(Boolean)
+            : [];
+        const route = steps.map((t, i) => `${i + 1}. ${t}`).join('\n');
+        return [plot, route].filter(Boolean).join('\n\n');
+    }
+    return '';
+}
+
+// Turns anything that has ever been stored as a scenario into the split shape.
+// This runs on every load, so it must leave an already-split scenario alone.
+function normalizeScenario(scenario, index = 0) {
+    if (typeof scenario === 'string') scenario = { name: `Scenario ${index + 1}`, text: scenario };
+    if (!scenario || typeof scenario !== 'object') return null;
+    // `text` is what every scenario saved before the split has, and what the
+    // card converter still sends. It is the greeting - never drop it.
+    const greeting = typeof scenario.greeting === 'string'
+        ? scenario.greeting
+        : (typeof scenario.text === 'string' ? scenario.text : '');
+    const name = (typeof scenario.name === 'string' && scenario.name.trim())
+        ? scenario.name
+        : 'Unnamed Scenario';
+    return { name, greeting, storyLine: normalizeStoryLine(scenario.storyLine ?? scenario) };
+}
+
+function normalizeScenarioList(list) {
+    if (!Array.isArray(list)) return [];
+    return list.map((s, i) => normalizeScenario(s, i)).filter(Boolean);
+}
+
+/* A chat carries its own copy, so re-steering one story leaves the scenario and
+ * every other chat started from it alone. `plan` is what older builds wrote. */
+function getChatStoryLine(chat) {
+    if (!chat) return '';
+    return normalizeStoryLine(typeof chat.storyLine === 'string' ? chat.storyLine : chat.plan);
+}
+
+function getStoryLineSystemContext(storyLine) {
+    const text = normalizeStoryLine(storyLine);
+    if (!text) return '';
+    return '--- STORY LINE (THE PLANNED COURSE OF THIS STORY - THE PACING RULES BELOW OVERRIDE ANY URGE TO MOVE FAST) ---\n'
+         + text + '\n'
+         + '\nPACING RULES:\n'
+         + '- Anything above that has not happened yet is a goal to work toward, in the order it is written.\n'
+         + '- Work out from the conversation so far how far the story has already come, then move toward the next goal only. Everything past it is off limits until its turn genuinely comes: do not enact it, set it up, foreshadow it, refer to it, or let any character know of it.\n'
+         + '- Take many replies over a goal. It has to grow out of what the characters and the user are actually doing, and must never be announced or jumped straight to.\n'
+         + '- If the story is not ready for the next goal, let the scene be an ordinary one and move it a little closer instead. Ordinary conversation, description, reaction and downtime are correct and expected - they are not filler and not something to hurry past.\n'
+         + '- Once a goal has genuinely happened, let it settle and do not re-stage it. Then, in your own time, begin working toward the one after it.\n'
+         + '- When all of it has happened, carry the story on from there at its own pace.\n'
+         + '- Never mention this story line, and never say or imply that a plan exists. Never quote these headings and never write out what is still to come.\n\n';
+}
+
+// The system prompt sits a long way from the generation point in a long chat.
+// This rides on the last user turn instead, where the model actually feels it.
+function getStoryLineReminderLine(storyLine) {
+    if (!normalizeStoryLine(storyLine)) return '';
+    return 'Stay on the story line: work only toward the next goal that has not happened yet, move it a little closer, and do not reach past it in this reply.';
+}
+
+function getChatStoryLineParts(chat) {
+    const storyLine = getChatStoryLine(chat);
+    if (!storyLine) return { systemContext: '', reminderLine: '' };
+    return {
+        systemContext: getStoryLineSystemContext(storyLine),
+        reminderLine: getStoryLineReminderLine(storyLine)
+    };
+}
+
 document.body.style.opacity = '1';
 
 let db;
@@ -477,6 +571,7 @@ const defaultSettings = {
     const chatMemoriesTextarea = document.getElementById('chat-memories-textarea');
     const saveMemoriesEditBtn = document.getElementById('save-memories-edit-btn');
     const cancelMemoriesEditBtn = document.getElementById('cancel-memories-edit-btn');
+    const chatStoryLineTextarea = document.getElementById('chat-story-line-textarea');
     if (dialogBtn) {
         dialogBtn.setAttribute('aria-label', 'Send as Character');
     }
@@ -573,17 +668,21 @@ const defaultSettings = {
     let dragSrcEl = null;
     let dragScrollRAF = null;
     let dragScrollDir = 0;
+    // Which panel scrolls while a row is being dragged. Two different lists are
+    // reorderable now, in two different modals, so this cannot be hardcoded to
+    // the app settings panel any more.
+    let dragScrollEl = null;
     function updateDragScroll() {
-        if (dragScrollDir !== 0) {
-            appSettingsModalContent.scrollTop += dragScrollDir * 10;
+        if (dragScrollDir !== 0 && dragScrollEl) {
+            dragScrollEl.scrollTop += dragScrollDir * 10;
             dragScrollRAF = requestAnimationFrame(updateDragScroll);
         } else {
             dragScrollRAF = null;
         }
     }
     document.addEventListener('dragover', (e) => {
-        if (!dragSrcEl) return;
-        const modalRect = appSettingsModalContent.getBoundingClientRect();
+        if (!dragSrcEl || !dragScrollEl) return;
+        const modalRect = dragScrollEl.getBoundingClientRect();
         if (e.clientY < modalRect.top + 80) {
             dragScrollDir = -1;
         } else if (e.clientY > modalRect.bottom - 80) {
@@ -595,6 +694,66 @@ const defaultSettings = {
             dragScrollRAF = requestAnimationFrame(updateDragScroll);
         }
     });
+
+    /* Drag-to-reorder for one row of a list. Only one drag can be in flight, so
+     * the state above stays shared; what differs per list is the container, the
+     * row selector and which element scrolls. Drops are refused across lists. */
+    function enableRowDragReorder(rowEl, { listEl, handleEl, rowSelector, scrollEl }) {
+        if (!rowEl || !listEl || !handleEl) return;
+
+        // Rows are only draggable while the handle is held, so text inside them
+        // stays selectable the rest of the time.
+        handleEl.addEventListener('mousedown', () => {
+            rowEl.setAttribute('draggable', 'true');
+        });
+
+        rowEl.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+            setTimeout(() => rowEl.classList.add('dragging'), 0);
+            dragSrcEl = rowEl;
+            dragScrollEl = scrollEl || null;
+        });
+
+        rowEl.addEventListener('dragend', () => {
+            rowEl.removeAttribute('draggable');
+            rowEl.classList.remove('dragging');
+            document.querySelectorAll(rowSelector).forEach(el => {
+                el.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+            dragSrcEl = null;
+            dragScrollEl = null;
+            if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
+            dragScrollDir = 0;
+        });
+
+        rowEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (!dragSrcEl || dragSrcEl === rowEl || !listEl.contains(dragSrcEl)) return;
+            const rect = rowEl.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            rowEl.classList.remove('drag-over-top', 'drag-over-bottom');
+            rowEl.classList.add(e.clientY < midY ? 'drag-over-top' : 'drag-over-bottom');
+        });
+
+        rowEl.addEventListener('dragleave', (e) => {
+            if (!rowEl.contains(e.relatedTarget)) {
+                rowEl.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+        });
+
+        rowEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // A row from another list must never land in this one.
+            if (!dragSrcEl || dragSrcEl === rowEl || !listEl.contains(dragSrcEl)) return;
+            rowEl.classList.remove('drag-over-top', 'drag-over-bottom');
+            const rect = rowEl.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            listEl.insertBefore(dragSrcEl, e.clientY < midY ? rowEl : rowEl.nextSibling);
+        });
+    }
 
 
 
@@ -1025,12 +1184,12 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
   const allScenarios = [];
   const mainScenarioText = [txt(data.scenario), txt(data.first_mes)].filter(Boolean).join("\n\n").trim();
   if (mainScenarioText) {
-    allScenarios.push({ name: 'Main Greeting', text: mainScenarioText });
+    allScenarios.push({ name: 'Main Greeting', greeting: mainScenarioText, storyLine: '' });
   }
   if (Array.isArray(data.alternate_greetings)) {
     data.alternate_greetings.forEach((greeting, index) => {
       const t = txt(greeting);
-      if (t) allScenarios.push({ name: `Alternate Greeting ${index + 1}`, text: t });
+      if (t) allScenarios.push({ name: `Alternate Greeting ${index + 1}`, greeting: t, storyLine: '' });
     });
   }
 
@@ -1703,6 +1862,11 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
     for (const charId in importedChars) {
         if (!characters[charId]) {
             characters[charId] = importedChars[charId];
+            // Used straight away, before any reload, so it has to be split here
+            // too and not only in loadCharactersFromDB.
+            if (Array.isArray(characters[charId].scenarios)) {
+                characters[charId].scenarios = normalizeScenarioList(characters[charId].scenarios);
+            }
             await saveSingleCharacterToDB(importedChars[charId]);
             charsAdded++;
         } else { charsSkipped++; }
@@ -1952,6 +2116,19 @@ async function loadCharactersFromDB() {
     for (const char of Object.values(characters)) {
         if (char.type === 'world' && char.chatName) {
             char.chatName = '';
+            await saveSingleCharacterToDB(char);
+        }
+    }
+
+    // Migration: a scenario used to be one text blob that became the chat's first
+    // message. It is now a greeting plus a story line, so `text` becomes
+    // `greeting` - nothing is lost. Cards from the card converter still arrive in
+    // the old shape, so this has to keep running, not just once.
+    for (const char of Object.values(characters)) {
+        if (!Array.isArray(char.scenarios) || !char.scenarios.length) continue;
+        const before = JSON.stringify(char.scenarios);
+        char.scenarios = normalizeScenarioList(char.scenarios);
+        if (JSON.stringify(char.scenarios) !== before) {
             await saveSingleCharacterToDB(char);
         }
     }
@@ -2347,6 +2524,7 @@ if (dashboardAvatarUrl) {
     if (chat.memories) {
         contextText += chat.memories;
     }
+    contextText += getChatStoryLineParts(chat).systemContext;
     chat.history.forEach(msg => {
         contextText += msg.sender === 'user' ? msg.main : msg.variations[msg.activeVariant].main;
     });
@@ -2428,8 +2606,9 @@ function updatePersonaEditorTokenCount() {
         if (!chatMemoriesBtn) return;
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         const hasMemories = !!(chat && chat.memories && chat.memories.trim());
-        chatMemoriesBtn.classList.toggle('active', hasMemories);
-        chatMemoriesBtn.setAttribute('title', hasMemories ? 'Chat Memories (active)' : 'Chat Memories');
+        const active = hasMemories || !!getChatStoryLine(chat);
+        chatMemoriesBtn.classList.toggle('active', active);
+        chatMemoriesBtn.setAttribute('title', active ? 'Memories & Story Line (active)' : 'Memories & Story Line');
     }
 
 
@@ -2447,7 +2626,11 @@ function updatePersonaEditorTokenCount() {
         if (!chat || !chatMemoriesModal || !chatMemoriesTextarea) return;
 
         chatMemoriesTextarea.value = chat.memories || '';
+        if (chatStoryLineTextarea) chatStoryLineTextarea.value = getChatStoryLine(chat);
         chatMemoriesModal.classList.remove('hidden');
+        // After the modal is visible: autoResizeTextarea measures scrollHeight,
+        // which is 0 while the element is still display:none.
+        if (chatStoryLineTextarea) autoResizeTextarea({ target: chatStoryLineTextarea });
         chatMemoriesTextarea.focus();
         autoResizeTextarea({ target: chatMemoriesTextarea });
         chatMemoriesTextarea.selectionStart = chatMemoriesTextarea.selectionEnd = chatMemoriesTextarea.value.length;
@@ -2460,6 +2643,8 @@ function updatePersonaEditorTokenCount() {
         if (!chat) return;
 
         chat.memories = (chatMemoriesTextarea?.value || '').trim();
+        if (chatStoryLineTextarea) chat.storyLine = normalizeStoryLine(chatStoryLineTextarea.value);
+        delete chat.plan;
         await saveSingleCharacterToDB(characters[currentCharacterId]);
         updateChatMemoriesButtonState();
         updateTokenCount();
@@ -2467,7 +2652,7 @@ function updatePersonaEditorTokenCount() {
     }
 
 
-        
+
     async function handleRenameChat(charId, chatId) {
         const chat = characters[charId].chats[chatId];
         const newName = await showCustomPrompt("Enter a new name for the chat:", chat.name);
@@ -2965,6 +3150,9 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     if (chat.activePersonaId === undefined) chat.activePersonaId = null;
     if (chat.memories === undefined) chat.memories = '';
     chat.mood = normalizeMood(chat.mood);
+    // A General Plot plus milestones collapsed into one Story Line.
+    if (typeof chat.storyLine !== 'string') chat.storyLine = normalizeStoryLine(chat.plan);
+    delete chat.plan;
     closeChatMemoriesModal();
     
     selectPersonaBtn.classList.remove('hidden');
@@ -3057,7 +3245,7 @@ if (saved !== null) {
 
 
 
-async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null) {
+async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null, scenarioSource = null) {
     if (!currentCharacterId) return;
     const character = characters[currentCharacterId];
     if (!character.chats) {
@@ -3100,7 +3288,10 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         participants: worldParticipants,
         activePersonaId: null,
         mood: normalizeMood(initialMood),
-        groupId: targetGroupId
+        groupId: targetGroupId,
+        // The scenario holds the template; the chat gets its own copy, so
+        // re-steering one story leaves the scenario and the other chats alone.
+        storyLine: normalizeStoryLine(scenarioSource && scenarioSource.storyLine)
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -4009,6 +4200,8 @@ const startTime = Date.now();
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    const planContext = getChatStoryLineParts(chat);
+    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
@@ -4038,7 +4231,10 @@ const isLocal = targetApiUrlToSend && (
     /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
-const reminderContent = type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const reminderContent = [
+    type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    planContext.reminderLine
+].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${finalMessageForAPI}\n[${reminderContent}]`
     : finalMessageForAPI;
@@ -4517,6 +4713,8 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    const planContext = getChatStoryLineParts(chat);
+    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
@@ -4565,7 +4763,10 @@ const isLocal = targetApiUrlToSend && (
     /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
-const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const reminderContent = [
+    messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    planContext.reminderLine
+].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${messageForAPIRegen}\n[${reminderContent}]`
     : messageForAPIRegen;
@@ -5080,6 +5281,8 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
+    const planContext = getChatStoryLineParts(chat);
+    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     characterForAPI.description = fullSystemPrompt;
 
@@ -5125,7 +5328,10 @@ const isLocal = targetApiUrlToSend && (
     /^https?:\/\/172\.(1[6-9]|2[0-9]|3[01])\./.test(targetApiUrlToSend)
 );
 
-const reminderContent = messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder;
+const reminderContent = [
+    messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    planContext.reminderLine
+].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${messageForAPI}\n[${reminderContent}]`
     : messageForAPI;
@@ -5924,7 +6130,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
         ta.style.overflowY = 'hidden';
     });
     document.getElementById('scenario-editor-list').innerHTML = '';
-    createScenarioInput({ name: 'Main Greeting', text: '' });
+    createScenarioInput({ name: 'Main Greeting', greeting: '' });
     document.getElementById('lore-editor-list').innerHTML = '';
     const flatLoreRadio = document.querySelector('input[name="lore-mode"][value="flat"]');
     if (flatLoreRadio) flatLoreRadio.checked = true;
@@ -6005,13 +6211,11 @@ if (editorDisplayUrl) {
 
   const scenarioListDiv = document.getElementById('scenario-editor-list');
   scenarioListDiv.innerHTML = '';
-  if (character.scenarios && character.scenarios.length > 0 && typeof character.scenarios[0] === 'string') {
-      character.scenarios = character.scenarios.map((text, index) => ({ name: `Scenario ${index + 1}`, text }));
-  }
-  if (character.scenarios && character.scenarios.length > 0) {
-      character.scenarios.forEach(createScenarioInput);
+  character.scenarios = normalizeScenarioList(character.scenarios);
+  if (character.scenarios.length > 0) {
+      character.scenarios.forEach(scenario => createScenarioInput(scenario));
   } else {
-      createScenarioInput({ name: '', text: '' });
+      createScenarioInput({ name: '', greeting: '' });
   }
 
   const loreMode = character.loreMode || 'flat';
@@ -6558,14 +6762,15 @@ async function setActivePersonaForChat(personaId) {
   const scenarioEntries = document.querySelectorAll('#scenario-editor-list .scenario-entry');
   const scenarios = [];
   scenarioEntries.forEach(entry => {
-    const nameInput = entry.querySelector('.scenario-name-input');
-    const textInput = entry.querySelector('textarea');
-    if (textInput.value.trim() !== "") {
-      scenarios.push({
-        name: nameInput.value.trim() || 'Unnamed Scenario',
-        text: textInput.value
-      });
-    }
+    const row = readScenarioRow(entry);
+    // Keep the row if EITHER field was filled in - a scenario can legitimately
+    // be a story line with no greeting of its own.
+    if (!row.greeting.trim() && !row.storyLine.trim()) return;
+    scenarios.push({
+      name: row.name || 'Unnamed Scenario',
+      greeting: row.greeting,
+      storyLine: row.storyLine
+    });
   });
 
   const loreModeRadio = document.querySelector('input[name="lore-mode"]:checked');
@@ -6638,25 +6843,54 @@ async function setActivePersonaForChat(personaId) {
 
 
 
+// Reads one scenario row back out of the DOM.
+function readScenarioRow(entryDiv) {
+    const name = (entryDiv.querySelector('.scenario-name-input')?.value || '').trim();
+    const greeting = entryDiv.querySelector('.scenario-greeting-input')?.value || '';
+    const storyLine = entryDiv.querySelector('.scenario-story-line-input')?.value || '';
+    return { name, greeting, storyLine };
+}
+
 function createScenarioInput(scenario) {
     const scenarioListDiv = document.getElementById('scenario-editor-list');
+    const data = (scenario && typeof scenario === 'object') ? scenario : {};
+    // `text` is the pre-split shape. Anything saved or imported before the
+    // greeting/story-line split kept everything in it, and it is the greeting.
+    const greetingValue = typeof data.greeting === 'string'
+        ? data.greeting
+        : (typeof data.text === 'string' ? data.text : '');
+
     const entryDiv = document.createElement('div');
     entryDiv.className = 'scenario-entry';
     const fieldsWrapper = document.createElement('div');
-    fieldsWrapper.style.flexGrow = '1';
-    const nameInput = document.createElement('input');
+    fieldsWrapper.className = 'scenario-fields';
 
+    const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'scenario-name-input';
     nameInput.placeholder = 'Scenario title';
-    nameInput.value = scenario.name || '';
+    nameInput.value = data.name || '';
 
+    // The field names live in the placeholders, like the title above them, so
+    // nothing but the boxes themselves takes up room.
     const textarea = document.createElement('textarea');
     textarea.rows = 7;
-    textarea.placeholder = "Scenario description, User role, Story progression, First scene, First character message etc.";
-    textarea.value = scenario.text || '';
+    textarea.className = 'scenario-greeting-input';
+    textarea.placeholder = 'Greeting: opening message of the chat.';
+    textarea.value = greetingValue;
     textarea.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
     textarea.addEventListener('input', autoResizeTextarea);
+
+    /* Sits directly under the greeting rather than behind a disclosure: the two
+     * together are the scenario. The greeting opens the chat once and then
+     * scrolls away; this is sent with every request instead. */
+    const storyLineInput = document.createElement('textarea');
+    storyLineInput.rows = 5;
+    storyLineInput.className = 'scenario-story-line-input';
+    storyLineInput.placeholder = 'Story Line: where the story should go, in order.';
+    storyLineInput.value = normalizeStoryLine(data.storyLine ?? data);
+    storyLineInput.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
+    storyLineInput.addEventListener('input', autoResizeTextarea);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -6666,13 +6900,14 @@ function createScenarioInput(scenario) {
 
     fieldsWrapper.appendChild(nameInput);
     fieldsWrapper.appendChild(textarea);
+    fieldsWrapper.appendChild(storyLineInput);
     entryDiv.appendChild(fieldsWrapper);
     entryDiv.appendChild(deleteBtn);
     scenarioListDiv.appendChild(entryDiv);
 }
 
 document.getElementById('add-scenario-btn').addEventListener('click', () => {
-    createScenarioInput("");
+    createScenarioInput({ name: '', greeting: '' });
 });
 
 document.getElementById('ai-scenario-btn').addEventListener('click', handleAIGenerateScenario);
@@ -6889,61 +7124,11 @@ function createModelEntry(model = {}) {
         }
     });
 
-    const dragHandle = entryDiv.querySelector('.model-drag-handle');
-
-    dragHandle.addEventListener('mousedown', () => {
-        entryDiv.setAttribute('draggable', 'true');
-    });
-
-    entryDiv.addEventListener('dragstart', (e) => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-        setTimeout(() => entryDiv.classList.add('dragging'), 0);
-        dragSrcEl = entryDiv;
-    });
-
-    entryDiv.addEventListener('dragend', () => {
-        entryDiv.removeAttribute('draggable');
-        entryDiv.classList.remove('dragging');
-        document.querySelectorAll('.model-entry').forEach(el => {
-            el.classList.remove('drag-over-top', 'drag-over-bottom');
-        });
-        dragSrcEl = null;
-        if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
-        dragScrollDir = 0;
-    });
-
-    entryDiv.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        if (!dragSrcEl || dragSrcEl === entryDiv) return;
-        const rect = entryDiv.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
-        if (e.clientY < midY) {
-            entryDiv.classList.add('drag-over-top');
-        } else {
-            entryDiv.classList.add('drag-over-bottom');
-        }
-    });
-
-    entryDiv.addEventListener('dragleave', (e) => {
-        if (!entryDiv.contains(e.relatedTarget)) {
-            entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
-        }
-    });
-
-    entryDiv.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!dragSrcEl || dragSrcEl === entryDiv) return;
-        entryDiv.classList.remove('drag-over-top', 'drag-over-bottom');
-        const rect = entryDiv.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        if (e.clientY < midY) {
-            modelListContainer.insertBefore(dragSrcEl, entryDiv);
-        } else {
-            modelListContainer.insertBefore(dragSrcEl, entryDiv.nextSibling);
-        }
+    enableRowDragReorder(entryDiv, {
+        listEl: modelListContainer,
+        handleEl: entryDiv.querySelector('.model-drag-handle'),
+        rowSelector: '.model-entry',
+        scrollEl: appSettingsModalContent
     });
 
     modelListContainer.appendChild(entryDiv);
@@ -9948,7 +10133,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             const h3 = document.createElement('h3');
             h3.style.cssText = 'margin:0 0 10px;font-size:1.05em;';
-            h3.textContent = '✨ AI Generate Scenario';
+            h3.textContent = '✨ Generate Greeting';
             modal.appendChild(h3);
 
             const p = document.createElement('p');
@@ -10675,6 +10860,19 @@ stopStreamBtn.addEventListener('click', () => {
         });
     }
 
+    if (chatMemoriesModal) {
+        chatMemoriesModal.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeChatMemoriesModal();
+            }
+        });
+    }
+
+    if (chatStoryLineTextarea) {
+        chatStoryLineTextarea.addEventListener('input', autoResizeTextarea);
+    }
+
     if (chatMemoriesTextarea) {
         chatMemoriesTextarea.addEventListener('input', autoResizeTextarea);
         chatMemoriesTextarea.addEventListener('keydown', (event) => {
@@ -10825,11 +11023,13 @@ startNewChatBtn.addEventListener('click', async () => {
     }
 
     scenarioSelectionList.innerHTML = '';
-    character.scenarios.forEach(scenario => {
+    character.scenarios.forEach((scenario, index) => {
         const scenarioBtn = document.createElement('button');
         scenarioBtn.className = 'scenario-option-btn';
         scenarioBtn.textContent = scenario.name || 'Unnamed Scenario';
-        scenarioBtn.dataset.scenarioText = scenario.text; 
+        // The index, not the text: a scenario carries a story line too, and a
+        // data attribute can only hold a string.
+        scenarioBtn.dataset.scenarioIndex = String(index);
         scenarioSelectionList.appendChild(scenarioBtn);
     });
     scenarioSelectionModal.classList.remove('hidden');
@@ -10837,10 +11037,11 @@ startNewChatBtn.addEventListener('click', async () => {
 
 scenarioSelectionList.addEventListener('click', async (event) => {
     if (event.target.classList.contains('scenario-option-btn')) {
-        const scenarioText = event.target.dataset.scenarioText;
+        const character = characters[currentCharacterId];
+        const scenario = (character.scenarios || [])[Number(event.target.dataset.scenarioIndex)];
+        if (!scenario) return;
         scenarioSelectionModal.classList.add('hidden');
-        const scenarioName = event.target.textContent;
-        await createNewChat(scenarioText, scenarioName);
+        await createNewChat(scenario.greeting || '', scenario.name || 'Unnamed Scenario', null, scenario);
     }
 });
 
@@ -11732,7 +11933,7 @@ const tutorialTours = {
                 targetId: 'settings-container',
                 position: 'bottom',
                 title: 'Your chat control panel',
-                text: 'This row is per-chat: mood, ambient effects, music, memories, group chat, and your persona.',
+                text: 'This row is per-chat: mood, ambient effects, music, memories and story plan, group chat, and your persona.',
             },
             {
                 targetId: 'settings-btn',

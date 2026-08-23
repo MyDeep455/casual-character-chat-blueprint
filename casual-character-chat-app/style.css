@@ -2243,6 +2243,31 @@ max-height: 27em;
 }
 
 @media (max-width: 768px) {
+    #chat-memories-modal {
+        justify-content: center;
+        align-items: center;
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+    }
+
+    #chat-memories-modal .chat-memories-content {
+        width: min(100%, 560px);
+        max-width: min(100%, 560px);
+        max-height: min(84dvh, 84svh);
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    #chat-memories-modal #chat-memories-textarea {
+        max-height: 26dvh;
+    }
+
+    #chat-story-line-textarea {
+        max-height: 26dvh;
+    }
+}
+
+@media (max-width: 768px) {
     #message-editor-modal {
         justify-content: center;
         align-items: center;
@@ -2344,6 +2369,8 @@ max-height: 27em;
     box-shadow: 0 5px 20px rgba(0,0,0,0.45);
     width: 90%;
     max-width: 70%;
+    max-height: 84vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 9px;
@@ -2376,7 +2403,8 @@ max-height: 27em;
     resize: none;
     box-sizing: border-box;
     min-height: 126px;
-    max-height: 70vh;
+    max-height: 40vh;
+    flex-shrink: 0;
 }
 
 .chat-memories-actions {
@@ -4544,6 +4572,63 @@ hr.settings-separator {
 
 .model-entry.drag-over-bottom {
     border-bottom: 2px solid #5865f2;
+}
+
+
+/* ---------- Scenario: greeting + story line ---------- */
+
+.scenario-fields {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    /* No labels between the boxes - the field names are in the placeholders. */
+    gap: 8px;
+}
+
+/* The two fields are one scenario, so they sit close together. The breathing
+   room goes between one scenario and the next instead. */
+.scenario-entry .scenario-story-line-input {
+    min-height: 4.5em;
+    max-height: 24em;
+}
+
+#scenario-editor-list {
+    gap: 0;
+}
+
+#scenario-editor-list .scenario-entry + .scenario-entry {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+
+/* ---------- The Story Line box inside Chat Memories ---------- */
+
+.chat-story-line-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#chat-story-line-textarea {
+    width: 100%;
+    background-color: #40444b;
+    color: #dcddde;
+    border: 1px solid #5c6067;
+    border-radius: 5px;
+    padding: 11px;
+    font-size: var(--chat-font-size, 14px);
+    font-family: inherit;
+    resize: none;
+    box-sizing: border-box;
+    min-height: 62px;
+    max-height: 30vh;
+    flex-shrink: 0;
 }
 
 
