@@ -19809,6 +19809,47 @@ You may—and whenever it makes the scene more vivid, should—create and voice 
 Do not prefix the response with a narrator label such as Narrator:.]\n\n`;
 }
 
+// Once a chat has more than one participant, every history line is handed to the
+// model prefixed with its speaker's name. That transcript reads as a script the
+// model is free to keep writing for everyone in it, so wherever we prefix we also
+// have to say which one of those speakers it is. Kept as one helper because the
+// send, regenerate and continue paths each build their own prompt and had drifted
+// apart: only send said anything at all, and only when a participant was tagged.
+function getSpeakerExclusivityInstruction(charName, otherSpeakerNames = []) {
+    const name = (typeof charName === 'string' && charName.trim()) ? charName.trim() : 'the character';
+    const others = (otherSpeakerNames || []).filter(Boolean);
+    const othersLine = others.length > 0
+        ? `\n${others.join(', ')} ${others.length === 1 ? 'is' : 'are'} played by someone else. Their lines do not belong in this reply.`
+        : '';
+    return `[SYSTEM META-INSTRUCTION — SPEAKER LOCK: This reply is written as '${name}' and no one else.
+Every word of dialogue in it is spoken by '${name}'. No other character speaks, thinks, or decides anything here.${othersLine}
+Never answer on another character's behalf, and never write the user's dialogue or choices.
+Describe what ${name} says, does, feels and observes about the others as fully as the scene needs — but never put words in their mouths.
+Stop at the end of ${name}'s turn and leave the others room to answer for themselves.]
+
+`;
+}
+
+// The same rule again, one line long, for the bracket appended to the last user
+// message. The system prompt is long and this is the one instruction that has to
+// still be in view at the end of it; the model reminder that used to carry the
+// rule is user-editable and empty on any model someone added by hand.
+function getSpeakerExclusivityReminderLine(charName) {
+    const name = (typeof charName === 'string' && charName.trim()) ? charName.trim() : 'the character';
+    return `- Only ${name} speaks in this reply. Do not write lines, thoughts, or choices for anyone else.`;
+}
+
+// Named so the lock can point at exactly who it is excluding. The world card is
+// not a speaker, so it never appears in the list.
+function getOtherSpeakerNames(chat, selfId) {
+    return (chat?.participants || [])
+        .filter(pid => pid !== selfId)
+        .map(pid => characters[pid])
+        .filter(c => c && c.type !== 'world')
+        .map(c => (c.chatName || c.name || '').trim())
+        .filter(Boolean);
+}
+
     function handleTextareaEnter(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
@@ -22189,7 +22230,6 @@ const startTime = Date.now();
                 fullSystemPrompt += `\n`;
             }
         } else {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
             if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
             if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
             const charLoreText = getLoreText(targetCharacter, loreScanText);
@@ -22216,9 +22256,6 @@ const startTime = Date.now();
             });
             fullSystemPrompt += `\n`;
         }
-        if (targetCharId !== currentCharacterId) {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
-        }
         if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
         if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
         const targetLoreText = getLoreText(targetCharacter, loreScanText);
@@ -22236,6 +22273,11 @@ const startTime = Date.now();
     const planContext = getChatStoryLineParts(chat);
     fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
+    const isMultiSpeakerScene = !!(chat.participants && chat.participants.length > 1);
+    const needsSpeakerExclusivity = type === 'dialog' && isMultiSpeakerScene;
+    if (needsSpeakerExclusivity) {
+        fullSystemPrompt += getSpeakerExclusivityInstruction(charNameForAI, getOtherSpeakerNames(chat, targetCharId));
+    }
     const finalMessageForAPI = messageForAPI;
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '', charNameForAI), persona);
     const globalNarratorReminder = applyUserPlaceholder(applyCharPlaceholder((modelSettings && modelSettings.narratorReminder) ? modelSettings.narratorReminder.trim() : '', charNameForAI), persona);
@@ -22266,6 +22308,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
     planContext.reminderLine
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
@@ -22718,7 +22761,6 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
                 fullSystemPrompt += `\n`;
             }
         } else {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
             if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
             if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
             if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
@@ -22733,6 +22775,14 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const mainCharacterForLore = characters[currentCharacterId];
         if (mainCharacterForLore?.lore) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
     } else {
+        if (isMultiChar) {
+            fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
+            chat.participants.forEach(pid => {
+                const pChar = characters[pid];
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            });
+            fullSystemPrompt += `\n`;
+        }
         if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
         if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
@@ -22749,6 +22799,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     const planContext = getChatStoryLineParts(chat);
     fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
+    const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
+    if (needsSpeakerExclusivity) {
+        fullSystemPrompt += getSpeakerExclusivityInstruction(charNameForAI, getOtherSpeakerNames(chat, speakerId));
+    }
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
     currentStreamController = new AbortController();
@@ -22798,6 +22852,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
     planContext.reminderLine
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
@@ -23286,7 +23341,6 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
                 fullSystemPrompt += `\n`;
             }
         } else {
-            fullSystemPrompt += `[SYSTEM META-INSTRUCTION: The user is addressing the character '${charNameForAI}' directly.\nRespond only as '${charNameForAI}' and do not respond as any other character.]\n\n`;
             if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
             if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
             if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
@@ -23301,6 +23355,14 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         const mainCharacterForLore = characters[currentCharacterId];
         if (mainCharacterForLore?.lore) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
     } else {
+        if (isMultiChar) {
+            fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
+            chat.participants.forEach(pid => {
+                const pChar = characters[pid];
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            });
+            fullSystemPrompt += `\n`;
+        }
         if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
         if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
         if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
@@ -23317,6 +23379,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     const planContext = getChatStoryLineParts(chat);
     fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
+    const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
+    if (needsSpeakerExclusivity) {
+        fullSystemPrompt += getSpeakerExclusivityInstruction(charNameForAI, getOtherSpeakerNames(chat, speakerId));
+    }
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
@@ -23363,6 +23429,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
     planContext.reminderLine
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
