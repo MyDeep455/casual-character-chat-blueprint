@@ -2261,10 +2261,6 @@ max-height: 27em;
     #chat-memories-modal #chat-memories-textarea {
         max-height: 26dvh;
     }
-
-    #chat-story-line-textarea {
-        max-height: 26dvh;
-    }
 }
 
 @media (max-width: 768px) {
@@ -4588,7 +4584,7 @@ hr.settings-separator {
 
 /* The two fields are one scenario, so they sit close together. The breathing
    room goes between one scenario and the next instead. */
-.scenario-entry .scenario-story-line-input {
+.scenario-entry .scenario-memories-input {
     min-height: 4.5em;
     max-height: 24em;
 }
@@ -4602,35 +4598,6 @@ hr.settings-separator {
     padding-top: 24px;
     border-top: 1px solid rgba(255, 255, 255, 0.09);
 }
-
-
-/* ---------- The Story Line box inside Chat Memories ---------- */
-
-.chat-story-line-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 4px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#chat-story-line-textarea {
-    width: 100%;
-    background-color: #40444b;
-    color: #dcddde;
-    border: 1px solid #5c6067;
-    border-radius: 5px;
-    padding: 11px;
-    font-size: var(--chat-font-size, 14px);
-    font-family: inherit;
-    resize: none;
-    box-sizing: border-box;
-    min-height: 62px;
-    max-height: 30vh;
-    flex-shrink: 0;
-}
-
 
 
 #persona-description {

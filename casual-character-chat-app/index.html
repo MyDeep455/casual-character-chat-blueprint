@@ -179,7 +179,7 @@
                 <button type="button" id="music-stop-btn">⏹ Stop</button>
             </div>
         </div>
-        <button id="chat-memories-btn" title="Memories & Story Line">🧠</button>
+        <button id="chat-memories-btn" title="Chat Memories">🧠</button>
         <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
         <button id="select-persona-btn" title="Select Persona">🎭</button>
         <button id="settings-btn" title="Chat Settings">⚙️</button>
@@ -379,13 +379,9 @@
     <div id="chat-memories-modal" class="hidden">
         <div class="chat-memories-content">
             <h2>🧠 Chat Memories</h2>
-            <p class="chat-memories-hint">High-priority notes for this chat. They are sent with every request.</p>
+            <p class="chat-memories-hint">High-priority notes for this chat - key facts, constraints, and what is still to come. They are sent with every request.</p>
             <button type="button" id="summarize-memories-btn" class="settings-action-btn summarize-btn">✨ Auto-summarize Chat</button>
-            <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and story beats to remember..."></textarea>
-
-            <div class="chat-story-line-section">
-                <textarea id="chat-story-line-textarea" rows="4" placeholder="Story Line: where the story should go, in order."></textarea>
-            </div>
+            <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and what is still to come..."></textarea>
 
             <div class="editor-action-row">
                 <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">

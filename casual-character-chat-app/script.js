@@ -50,28 +50,31 @@ Treat this as the character's current emotional state. Consistently but naturall
 }
 
 /* ===========================================================================
- * SCENARIO STORY LINE
+ * SCENARIO MEMORIES
  * ===========================================================================
  * A scenario used to be one blob of text that became the chat's first message.
  * It is now two fields:
  *
- *   Greeting   - the first message, and nothing else. It scrolls out of the
- *                model's attention as the chat grows, which is exactly why
- *                anything written into it as "later" gets played immediately.
- *   Story Line - the course the story should take, sent with every request.
+ *   Greeting - the first message, and nothing else. It scrolls out of the
+ *              model's attention as the chat grows, which is exactly why
+ *              anything written into it as "later" gets played immediately.
+ *   Memories - what this story has to keep in mind, including what is still to
+ *              come. The scenario holds the starting text; a chat started from
+ *              it gets its own copy in the Chat Memories panel, and that copy
+ *              is what is sent with every request.
  *
- * Nothing here is tracked, ticked, timed or counted. The story line goes to the
- * model as written and it works out from the conversation itself how far along
- * it the story already is. So the wording below is the only thing holding the
- * model back from playing the end of it at once: it is blunt about what is off
- * limits, and it is repeated on the last user turn, where it is felt most.
+ * The scenario side is only a template. Everything the model is told about the
+ * text itself lives with the CHAT MEMORIES block in the request builders, so
+ * there is no second prompt block and nothing here is tracked, ticked or
+ * counted.
  * ======================================================================== */
 
-function normalizeStoryLine(value) {
+function normalizeMemories(value) {
     if (typeof value === 'string') return value.trim();
-    // The shape this replaced: a General Plot plus an ordered milestone list.
-    // Fold it back into one block of text rather than dropping it.
+    // The shapes this replaced: a Story Line, and before that a General Plot
+    // plus an ordered milestone list. Fold them in rather than drop them.
     if (value && typeof value === 'object') {
+        if (typeof value.storyLine === 'string') return value.storyLine.trim();
         const plot = typeof value.generalPlot === 'string' ? value.generalPlot.trim() : '';
         const steps = Array.isArray(value.milestones)
             ? value.milestones
@@ -97,7 +100,9 @@ function normalizeScenario(scenario, index = 0) {
     const name = (typeof scenario.name === 'string' && scenario.name.trim())
         ? scenario.name
         : 'Unnamed Scenario';
-    return { name, greeting, storyLine: normalizeStoryLine(scenario.storyLine ?? scenario) };
+    // Handing the whole scenario on lets normalizeMemories pick up a Story Line,
+    // or an older plot/milestone pair, when there are no memories yet.
+    return { name, greeting, memories: normalizeMemories(scenario.memories ?? scenario) };
 }
 
 function normalizeScenarioList(list) {
@@ -105,42 +110,16 @@ function normalizeScenarioList(list) {
     return list.map((s, i) => normalizeScenario(s, i)).filter(Boolean);
 }
 
-/* A chat carries its own copy, so re-steering one story leaves the scenario and
- * every other chat started from it alone. `plan` is what older builds wrote. */
-function getChatStoryLine(chat) {
+/* A chat carries its own memories, so rewriting them mid-chat leaves the
+ * scenario and every other chat started from it alone. Older builds kept a
+ * separate Story Line beside them (`storyLine`, and `plan` before that); that
+ * is memory text too, so it is folded in rather than dropped. */
+function getChatMemories(chat) {
     if (!chat) return '';
-    return normalizeStoryLine(typeof chat.storyLine === 'string' ? chat.storyLine : chat.plan);
-}
-
-function getStoryLineSystemContext(storyLine) {
-    const text = normalizeStoryLine(storyLine);
-    if (!text) return '';
-    return '--- STORY LINE (THE PLANNED COURSE OF THIS STORY - THE PACING RULES BELOW OVERRIDE ANY URGE TO MOVE FAST) ---\n'
-         + text + '\n'
-         + '\nPACING RULES:\n'
-         + '- Anything above that has not happened yet is a goal to work toward, in the order it is written.\n'
-         + '- Work out from the conversation so far how far the story has already come, then move toward the next goal only. Everything past it is off limits until its turn genuinely comes: do not enact it, set it up, foreshadow it, refer to it, or let any character know of it.\n'
-         + '- Take many replies over a goal. It has to grow out of what the characters and the user are actually doing, and must never be announced or jumped straight to.\n'
-         + '- If the story is not ready for the next goal, let the scene be an ordinary one and move it a little closer instead. Ordinary conversation, description, reaction and downtime are correct and expected - they are not filler and not something to hurry past.\n'
-         + '- Once a goal has genuinely happened, let it settle and do not re-stage it. Then, in your own time, begin working toward the one after it.\n'
-         + '- When all of it has happened, carry the story on from there at its own pace.\n'
-         + '- Never mention this story line, and never say or imply that a plan exists. Never quote these headings and never write out what is still to come.\n\n';
-}
-
-// The system prompt sits a long way from the generation point in a long chat.
-// This rides on the last user turn instead, where the model actually feels it.
-function getStoryLineReminderLine(storyLine) {
-    if (!normalizeStoryLine(storyLine)) return '';
-    return 'Stay on the story line: work only toward the next goal that has not happened yet, move it a little closer, and do not reach past it in this reply.';
-}
-
-function getChatStoryLineParts(chat) {
-    const storyLine = getChatStoryLine(chat);
-    if (!storyLine) return { systemContext: '', reminderLine: '' };
-    return {
-        systemContext: getStoryLineSystemContext(storyLine),
-        reminderLine: getStoryLineReminderLine(storyLine)
-    };
+    const own = typeof chat.memories === 'string' ? chat.memories.trim() : '';
+    const carried = normalizeMemories(typeof chat.storyLine === 'string' ? chat.storyLine : chat.plan);
+    if (!carried) return own;
+    return own ? `${own}\n\n${carried}` : carried;
 }
 
 document.body.style.opacity = '1';
@@ -571,7 +550,6 @@ const defaultSettings = {
     const chatMemoriesTextarea = document.getElementById('chat-memories-textarea');
     const saveMemoriesEditBtn = document.getElementById('save-memories-edit-btn');
     const cancelMemoriesEditBtn = document.getElementById('cancel-memories-edit-btn');
-    const chatStoryLineTextarea = document.getElementById('chat-story-line-textarea');
     if (dialogBtn) {
         dialogBtn.setAttribute('aria-label', 'Send as Character');
     }
@@ -1184,12 +1162,12 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
   const allScenarios = [];
   const mainScenarioText = [txt(data.scenario), txt(data.first_mes)].filter(Boolean).join("\n\n").trim();
   if (mainScenarioText) {
-    allScenarios.push({ name: 'Main Greeting', greeting: mainScenarioText, storyLine: '' });
+    allScenarios.push({ name: 'Main Greeting', greeting: mainScenarioText, memories: '' });
   }
   if (Array.isArray(data.alternate_greetings)) {
     data.alternate_greetings.forEach((greeting, index) => {
       const t = txt(greeting);
-      if (t) allScenarios.push({ name: `Alternate Greeting ${index + 1}`, greeting: t, storyLine: '' });
+      if (t) allScenarios.push({ name: `Alternate Greeting ${index + 1}`, greeting: t, memories: '' });
     });
   }
 
@@ -2162,7 +2140,7 @@ async function loadCharactersFromDB() {
     }
 
     // Migration: a scenario used to be one text blob that became the chat's first
-    // message. It is now a greeting plus a story line, so `text` becomes
+    // message. It is now a greeting plus its memories, so `text` becomes
     // `greeting` - nothing is lost. Cards from the card converter still arrive in
     // the old shape, so this has to keep running, not just once.
     for (const char of Object.values(characters)) {
@@ -2562,10 +2540,7 @@ if (dashboardAvatarUrl) {
     if (chat.activePersonaId && personas[chat.activePersonaId]) {
         contextText += personas[chat.activePersonaId].description || '';
     }
-    if (chat.memories) {
-        contextText += chat.memories;
-    }
-    contextText += getChatStoryLineParts(chat).systemContext;
+    contextText += getChatMemories(chat);
     chat.history.forEach(msg => {
         contextText += msg.sender === 'user' ? msg.main : msg.variations[msg.activeVariant].main;
     });
@@ -2646,10 +2621,9 @@ function updatePersonaEditorTokenCount() {
     function updateChatMemoriesButtonState() {
         if (!chatMemoriesBtn) return;
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-        const hasMemories = !!(chat && chat.memories && chat.memories.trim());
-        const active = hasMemories || !!getChatStoryLine(chat);
+        const active = !!getChatMemories(chat);
         chatMemoriesBtn.classList.toggle('active', active);
-        chatMemoriesBtn.setAttribute('title', active ? 'Memories & Story Line (active)' : 'Memories & Story Line');
+        chatMemoriesBtn.setAttribute('title', active ? 'Chat Memories (active)' : 'Chat Memories');
     }
 
 
@@ -2666,12 +2640,11 @@ function updatePersonaEditorTokenCount() {
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || !chatMemoriesModal || !chatMemoriesTextarea) return;
 
-        chatMemoriesTextarea.value = chat.memories || '';
-        if (chatStoryLineTextarea) chatStoryLineTextarea.value = getChatStoryLine(chat);
+        // A chat opened for the first time since the Story Line became part of
+        // the memories shows the two already joined; saving writes them back as
+        // one.
+        chatMemoriesTextarea.value = getChatMemories(chat);
         chatMemoriesModal.classList.remove('hidden');
-        // After the modal is visible: autoResizeTextarea measures scrollHeight,
-        // which is 0 while the element is still display:none.
-        if (chatStoryLineTextarea) autoResizeTextarea({ target: chatStoryLineTextarea });
         chatMemoriesTextarea.focus();
         autoResizeTextarea({ target: chatMemoriesTextarea });
         chatMemoriesTextarea.selectionStart = chatMemoriesTextarea.selectionEnd = chatMemoriesTextarea.value.length;
@@ -2684,7 +2657,7 @@ function updatePersonaEditorTokenCount() {
         if (!chat) return;
 
         chat.memories = (chatMemoriesTextarea?.value || '').trim();
-        if (chatStoryLineTextarea) chat.storyLine = normalizeStoryLine(chatStoryLineTextarea.value);
+        delete chat.storyLine;
         delete chat.plan;
         await saveSingleCharacterToDB(characters[currentCharacterId]);
         updateChatMemoriesButtonState();
@@ -3189,10 +3162,11 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
 
     if (!chat.participants) chat.participants = [charId];
     if (chat.activePersonaId === undefined) chat.activePersonaId = null;
-    if (chat.memories === undefined) chat.memories = '';
     chat.mood = normalizeMood(chat.mood);
-    // A General Plot plus milestones collapsed into one Story Line.
-    if (typeof chat.storyLine !== 'string') chat.storyLine = normalizeStoryLine(chat.plan);
+    // A Story Line - and before it a General Plot plus milestones - is memory
+    // text now, so it is folded into this chat's memories instead of dropped.
+    chat.memories = getChatMemories(chat);
+    delete chat.storyLine;
     delete chat.plan;
     closeChatMemoriesModal();
     
@@ -3325,14 +3299,13 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         id: newChatId,
         name: newName,
         history: history,
-        memories: '',
+        // The scenario's memories are the template; the chat gets its own copy,
+        // so rewriting one chat's leaves the scenario and the other chats alone.
+        memories: (scenarioSource && normalizeScenario(scenarioSource)?.memories) || '',
         participants: worldParticipants,
         activePersonaId: null,
         mood: normalizeMood(initialMood),
-        groupId: targetGroupId,
-        // The scenario holds the template; the chat gets its own copy, so
-        // re-steering one story leaves the scenario and the other chats alone.
-        storyLine: normalizeStoryLine(scenarioSource && scenarioSource.storyLine)
+        groupId: targetGroupId
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -4233,12 +4206,10 @@ const startTime = Date.now();
         characterName: charNameForAI,
         isNarration: isWorldChat || type === 'story'
     });
-    const chatMemoriesText = (chat.memories || '').trim();
+    const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    const planContext = getChatStoryLineParts(chat);
-    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const isMultiSpeakerScene = !!(chat.participants && chat.participants.length > 1);
     const needsSpeakerExclusivity = type === 'dialog' && isMultiSpeakerScene;
@@ -4275,8 +4246,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     type === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
-    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
-    planContext.reminderLine
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : ''
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${finalMessageForAPI}\n[${reminderContent}]`
@@ -4759,12 +4729,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         characterName: charNameForAI,
         isNarration: isWorldRegenChat || messageType === 'story'
     });
-    const chatMemoriesText = (chat.memories || '').trim();
+    const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    const planContext = getChatStoryLineParts(chat);
-    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
     if (needsSpeakerExclusivity) {
@@ -4819,8 +4787,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
-    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
-    planContext.reminderLine
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : ''
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${messageForAPIRegen}\n[${reminderContent}]`
@@ -5339,12 +5306,10 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         characterName: charNameForAI,
         isNarration: isWorldContChat || messageType === 'story'
     });
-    const chatMemoriesText = (chat.memories || '').trim();
+    const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
         fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
     }
-    const planContext = getChatStoryLineParts(chat);
-    fullSystemPrompt += planContext.systemContext;
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
     if (needsSpeakerExclusivity) {
@@ -5396,8 +5361,7 @@ const isLocal = targetApiUrlToSend && (
 
 const reminderContent = [
     messageType === 'dialog' ? combinedDialogReminder : combinedNarratorReminder,
-    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : '',
-    planContext.reminderLine
+    needsSpeakerExclusivity ? getSpeakerExclusivityReminderLine(charNameForAI) : ''
 ].filter(Boolean).join('\n');
 const lastUserContent = reminderContent
     ? `${messageForAPI}\n[${reminderContent}]`
@@ -6831,12 +6795,12 @@ async function setActivePersonaForChat(personaId) {
   scenarioEntries.forEach(entry => {
     const row = readScenarioRow(entry);
     // Keep the row if EITHER field was filled in - a scenario can legitimately
-    // be a story line with no greeting of its own.
-    if (!row.greeting.trim() && !row.storyLine.trim()) return;
+    // be memories with no greeting of its own.
+    if (!row.greeting.trim() && !row.memories.trim()) return;
     scenarios.push({
       name: row.name || 'Unnamed Scenario',
       greeting: row.greeting,
-      storyLine: row.storyLine
+      memories: row.memories
     });
   });
 
@@ -6914,15 +6878,15 @@ async function setActivePersonaForChat(personaId) {
 function readScenarioRow(entryDiv) {
     const name = (entryDiv.querySelector('.scenario-name-input')?.value || '').trim();
     const greeting = entryDiv.querySelector('.scenario-greeting-input')?.value || '';
-    const storyLine = entryDiv.querySelector('.scenario-story-line-input')?.value || '';
-    return { name, greeting, storyLine };
+    const memories = entryDiv.querySelector('.scenario-memories-input')?.value || '';
+    return { name, greeting, memories };
 }
 
 function createScenarioInput(scenario) {
     const scenarioListDiv = document.getElementById('scenario-editor-list');
     const data = (scenario && typeof scenario === 'object') ? scenario : {};
     // `text` is the pre-split shape. Anything saved or imported before the
-    // greeting/story-line split kept everything in it, and it is the greeting.
+    // greeting/memories split kept everything in it, and it is the greeting.
     const greetingValue = typeof data.greeting === 'string'
         ? data.greeting
         : (typeof data.text === 'string' ? data.text : '');
@@ -6950,14 +6914,14 @@ function createScenarioInput(scenario) {
 
     /* Sits directly under the greeting rather than behind a disclosure: the two
      * together are the scenario. The greeting opens the chat once and then
-     * scrolls away; this is sent with every request instead. */
-    const storyLineInput = document.createElement('textarea');
-    storyLineInput.rows = 5;
-    storyLineInput.className = 'scenario-story-line-input';
-    storyLineInput.placeholder = 'Story Line: where the story should go, in order.';
-    storyLineInput.value = normalizeStoryLine(data.storyLine ?? data);
-    storyLineInput.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
-    storyLineInput.addEventListener('input', autoResizeTextarea);
+     * scrolls away; this becomes the chat's memories, sent with every request. */
+    const memoriesInput = document.createElement('textarea');
+    memoriesInput.rows = 5;
+    memoriesInput.className = 'scenario-memories-input';
+    memoriesInput.placeholder = 'Chat Memories: what to remember, including what is still to come.';
+    memoriesInput.value = normalizeMemories(data.memories ?? data);
+    memoriesInput.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
+    memoriesInput.addEventListener('input', autoResizeTextarea);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -6967,7 +6931,7 @@ function createScenarioInput(scenario) {
 
     fieldsWrapper.appendChild(nameInput);
     fieldsWrapper.appendChild(textarea);
-    fieldsWrapper.appendChild(storyLineInput);
+    fieldsWrapper.appendChild(memoriesInput);
     entryDiv.appendChild(fieldsWrapper);
     entryDiv.appendChild(deleteBtn);
     scenarioListDiv.appendChild(entryDiv);
@@ -10936,9 +10900,6 @@ stopStreamBtn.addEventListener('click', () => {
         });
     }
 
-    if (chatStoryLineTextarea) {
-        chatStoryLineTextarea.addEventListener('input', autoResizeTextarea);
-    }
 
     if (chatMemoriesTextarea) {
         chatMemoriesTextarea.addEventListener('input', autoResizeTextarea);
