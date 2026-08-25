@@ -8801,7 +8801,7 @@ mark.highlight.current-match {
     </div>
 <div class="scenario-action-row">
     <button type="button" id="add-scenario-btn" class="add-scenario-button">+ Add Scenario</button>
-    <button type="button" id="ai-scenario-btn" class="add-scenario-button ai-generate-btn">✨ Generate Greeting</button>
+    <button type="button" id="ai-scenario-btn" class="add-scenario-button ai-generate-btn">✨ Generate Scenario</button>
 </div>
        
                <div class="form-buttons">
@@ -21274,11 +21274,18 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
     }
     let history = [];
     if (initialMessage) {
+        // A scenario greeting may be written with {{char}} so one text can serve
+        // several characters. The opening message is read and edited as it stands,
+        // so the name is baked in here rather than left to the prompt builder.
+        const charNameForGreeting = character.chatName || character.name;
+        const openingText = charNameForGreeting
+            ? applyCharPlaceholder(initialMessage, charNameForGreeting)
+            : initialMessage;
         const messageObject = {
             id: 'msg-' + Date.now(),
             sender: 'ai',
             type: isWorldCard ? 'story' : 'dialog',
-            variations: [{ main: initialMessage, think: null }],
+            variations: [{ main: openingText, think: null }],
             activeVariant: 0
         };
         history.push(messageObject);
@@ -28160,7 +28167,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             const h3 = document.createElement('h3');
             h3.style.cssText = 'margin:0 0 10px;font-size:1.05em;';
-            h3.textContent = '✨ Generate Greeting';
+            h3.textContent = '✨ Generate Scenario';
             modal.appendChild(h3);
 
             const p = document.createElement('p');
@@ -30562,7 +30569,7 @@ No one else, including the developer, can access your characters or conversation
     <ul>
         <li>Click the <code>+ Add Scenario</code> button to add a new, empty scenario block.</li>
         <li>Scenarios you already had are untouched by the split - their existing text is simply shown in the <strong>Greeting</strong> box, with an empty <strong>Chat Memories</strong> box underneath. The same is true for characters imported from a card or brought in through the Character Card Browser. A Story Line written in an earlier version is not lost either: it is simply shown as that scenario's memories now.</li>
-        <li>Click the <code>✨ Generate Greeting</code> button to have an AI write an opening scene for you, straight into the <strong>Greeting</strong> box. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. If the AI provider fails, an informative error message is displayed.</li>
+        <li>Click the <code>✨ Generate Scenario</code> button to have an AI write an opening scene for you, straight into the <strong>Greeting</strong> box. You can optionally enter hints (genre, setting, relationship, etc.) or leave the field empty for a random scenario. The AI will always address you as "you" in second person for an immersive experience. If the AI provider fails, an informative error message is displayed.</li>
         <li>Click the <code>🗑️</code> button next to a scenario to delete that scenario.</li>
     </ul>
 

@@ -3278,11 +3278,18 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
     }
     let history = [];
     if (initialMessage) {
+        // A scenario greeting may be written with {{char}} so one text can serve
+        // several characters. The opening message is read and edited as it stands,
+        // so the name is baked in here rather than left to the prompt builder.
+        const charNameForGreeting = character.chatName || character.name;
+        const openingText = charNameForGreeting
+            ? applyCharPlaceholder(initialMessage, charNameForGreeting)
+            : initialMessage;
         const messageObject = {
             id: 'msg-' + Date.now(),
             sender: 'ai',
             type: isWorldCard ? 'story' : 'dialog',
-            variations: [{ main: initialMessage, think: null }],
+            variations: [{ main: openingText, think: null }],
             activeVariant: 0
         };
         history.push(messageObject);
@@ -10164,7 +10171,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             const h3 = document.createElement('h3');
             h3.style.cssText = 'margin:0 0 10px;font-size:1.05em;';
-            h3.textContent = '✨ Generate Greeting';
+            h3.textContent = '✨ Generate Scenario';
             modal.appendChild(h3);
 
             const p = document.createElement('p');
