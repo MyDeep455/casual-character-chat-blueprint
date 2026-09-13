@@ -11103,7 +11103,11 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
      * Cards only travel inwards. Nothing about this collection is ever sent
      * out; the only thing that goes back is how many characters were added.
      * ================================================================== */
-    const CARD_CONVERTER_URL = 'https://mydeep455.github.io/roleplay-card-converter/';
+    // The browser ships inside this app, in card-converter/, and is deployed
+    // with it - one site and one backend service, not a second of each. The
+    // Public app opens its own copy; the Blueprint and standalone copies have
+    // no host of their own, so they open the one on the deployed app.
+    const CARD_CONVERTER_URL = 'https://casual-character-chat.vercel.app/card-converter/';
     const CARD_IMPORT_PROTOCOL = 'ccc-card-import';
 
     // The window this app opened itself, kept so an arriving card can be
