@@ -266,6 +266,9 @@ const OPENROUTER_REASONING_EFFORTS = new Set([
     'xhigh',
     'max'
 ]);
+const REASONING_REQUIRED_MODELS = new Set([
+    'z-ai/glm-5.3-flash'
+]);
 
 function isOpenRouterChatCompletionsUrl(value) {
     try {
@@ -282,12 +285,20 @@ function isOpenRouterChatCompletionsUrl(value) {
     }
 }
 
-function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto') {
+function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto', model = '') {
     if (!isOpenRouterChatCompletionsUrl(targetApiUrl)) return {};
 
-    const normalizedEffort = typeof reasoningEffort === 'string'
+    let normalizedEffort = typeof reasoningEffort === 'string'
         ? reasoningEffort.toLowerCase()
         : 'auto';
+
+    // These models answer an error when reasoning is switched off, so
+    // "Off" is quietly sent as "Low" for them. A suffix such as ":online"
+    // or ":free" names the same model.
+    const baseModel = String(model || '').toLowerCase().replace(/:[^/]*$/, '');
+    if (normalizedEffort === 'none' && REASONING_REQUIRED_MODELS.has(baseModel)) {
+        normalizedEffort = 'low';
+    }
 
     if (OPENROUTER_REASONING_EFFORTS.has(normalizedEffort)) {
         return {
@@ -306,10 +317,10 @@ function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto') {
 
 
 const REPLY_LENGTH_TARGETS = Object.freeze({
-    short: Object.freeze({ words: '40-80 words', sentences: 'usually 3-5 sentences', verbosity: 'low' }),
-    medium: Object.freeze({ words: '90-160 words', sentences: 'usually 6-9 sentences', verbosity: 'medium' }),
-    long: Object.freeze({ words: '170-280 words', sentences: 'usually 10-15 sentences', verbosity: 'high' }),
-    verylong: Object.freeze({ words: '300-500 words', sentences: 'usually 16-24 sentences', verbosity: 'high' })
+    short: Object.freeze({ words: '50 words', verbosity: 'low' }),
+    medium: Object.freeze({ words: '100 words', verbosity: 'medium' }),
+    long: Object.freeze({ words: '200 words', verbosity: 'high' }),
+    verylong: Object.freeze({ words: '500 words', verbosity: 'high' })
 });
 
 function getReplyLengthInstruction(value) {
@@ -317,7 +328,7 @@ function getReplyLengthInstruction(value) {
     if (!target) return '';
 
     return `--- TARGET REPLY LENGTH ---
-Aim for ${target.words} (${target.sentences}) in this reply. Treat the word range as an approximate target, not a reason to cut off a sentence or leave the current story beat incomplete. Keep all content useful: do not pad, repeat, mention the target, or summarize these instructions.
+Aim for ${target.words} in this reply. The amount of words is an approximate target and a few words more or less are acceptable if needed. Keep all content useful: do not pad, repeat, mention the target, or summarize these instructions.
 
 `;
 }
@@ -4270,7 +4281,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, currentModel),
     ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
@@ -4811,7 +4822,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, currentModelId),
     ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
@@ -5385,7 +5396,7 @@ const fetchBody = JSON.stringify({
     temperature: parseFloat(currentTemperature),
     top_p: 0.95,
     stream: true,
-    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort),
+    ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, currentModelId),
     ...getReplyLengthVerbosityConfig(targetApiUrlToSend, replyLength),
     options: {
         num_ctx: modelSettings?.numCtx || 131072,
@@ -9170,7 +9181,7 @@ personaEditorAvatarImg.onerror = () => {
             },
             body: JSON.stringify({
                 model: modelId, messages, temperature: 0.7, top_p: 0.95, stream: true,
-                ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort)
+                ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, modelId)
             }),
             ...(signal ? { signal } : {})
         });
@@ -10277,12 +10288,12 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             let systemPrompt;
             if (isWorld) {
-                systemPrompt = `You are a creative writer for immersive world roleplay opening scenes. Write a medium-length opening paragraph (10-15 sentences) set in the world of ${worldName}. Rules:
+                systemPrompt = `You are a creative writer for immersive world roleplay opening scenes. Write a medium-length opening paragraph (100-200 words) set in the world of ${worldName}. Rules:
 - Write from an omniscient narrator perspective, establishing the setting and atmosphere of ${worldName}.
 - Place the user ("you") into the scene as an active participant discovering or entering the world.
-- Introduce at least one or two named inhabitants or characters of ${worldName} who experience something particular or interact with the user.
-- Weave in at least three lines of dialog (from any involved character, in quotation marks), integrated naturally into the narration.
-- Write the narration in a very direct, factual style — no prose, no flowery descriptions.
+- Introduce at least one named character of ${worldName} who experiences something particular or interacts with the user.
+- Weave in at least three lines of dialog from the character in between quotation marks, integrated naturally into the narration.
+- Write the narration in a very direct, factual style and focus on relevant information — no prose, no flowery descriptions.
 - Prefer short and medium-length sentences over long nested sentences with commas.
 - Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
 
@@ -10293,12 +10304,12 @@ Lore/Background: ${charLore.substring(0, 700)}${hintSection}
 
 Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
             } else {
-                systemPrompt = `You are a creative writer for character roleplay scenarios. Write a medium-length opening scenario paragraph (10-15 sentences) for an exciting story with ${charName}. Rules:
+                systemPrompt = `You are a creative writer for character roleplay scenarios. Write a medium-length opening scenario paragraph (100-200 words) for an exciting story with ${charName}. Rules:
 - Address ${charName} by name and with "he/she/him/her" in third person — ${charName} is the protagonist of the scene.
 - If the user is part of the scenario (check user-specified hints), clarify the relationship or dynamic between ${charName} ("he/she/him/her") and the user ("you").
 - Summarize the context of the scene and describe what ${charName} currently experiences or wants.
-- Weave in three full lines of dialog spoken by ${charName} (in quotation marks), integrated naturally into the narration.
-- Write the narration in a very direct, factual style - no prose, no flowery descriptions.
+- Weave in at least three full lines of dialog spoken by ${charName} in between quotation marks, integrated naturally into the narration.
+- Write the narration in a very direct, factual style and focus on relevant information - no prose, no flowery descriptions.
 - Prefer short and medium-length sentences over long nested sentences with commas.
 - Do not soften any dark, violent, or sexual content and describe it authentically without restriction.
 
