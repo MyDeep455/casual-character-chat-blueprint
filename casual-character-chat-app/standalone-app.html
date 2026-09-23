@@ -26325,12 +26325,10 @@ personaEditorAvatarImg.onerror = () => {
     const fxLevels = { volume: 50, opacity: 50, speed: 50 };
     let fxVolume = 1, fxOpacity = 1, fxSpeed = 1;
     const particleSettingsRow = document.getElementById('particle-settings-row');
-    // older characters have a single intensity level, which drove both the amount and the opacity
     function fxSavedLevels(character) {
-        const old = character?.particleIntensityLevel ?? 50;
         return {
-            volume: character?.particleVolumeLevel ?? old,
-            opacity: character?.particleOpacityLevel ?? old,
+            volume: character?.particleVolumeLevel ?? 50,
+            opacity: character?.particleOpacityLevel ?? 50,
             speed: character?.particleSpeedLevel ?? 50,
         };
     }
@@ -26945,6 +26943,9 @@ personaEditorAvatarImg.onerror = () => {
                     g.lineCap = 'round';
                     g.lineJoin = 'round';
                     g.strokeStyle = 'rgb(250,251,255)';
+                    // blurred and faint, so the wisps melt into the clouds instead of reading as lines
+                    const blur = typeof g.filter === 'string';
+                    if (blur) g.filter = `blur(${(3 * S * fxDpr).toFixed(1)}px)`;
                     for (let i = 0; i < wisps.length; i++) {
                         const w = wisps[i];
                         w.age += dt;
@@ -26960,13 +26961,14 @@ personaEditorAvatarImg.onerror = () => {
                             if (k === 0) g.moveTo(x, y); else g.lineTo(x, y);
                         }
                         // a wide faint body and a brighter core
-                        g.globalAlpha = 0.12 * env;
-                        g.lineWidth = w.w * (1.4 - 0.6 * u);
+                        g.globalAlpha = 0.08 * env;
+                        g.lineWidth = w.w * (2 - 0.8 * u);
                         g.stroke();
-                        g.globalAlpha = 0.26 * env;
-                        g.lineWidth = w.w * 0.4 * (1.2 - 0.6 * u);
+                        g.globalAlpha = 0.14 * env;
+                        g.lineWidth = w.w * 0.55 * (1.2 - 0.6 * u);
                         g.stroke();
                     }
+                    if (blur) g.filter = 'none';
                 },
             };
         },
