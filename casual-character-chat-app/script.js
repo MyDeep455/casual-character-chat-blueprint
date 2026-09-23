@@ -1038,6 +1038,10 @@ function showChoiceDialog(message, options) {
 function extractDataFromPng(arrayBuffer) {
     const dataView = new DataView(arrayBuffer);
     const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (dataView.byteLength < pngSignature.length) {
+        console.error("Not a valid PNG file.");
+        return null;
+    }
     for (let i = 0; i < pngSignature.length; i++) {
         if (dataView.getUint8(i) !== pngSignature[i]) {
             console.error("Not a valid PNG file.");
@@ -1045,41 +1049,47 @@ function extractDataFromPng(arrayBuffer) {
         }
     }
 
+    const parsePayload = (payload) => {
+        try {
+            return JSON.parse(payload);
+        } catch (_) {
+            try {
+                const binaryString = atob(payload);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+            } catch (e) {
+                console.error("Failed to decode or parse character data from PNG:", e);
+                return null;
+            }
+        }
+    };
+
+    // V2 cards carry "chara"; V3 cards add "ccv3" and usually keep "chara"
+    // beside it. "chara" is preferred, "ccv3" is the fallback.
+    let v3Payload = null;
     let offset = 8;
-    while (offset < dataView.byteLength) {
+    // A chunk header is 8 bytes; a truncated or corrupt length must end the
+    // walk instead of reading past the end of the buffer.
+    while (offset + 8 <= dataView.byteLength) {
         const length = dataView.getUint32(offset);
+        if (offset + 12 + length > dataView.byteLength) break;
         const type = String.fromCharCode(
-            dataView.getUint8(offset + 4), 
-            dataView.getUint8(offset + 5), 
-            dataView.getUint8(offset + 6), 
+            dataView.getUint8(offset + 4),
+            dataView.getUint8(offset + 5),
+            dataView.getUint8(offset + 6),
             dataView.getUint8(offset + 7)
         );
 
         if (type === 'tEXt') {
-            const textDecoder = new TextDecoder('utf-8');
-            const chunkData = textDecoder.decode(new Uint8Array(arrayBuffer, offset + 8, length));
-            
-            if (chunkData.startsWith('chara\0')) {
-                const payload = chunkData.substring(6);
-try {
-  return JSON.parse(payload);
-} catch (_) {
-  try {
-    const binaryString = atob(payload);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-    const jsonString = new TextDecoder('utf-8').decode(bytes);
-    return JSON.parse(jsonString);
-  } catch (e) {
-    console.error("Failed to decode or parse character data from PNG:", e);
-    return null;
-  }
-}
-            }
+            const chunkData = new TextDecoder('utf-8').decode(new Uint8Array(arrayBuffer, offset + 8, length));
+            if (chunkData.startsWith('chara\0')) return parsePayload(chunkData.substring(6));
+            if (chunkData.startsWith('ccv3\0') && v3Payload === null) v3Payload = chunkData.substring(5);
         }
+        if (type === 'IEND') break;
         offset += 12 + length;
     }
-    return null;
+    return v3Payload !== null ? parsePayload(v3Payload) : null;
 }
 
 
@@ -1226,12 +1236,27 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
     const paddingV = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
     const maxHeight = element.clientHeight - paddingV;
 
-    let size = parseFloat(style.fontSize);
-    while (size > MIN_FONT_SIZE) {
-      if (inner.scrollHeight <= maxHeight) break;
-      size -= 1;
-      element.style.fontSize = size + 'px';
+    const startSize = parseFloat(style.fontSize);
+    if (inner.scrollHeight <= maxHeight || !(startSize > MIN_FONT_SIZE)) return;
+
+    // The same sizes a one-pixel step down would try (startSize - 1,
+    // startSize - 2, ... for at most `steps` steps), but found by halving:
+    // every probe forces a layout, and across a list of cards that added up.
+    const steps = Math.ceil(startSize - MIN_FONT_SIZE);
+    let lo = 1;
+    let hi = steps;
+    let best = steps;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      element.style.fontSize = (startSize - mid) + 'px';
+      if (inner.scrollHeight <= maxHeight) {
+        best = mid;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
     }
+    element.style.fontSize = (startSize - best) + 'px';
   }
 
 
@@ -1241,6 +1266,14 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
     return URL.createObjectURL(source);
   }
   return source || '';
+}
+
+// A CSS url() value built from a stored or imported image address. Quoted and
+// escaped, so a quote or backslash inside the address cannot end the url()
+// early and spill into the rest of the declaration.
+function cssUrl(url) {
+    const escaped = String(url || '').replace(/["\\\n\r\f]/g, ch => '\\' + ch.charCodeAt(0).toString(16) + ' ');
+    return `url("${escaped}")`;
 }
 
 // Card backdrop (blurred side fill): desktop keeps the full-res background
@@ -1253,16 +1286,16 @@ const cardBackdropCache = new Map();
 
 function setBlurredCardBackdrop(container, source, imageUrl) {
     if (!isCoarseTouchDevice) {
-        container.style.backgroundImage = `url('${imageUrl}')`;
+        container.style.backgroundImage = cssUrl(imageUrl);
         return;
     }
     const cached = cardBackdropCache.get(source);
     if (cached) {
-        container.style.backgroundImage = `url('${cached}')`;
+        container.style.backgroundImage = cssUrl(cached);
         return;
     }
     const useLiveBlurFallback = () => {
-        container.style.backgroundImage = `url('${imageUrl}')`;
+        container.style.backgroundImage = cssUrl(imageUrl);
         container.classList.add('has-live-blur');
     };
     const img = new Image();
@@ -1276,7 +1309,7 @@ function setBlurredCardBackdrop(container, source, imageUrl) {
             canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
             const dataUrl = canvas.toDataURL('image/png');
             cardBackdropCache.set(source, dataUrl);
-            container.style.backgroundImage = `url('${dataUrl}')`;
+            container.style.backgroundImage = cssUrl(dataUrl);
         } catch (err) {
             useLiveBlurFallback();
         }
@@ -1337,6 +1370,143 @@ function getLoreText(character, scanText) {
             .join('\n\n');
     }
     return (character.lore || '').trim();
+}
+
+// Card text (description, lore, world sheet) is written with {{char}} and
+// {{user}} so one card works for any name. The request builders send it to
+// the model, so the names are filled in there, exactly as they already were
+// for instructions and reminders.
+function fillPromptPlaceholders(s, charName, persona) {
+    const withChar = charName ? applyCharPlaceholder(s, charName) : (s || '');
+    return applyUserPlaceholder(withChar, persona);
+}
+
+// The notices the app writes into a reply bubble when a request fails. They
+// are for the user to read, not part of the story, so they are kept out of
+// every prompt. New notices carry `notice: true`; older chats only have the
+// text, so the known openings are recognised as well.
+const CHAT_NOTICE_PREFIXES = [
+    'AI Model did not respond to the request.',
+    'An unexpected error occurred. Please try regenerating the response',
+    'Could not connect to the AI provider.',
+    'Connecting to AI Model - Please wait',
+    'The AI provider may be experiencing issues',
+    'The selected AI Model experiences heavy traffic'
+];
+
+const REGENERATE_NO_RESPONSE_NOTICE = `AI Model did not respond to the request. Please try the following steps:
+
+• Re-enter your default API key (or model-specific API key) in the app settings by copy & paste to ensure that it's correct.
+• Check the request limits per minute/per day of the provider you're using, especially in free plans. Connection fails when limits are exceeded.
+• Try sending a message again later in case the model is overloaded. Also, use other AI models to see if the AI model itself was the problem.
+• In some cases your API provider might have a temporary problem. Try another provider/API key to see if your priveder was the problem.
+• Check the FAQ section (help button on main screen) for further details to this error.`;
+
+const CONTINUE_NO_RESPONSE_NOTICE = REGENERATE_NO_RESPONSE_NOTICE.replace('your priveder was', 'your provider was');
+
+function isChatNoticeVariant(variant) {
+    if (!variant) return false;
+    if (variant.notice === true) return true;
+    const text = typeof variant.main === 'string' ? variant.main.trim() : '';
+    return CHAT_NOTICE_PREFIXES.some(prefix => text.startsWith(prefix));
+}
+
+function isChatNoticeMessage(message) {
+    return !!message && message.sender === 'ai'
+        && isChatNoticeVariant(message.variations?.[message.activeVariant]);
+}
+
+// History as the model should see it: without the app's own notices.
+function historyForPrompt(history) {
+    return (history || []).filter(msg => !isChatNoticeMessage(msg));
+}
+
+// Pacing for the chat request retries. A rate limit is waited out with a
+// growing pause (or the one the provider asks for) instead of a request every
+// second, and a reply that comes back empty is only asked for again a couple
+// of times, since every attempt is billed.
+const CHAT_RATE_LIMIT_PATIENCE_MS = 90000;
+const CHAT_MAX_EMPTY_ATTEMPTS = 3;
+const CHAT_MAX_NETWORK_ATTEMPTS = 4;
+
+function chatRetryDelayMs(retryNumber, response = null) {
+    const header = response?.headers?.get?.('retry-after');
+    if (header) {
+        const seconds = Number(header);
+        if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 30000);
+        const at = Date.parse(header);
+        if (Number.isFinite(at)) return Math.min(Math.max(0, at - Date.now()), 30000);
+    }
+    return Math.min(1000 * 2 ** Math.max(0, retryNumber - 1), 8000);
+}
+
+// A daily or credit quota does not reset in the next minute, so waiting it out
+// only repeats the refusal.
+function isHardQuotaError(text) {
+    return /per-day|per day|daily|insufficient credits|quota exceeded|credits? (?:exhausted|remaining)/i.test(String(text || ''));
+}
+
+// Chrome says "Failed to fetch", Firefox "NetworkError when attempting to fetch
+// resource", Safari "Load failed". All three mean the request never got an answer.
+function isConnectionFailure(error) {
+    const message = String(error?.message || '');
+    return error?.name === 'TypeError'
+        && /failed to fetch|networkerror|load failed|network connection was lost/i.test(message);
+}
+
+function isTemporaryChatError(error) {
+    const message = String(error?.message || '');
+    return isConnectionFailure(error) || message.includes('maximum capacity');
+}
+
+// The provider's own explanation, pulled out of an error body such as
+// {"error":{"message":"User not found."}}, so a failure can say what went wrong.
+function describeProviderError(error) {
+    // Only a plain Error carries a provider's answer (the request paths throw
+    // the response body that way); a TypeError or the like is the app's own.
+    if (!error || error.name !== 'Error') return '';
+    const raw = String(error.message || '').trim();
+    if (!raw) return '';
+    let detail = raw;
+    try {
+        const parsed = JSON.parse(raw);
+        detail = parsed?.error?.message || parsed?.message || parsed?.error || raw;
+        if (typeof detail !== 'string') detail = JSON.stringify(detail);
+    } catch (_) {}
+    // A gateway error page arrives as HTML; only its words are worth showing.
+    detail = detail.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ');
+    detail = detail.replace(/\s+/g, ' ').trim();
+    return detail.length > 300 ? detail.slice(0, 297) + '…' : detail;
+}
+
+function withProviderDetail(message, error) {
+    const detail = describeProviderError(error);
+    return detail ? `${message}\n\nProvider message: ${detail}` : message;
+}
+
+// A pause between retries that ends early when the user presses Stop, so a
+// long rate-limit wait never keeps a cancelled request alive.
+function waitForRetry(ms, signal) {
+    return new Promise(resolve => {
+        if (signal?.aborted) { resolve(); return; }
+        const done = () => {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', done);
+            resolve();
+        };
+        const timer = setTimeout(done, ms);
+        signal?.addEventListener('abort', done);
+    });
+}
+
+// "Connecting…", "heavy traffic…" and the like are shown in the waiting bubble
+// only. Written into the message itself they were saved, and later sent to the
+// model as if the character had said them.
+function showBubbleStatus(messageId, text) {
+    const el = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"] .main-content`);
+    if (!el) return;
+    setBubbleLoading(el, false);
+    el.innerHTML = formatSubString(text);
 }
 
 
@@ -1825,8 +1995,8 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
   container.style.height = size;
 
   if (imageUrl) {
-    container.style.backgroundImage = `url('${imageUrl}')`;
-    container.innerHTML = `<img src="${imageUrl}" alt="${altText}" loading="lazy">`;
+    container.style.backgroundImage = cssUrl(imageUrl);
+    container.innerHTML = `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(altText)}" loading="lazy">`;
   } else {
     container.innerHTML = `<div class="placeholder-icon">👤</div>`;
   }
@@ -1848,6 +2018,11 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
     availableModels: (appSettings && Array.isArray(appSettings.availableModels) ? appSettings.availableModels : []).map(m => ({
       name: m.name || "",
       id: m.id || "",
+      // The provider address and context length travel with the model, or a
+      // restored custom model would quietly point at OpenRouter. API keys are
+      // deliberately never exported.
+      targetApiUrl: m.targetApiUrl || "",
+      numCtx: m.numCtx != null ? m.numCtx : null,
       instructions: m.instructions || "",
       reminder: m.reminder || "",
       narratorReminder: m.narratorReminder || ""
@@ -1865,9 +2040,11 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
   const link = document.createElement('a');
   link.href = url;
   const date = new Date().toISOString().slice(0, 10);
-  link.download = `casualcharacterchat_export_${date}.json`; 
+  link.download = `casualcharacterchat_export_${date}.json`;
   link.click();
-  URL.revokeObjectURL(url);
+  // Revoked late: some browsers are still reading the blob after the click
+  // returns, and pulling the URL out from under the save cancels it.
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 
@@ -1919,8 +2096,11 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
        const incoming = Array.isArray(importedAppSettings.availableModels) ? importedAppSettings.availableModels : [];
        incoming.forEach(m => {
            if (m && m.id && !existingById[m.id]) {
+               const importedNumCtx = parseInt(m.numCtx, 10);
                appSettings.availableModels.push({
-                   name: m.name || "", id: m.id || "",
+                   name: String(m.name || ""), id: String(m.id || ""),
+                   targetApiUrl: typeof m.targetApiUrl === 'string' ? m.targetApiUrl : "",
+                   numCtx: Number.isFinite(importedNumCtx) ? importedNumCtx : null,
                    instructions: m.instructions || "", reminder: m.reminder || "", narratorReminder: m.narratorReminder || ""
                });
                modelsAdded++;
@@ -1966,7 +2146,14 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
     const file = event.target.files[0];
     if (!file) { return; }
 
-    if (file.type === 'image/png') {
+    // Some systems (Android pickers especially) report no type, or a generic
+    // one, for a .json file, so the extension decides when the type does not.
+    const lowerName = (file.name || '').toLowerCase();
+    const isPngFile = file.type === 'image/png' || (!file.type.startsWith('image/') && lowerName.endsWith('.png'));
+    const isJsonFile = file.type === 'application/json' || file.type === 'text/json'
+        || (!isPngFile && lowerName.endsWith('.json'));
+
+    if (isPngFile) {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
@@ -1996,7 +2183,7 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
         reader.readAsArrayBuffer(file);
     } 
     
-    else if (file.type === 'application/json') {
+    else if (isJsonFile) {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
@@ -2012,7 +2199,7 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
                         characters[newCharacter.id] = newCharacter;
                         await saveSingleCharacterToDB(newCharacter);
                         renderCharacterList();
-                        showCustomAlert(`Successfully imported "${newCharacter.name}" from PNG Character Card!`);
+                        showCustomAlert(`Successfully imported "${newCharacter.name}" from JSON Character Card!`);
                     }
                 }
                 else if (importedData.version === 3 && importedData.characters) {
@@ -2273,10 +2460,10 @@ function renderCharacterList(searchTerm = '') {
             const imageUrl = getImageUrl(favImageSource);
 favElement.innerHTML = `
   <div class="avatar-container">
-    <img src="${imageUrl}" alt="${character.name}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(character.name)}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
     <div class="placeholder-icon ${favImageSource ? 'hidden' : ''}">${isWorldFav ? '🌍' : '👤'}</div>
 </div>
-  <span>${character.name}</span>
+  <span>${escapeHtml(character.name)}</span>
 `;
 
 if (favImageSource) {
@@ -2333,7 +2520,7 @@ const filteredCharacters = allSortedCharacters.filter(char => {
             <button class="archive-btn" title="${archiveButtonTitle}">${archiveButtonIcon}</button>
             <div class="card-image-container effect-container">
     ${worldBadgeHtml}
-    <img src="${imageUrl}" alt="Avatar" class="${cardImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+    <img src="${escapeHtml(imageUrl)}" alt="Avatar" class="${cardImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
     ${cardImageSource ? '' : placeholderContent}
     ${worldCharCountHtml}
 </div>
@@ -2394,7 +2581,7 @@ document.fonts.ready.then(() => {
 
   const backgroundUrl = getImageUrl(character.background);
   if (backgroundUrl) {
-    chatListScreen.style.backgroundImage = `url('${backgroundUrl}')`;
+    chatListScreen.style.backgroundImage = cssUrl(backgroundUrl);
     starsContainer.classList.remove('visible');
   } else {
     chatListScreen.style.backgroundImage = 'none';
@@ -2417,7 +2604,7 @@ avatarImg.onerror = () => {
 if (dashboardAvatarUrl) {
     avatarImg.src = dashboardAvatarUrl;
     smartObjectFit(avatarImg);
-    avatarContainer.style.backgroundImage = `url('${dashboardAvatarUrl}')`;
+    avatarContainer.style.backgroundImage = cssUrl(dashboardAvatarUrl);
     avatarContainer.classList.remove('hidden');
     chatListAvatarPlaceholder.classList.add('hidden');
 } else {
@@ -2456,15 +2643,15 @@ if (dashboardAvatarUrl) {
     const groupEntry = document.createElement('div');
     groupEntry.className = 'chat-session-entry chat-group-entry';
     groupEntry.innerHTML = `
-        <span class="chat-group-name" data-group-id="${group.id}" role="button" tabindex="0" title="Open chat group">
+        <span class="chat-group-name" data-group-id="${escapeHtml(group.id)}" role="button" tabindex="0" title="Open chat group">
           <span class="chat-group-icon" aria-hidden="true">🗂️</span>
           <span class="chat-group-title">${escapeHtml(group.name)}</span>
           <span class="chat-group-badge">Group</span>
           <span class="chat-group-count">${chatCount} ${chatCount === 1 ? 'chat' : 'chats'}</span>
         </span>
         <div class="chat-session-actions">
-          <button class="rename-group-btn" data-group-id="${group.id}">Rename</button>
-          <button class="delete-group-btn" data-group-id="${group.id}">Delete</button>
+          <button class="rename-group-btn" data-group-id="${escapeHtml(group.id)}">Rename</button>
+          <button class="delete-group-btn" data-group-id="${escapeHtml(group.id)}">Delete</button>
         </div>`;
     chatSessionListDiv.appendChild(groupEntry);
   });
@@ -2474,11 +2661,11 @@ if (dashboardAvatarUrl) {
     const chatEntry = document.createElement('div');
     chatEntry.className = 'chat-session-entry';
     chatEntry.innerHTML = `
-        <span class="chat-session-name" data-chat-id="${chatId}">${escapeHtml(chat.name)}</span>
+        <span class="chat-session-name" data-chat-id="${escapeHtml(chatId)}">${escapeHtml(chat.name)}</span>
         <div class="chat-session-actions">
-          <button class="move-chat-btn" data-chat-id="${chatId}" title="Move this chat to a group">Move</button>
-          <button class="rename-chat-btn" data-chat-id="${chatId}">Rename</button>
-          <button class="delete-chat-btn" data-chat-id="${chatId}">Delete</button>
+          <button class="move-chat-btn" data-chat-id="${escapeHtml(chatId)}" title="Move this chat to a group">Move</button>
+          <button class="rename-chat-btn" data-chat-id="${escapeHtml(chatId)}">Rename</button>
+          <button class="delete-chat-btn" data-chat-id="${escapeHtml(chatId)}">Delete</button>
         </div>`;
     chatSessionListDiv.appendChild(chatEntry);
   });
@@ -2957,7 +3144,7 @@ function renderBulkCharacterDeleteList() {
     .forEach(([id, c]) => {
       const avatarSrc = c?.avatar ? (typeof getImageUrl === 'function' ? getImageUrl(c.avatar) : c.avatar) : null;
       const avatarHtml = `
-    <img src="${avatarSrc}" alt="Avatar" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <img src="${escapeHtml(avatarSrc || '')}" alt="Avatar" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
     <div class="placeholder-icon ${avatarSrc ? 'hidden' : ''}">👤</div>
 `;
 
@@ -3038,14 +3225,23 @@ async function performBulkCharacterDelete() {
 
   ids.forEach(id => { delete characters[id]; });
 
+  // Characters whose chats lose a participant are written back too, or the
+  // cleanup would only last until the next reload.
+  const changedOwners = [];
   for (const ownerId in characters) {
     const chats = characters[ownerId]?.chats || {};
+    let changed = false;
     for (const chatId in chats) {
       const chat = chats[chatId];
       if (Array.isArray(chat?.participants)) {
-        chat.participants = chat.participants.filter(pid => !toDelete.has(pid));
+        const kept = chat.participants.filter(pid => !toDelete.has(pid));
+        if (kept.length !== chat.participants.length) {
+          chat.participants = kept;
+          changed = true;
+        }
       }
     }
+    if (changed) changedOwners.push(characters[ownerId]);
   }
 
   if (typeof currentCharacterId !== 'undefined' && toDelete.has(currentCharacterId)) {
@@ -3055,6 +3251,7 @@ async function performBulkCharacterDelete() {
 
   try {
     await deleteMultipleCharactersFromDB(ids);
+    for (const owner of changedOwners) await saveSingleCharacterToDB(owner);
     renderCharacterList();
   } catch (e) {
     showCustomAlert('Error while deleting: ' + (e?.message || e));
@@ -3171,6 +3368,10 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     const chatGroupIdOnOpen = getChatGroupId(chat);
     openChatGroupId = getChatGroups(character)[chatGroupIdOnOpen] ? chatGroupIdOnOpen : null;
 
+    // Opening a chat only needs a write when the migrations below actually
+    // change something; the whole character (images and all) used to be
+    // rewritten on every open, variant swap and edit.
+    const chatShapeBefore = JSON.stringify([chat.participants, chat.activePersonaId, chat.mood, chat.memories, chat.storyLine, chat.plan]);
     if (!chat.participants) chat.participants = [charId];
     if (chat.activePersonaId === undefined) chat.activePersonaId = null;
     chat.mood = normalizeMood(chat.mood);
@@ -3179,6 +3380,7 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     chat.memories = getChatMemories(chat);
     delete chat.storyLine;
     delete chat.plan;
+    const chatNeedsSave = JSON.stringify([chat.participants, chat.activePersonaId, chat.mood, chat.memories, chat.storyLine, chat.plan]) !== chatShapeBefore;
     closeChatMemoriesModal();
     
     selectPersonaBtn.classList.remove('hidden');
@@ -3216,7 +3418,7 @@ if (headerAvatarUrl) {
 
     const chatScreenDiv = document.getElementById('chat-screen');
     if (character.background) {
-    chatScreenDiv.style.backgroundImage = `url('${getImageUrl(character.background)}')`;
+    chatScreenDiv.style.backgroundImage = cssUrl(getImageUrl(character.background));
     starsContainer.classList.remove('visible');
 } else {
     chatScreenDiv.style.backgroundImage = 'none';
@@ -3251,7 +3453,7 @@ if (headerAvatarUrl) {
     }
 }
     }
-    await saveSingleCharacterToDB(character);
+    if (chatNeedsSave) await saveSingleCharacterToDB(character);
 if (window.__scrollToBottomNextStartChat) {
     setTimeout(() => {
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -3752,7 +3954,7 @@ function displayMessage(message) {
 
             const avatarContainer = document.createElement('div');
 avatarContainer.className = 'message-avatar effect-container';
-avatarContainer.style.backgroundImage = `url('${getImageUrl(personaAvatarUrl)}')`;
+avatarContainer.style.backgroundImage = cssUrl(getImageUrl(personaAvatarUrl));
 
 const avatarImg = document.createElement('img');
 avatarImg.src = getImageUrl(personaAvatarUrl);
@@ -3821,7 +4023,7 @@ placeholderDiv.title = speakerCharacter.name || 'Unknown';
 
 if (avatarUrl) {
     avatarContainer.classList.add('effect-container');
-    avatarContainer.style.backgroundImage = `url('${getImageUrl(avatarUrl)}')`;
+    avatarContainer.style.backgroundImage = cssUrl(getImageUrl(avatarUrl));
 
     const avatarImg = document.createElement('img');
     avatarImg.src = getImageUrl(avatarUrl);
@@ -3960,7 +4162,8 @@ messageWrapper.appendChild(avatarContainer);
 
 async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = false) {
     const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    const ownerCharacter = characters[currentCharacterId];
+    const chat = ownerCharacter?.chats?.[currentChatId];
     if (!chat) return;
 
     let messageObject;
@@ -3991,7 +4194,10 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
     if (!chat.history) chat.history = [];
     chat.history.push(messageObject);
-    await saveCharactersToDB();
+    // Only the character that owns this chat changed. Rewriting the whole
+    // collection here cost a full clear and re-put of every card (the starter
+    // pack alone is ~18 MB) on each message sent.
+    await saveSingleCharacterToDB(ownerCharacter);
     displayMessage(messageObject);
     if (forceScroll) {
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -4037,10 +4243,10 @@ async function handleChatSubmit(type) {
     let lastMessageInChat = chat.history && chat.history.length > 0 ? chat.history[chat.history.length - 1] : null;
 
     if (finalUserMessage) {
-        addNewMessage(finalUserMessage, 'user', type, true);
+        await addNewMessage(finalUserMessage, 'user', type, true);
         messageForAPI = finalUserMessage;
         const isMultiChar = chat.participants && chat.participants.length > 1;
-        historyForAPI = chat.history.slice(0, -1).map(msg => {
+        historyForAPI = historyForPrompt(chat.history.slice(0, -1)).map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
     if (msg.sender === 'ai') {
         const speaker = characters[msg.speakerId || currentCharacterId];
@@ -4054,12 +4260,13 @@ async function handleChatSubmit(type) {
         return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
 });
-    } else { 
-    if (!chat.history || chat.history.length === 0) {
-        messageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner."; 
-        historyForAPI = []; 
     } else {
-        const historyCopy = [...chat.history];
+    const promptHistory = historyForPrompt(chat.history);
+    if (promptHistory.length === 0) {
+        messageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner.";
+        historyForAPI = [];
+    } else {
+        const historyCopy = [...promptHistory];
         const lastMessage = historyCopy.pop();
         const lastVariant = lastMessage.variations ? lastMessage.variations[lastMessage.activeVariant] : null;
         const lastMainText = lastMessage.main || (lastVariant ? lastVariant.main : '');
@@ -4069,16 +4276,17 @@ async function handleChatSubmit(type) {
             messageForAPI += "\n\n(Continue the scene from your previous reply with new content. Do not repeat earlier sentences and drive the scene actively forward.)";
         }
         const isMultiChar = chat.participants && chat.participants.length > 1;
+        const historyPersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
         historyForAPI = historyCopy.map(msg => {
             if (msg.sender === 'ai') {
                 const speaker = characters[msg.speakerId || currentCharacterId];
                 const speakerName = speaker ? (speaker.chatName || speaker.name) : 'Character';
-                const text = applyCharPlaceholder(msg.variations[msg.activeVariant].main, speakerName);
+                const text = fillPromptPlaceholders(msg.variations[msg.activeVariant].main, speakerName, historyPersona);
                 return { sender: 'ai', main: msg.type === 'story' ? `[Narration] ${text}` : (isMultiChar && speaker?.type !== 'world') ? `${speakerName}: ${text}` : text };
             }
-            const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
-            const userName = persona?.chatName || persona?.name || 'User';
-            return { sender: 'user', main: isMultiChar ? `${userName}: ${msg.main}` : msg.main };
+            const userName = historyPersona?.chatName || historyPersona?.name || 'User';
+            const text = applyUserPlaceholder(msg.main, historyPersona);
+            return { sender: 'user', main: isMultiChar ? `${userName}: ${text}` : text };
         });
     }
 }
@@ -4102,9 +4310,17 @@ async function handleChatSubmit(type) {
     storyBtn.disabled = true;
     stopStreamBtn.classList.remove('hidden');
     const MAX_RETRIES = 90;
-    currentStreamController = new AbortController();
+    const streamController = new AbortController();
+    const streamSignal = streamController.signal;
+    currentStreamController = streamController;
     let fullReply = '';
+    let reasoningBuf = '';
     let streamAbortedByUser = false;
+    let emptyReplies = 0;
+    let networkFailures = 0;
+    let rateLimitRetries = 0;
+    let bubbleStatus = null;
+    let keptPartialReply = false;
     const newMessageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     let isFirstChunk = true;
     const aiMessageObject = {
@@ -4138,17 +4354,15 @@ async function handleChatSubmit(type) {
     const mainContentElement = messageWrapper.querySelector('.main-content');
     let thinkBlockElement = messageWrapper.querySelector('.think-block');
 const coldStartTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === newMessageId);
-    if (messageToUpdate && messageToUpdate.variations[0].main === '...') {
-        messageToUpdate.variations[0].main = "Connecting to AI Model - Please wait or regenerate the message.";
-        updateSingleMessageView(newMessageId);
+    if (aiMessageObject.variations[0].main === '...') {
+        bubbleStatus = "Connecting to AI Model - Please wait or regenerate the message.";
+        showBubbleStatus(newMessageId, bubbleStatus);
     }
-}, 20000); 
+}, 20000);
 const serverHungTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === newMessageId);
-    if (messageToUpdate && messageToUpdate.variations[0].main.includes("Connecting to AI Model")) {
-        messageToUpdate.variations[0].main = "The AI provider may be experiencing issues - Please wait a moment or try again later.";
-        updateSingleMessageView(newMessageId);
+    if (aiMessageObject.variations[0].main === '...' && bubbleStatus && bubbleStatus.includes("Connecting to AI Model")) {
+        bubbleStatus = "The AI provider may be experiencing issues - Please wait a moment or try again later.";
+        showBubbleStatus(newMessageId, bubbleStatus);
     }
 }, 70000);
 
@@ -4172,10 +4386,10 @@ const startTime = Date.now();
 
     if (isWorldChat) {
         const worldName = worldChar.name || 'This World';
-        if (worldChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldChar.description.trim()}\n\n`;
+        if (worldChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${fillPromptPlaceholders(worldChar.description.trim(), charNameForAI, persona)}\n\n`;
         const worldLoreText = getLoreText(worldChar, loreScanText);
-        if (worldLoreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldLoreText}\n\n`;
-        if (worldChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldChar.reminder.trim()}\n\n`;
+        if (worldLoreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${fillPromptPlaceholders(worldLoreText, charNameForAI, persona)}\n\n`;
+        if (worldChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${fillPromptPlaceholders(worldChar.reminder.trim(), charNameForAI, persona)}\n\n`;
         if (targetCharId === currentCharacterId || type === 'story') {
             fullSystemPrompt += getNarratorMetaInstruction();
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
@@ -4183,41 +4397,41 @@ const startTime = Date.now();
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
                 worldChars.forEach(pid => {
                     const pChar = characters[pid];
-                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
                 });
                 fullSystemPrompt += `\n`;
             }
         } else {
             if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
-            if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
+            if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(targetCharacter.description.trim(), charNameForAI, persona)}\n\n`;
             const charLoreText = getLoreText(targetCharacter, loreScanText);
-            if (charLoreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${charLoreText}\n\n`;
+            if (charLoreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${fillPromptPlaceholders(charLoreText, charNameForAI, persona)}\n\n`;
         }
     } else if (type === 'story') {
         fullSystemPrompt += getNarratorMetaInstruction();
         fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
         chat.participants.forEach(pid => {
             const pChar = characters[pid];
-            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
         });
         const mainCharacterForLore = characters[currentCharacterId];
         const mainLoreText = getLoreText(mainCharacterForLore, loreScanText);
         if (mainLoreText) {
-            fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainLoreText}\n\n`;
+            fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(mainLoreText, charNameForAI, persona)}\n\n`;
         }
     } else {
         if (chat.participants && chat.participants.length > 1) {
             fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
             chat.participants.forEach(pid => {
                 const pChar = characters[pid];
-                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
             });
             fullSystemPrompt += `\n`;
         }
         if (targetCharacter.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(targetCharacter.instructions, charNameForAI), persona).trim()}\n\n`;
-        if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${targetCharacter.description.trim()}\n\n`;
+        if (targetCharacter.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(targetCharacter.description.trim(), charNameForAI, persona)}\n\n`;
         const targetLoreText = getLoreText(targetCharacter, loreScanText);
-        if (targetLoreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${targetLoreText}\n\n`;
+        if (targetLoreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(targetLoreText, charNameForAI, persona)}\n\n`;
     }
     fullSystemPrompt += getMoodSystemContext({
         mood: chat.mood,
@@ -4226,7 +4440,7 @@ const startTime = Date.now();
     });
     const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
-        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
+        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${fillPromptPlaceholders(chatMemoriesText, charNameForAI, persona)}\n\n`;
     }
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const isMultiSpeakerScene = !!(chat.participants && chat.participants.length > 1);
@@ -4244,7 +4458,7 @@ const startTime = Date.now();
     const characterForAPI = { ...targetCharacter, description: fullSystemPrompt };
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        if (!currentStreamController) { streamAbortedByUser = true; break; }
+        if (streamSignal.aborted) { streamAbortedByUser = true; break; }
         try {
             console.log(`Send request (Attempt ${attempt}/${MAX_RETRIES})...`);
             const currentTemperature = temperatureSlider.value;
@@ -4293,31 +4507,37 @@ const response = await fetch(fetchUrl, {
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
-    signal: currentStreamController.signal,
+    signal: streamSignal,
     body: fetchBody
 });
 
     clearStreamTimers();
             if (response.status === 429) {
-                const elapsedTime = Date.now() - startTime;
-if (elapsedTime > 20000) {
-    const messageToUpdate = chat.history.find(m => m.id === newMessageId);
-    if (messageToUpdate) {
-        messageToUpdate.variations[0].main = `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
-        updateSingleMessageView(newMessageId);
-    }
-}
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
+                // Waited out with a growing pause, or the one the provider
+                // asks for, instead of a request every second. A daily or
+                // credit quota is reported straight away: it will not lift in
+                // the next minute.
+                const limitText = await response.text().catch(() => '');
+                rateLimitRetries++;
+                const delay = chatRetryDelayMs(rateLimitRetries, response);
+                if (isHardQuotaError(limitText) || attempt === MAX_RETRIES
+                    || Date.now() - startTime + delay > CHAT_RATE_LIMIT_PATIENCE_MS) {
+                    throw new Error(limitText || "AI Model did not respond after multiple retries. Please try again later or choose another Model.");
+                }
+                if (Date.now() - startTime > 20000 && aiMessageObject.variations[0].main === '...') {
+                    bubbleStatus = `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
+                    showBubbleStatus(newMessageId, bubbleStatus);
+                }
+                await waitForRetry(delay, streamSignal);
                 continue;
             }
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) throw new Error((await response.text().catch(() => '')) || `HTTP ${response.status}`);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             fullReply = '';
             const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
-            let reasoningBuf = '';
-            let thinkOpened = false;
+            reasoningBuf = '';
+            let streamError = '';
             let sseBuffer = '';
             const mainTypewriter = createTypewriter();
             const thinkTypewriter = createTypewriter();
@@ -4327,7 +4547,7 @@ if (elapsedTime > 20000) {
     sseBuffer += decoder.decode(value, { stream: true });
     const lines = sseBuffer.split('\n');
     sseBuffer = lines.pop() || '';
-    const currentMessageElement = document.querySelector(`[data-message-id="${newMessageId}"]`);
+    const currentMessageElement = document.querySelector(`[data-message-id="${CSS.escape(newMessageId)}"]`);
     mainContentEl = currentMessageElement ? currentMessageElement.querySelector('.main-content') : null;
     thinkBlockEl = currentMessageElement ? currentMessageElement.querySelector('.think-block') : null;
     thinkBlockContentEl = thinkBlockEl ? thinkBlockEl.querySelector('.think-block-content') : null;
@@ -4360,6 +4580,9 @@ if (elapsedTime > 20000) {
 }
         try {
             const parsed = JSON.parse(dataContent);
+            // A provider that fails after the stream has started reports it as
+            // an error object inside the 200 response.
+            if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -4483,7 +4706,6 @@ if (elapsedTime > 20000) {
                     }
                 }
 
-                await saveSingleCharacterToDB(mainCharacter);
                 playNotificationSound();
                 updateTokenCount();
                 if (!streamAbortedByUser && ttsEnabled && finalMainText) {
@@ -4491,8 +4713,15 @@ if (elapsedTime > 20000) {
                 }
                 break;
             } else {
-                console.log(`Attempt ${attempt} resulted in an empty response. Retry...`);
-                if (attempt < MAX_RETRIES) await new Promise(resolve => setTimeout(resolve, 1000));
+                // A mid-stream error with nothing before it is a failure, not
+                // an empty answer, and goes to the error handling below.
+                if (streamError) throw new Error(streamError);
+                emptyReplies++;
+                console.log(`Attempt ${attempt} resulted in an empty response.`);
+                // Every attempt is billed, so an empty answer is only asked
+                // for again a couple of times before the notice below.
+                if (emptyReplies >= CHAT_MAX_EMPTY_ATTEMPTS || attempt >= MAX_RETRIES) break;
+                await waitForRetry(chatRetryDelayMs(emptyReplies), streamSignal);
             }
         } catch (error) {
     clearStreamTimers();
@@ -4502,20 +4731,32 @@ if (elapsedTime > 20000) {
         break;
     }
     console.error(`Error on attempt ${attempt}:`, error.message);
-    const isTemporaryError = (error.message && error.message.includes('maximum capacity')) || (error.message && error.message.includes('Failed to fetch'));
-    if (isTemporaryError && attempt < MAX_RETRIES) {
+    // The connection dropped after part of the reply had already arrived.
+    // What arrived is kept: it is on screen, and replacing it with an error
+    // notice used to lose it for good on the next reload.
+    if (fullReply.trim() !== '' || reasoningBuf.trim() !== '') {
+        const partialVariant = aiMessageObject.variations[0];
+        if (!partialVariant.main || partialVariant.main === '...') {
+            partialVariant.main = sanitizeModelOutput(extractMainFromReasoning(reasoningBuf) || fullReply.replace(/<think>[\s\S]*?<\/think>/i, '').trim());
+            keptPartialReply = true;
+        }
+        if (reasoningBuf.trim()) partialVariant.think = sanitizeModelOutput(reasoningBuf.trim());
+        break;
+    }
+    networkFailures++;
+    if (isTemporaryChatError(error) && networkFailures < CHAT_MAX_NETWORK_ATTEMPTS && attempt < MAX_RETRIES) {
         console.log('Request failed or rate-limited. Retrying...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await waitForRetry(chatRetryDelayMs(networkFailures), streamSignal);
     } else {
         let errorMsg = `An unexpected error occurred. Please try regenerating the response or start a new chat. If the problem persists, please check the FAQ.`;
-        if (error.message.includes('Failed to fetch')) {
+        if (isConnectionFailure(error)) {
             errorMsg = "Could not connect to the AI provider. Please check your API key and internet connection, then try again.";
         }
-        aiMessageObject.variations[0].main = errorMsg;
-        const freshSendEl = document.querySelector(`[data-message-id="${newMessageId}"] .main-content`);
-        if(freshSendEl) freshSendEl.innerHTML = errorMsg;
-        else if(mainContentEl) mainContentEl.innerHTML = errorMsg;
-        await saveSingleCharacterToDB(mainCharacter);
+        errorMsg = withProviderDetail(errorMsg, error);
+        aiMessageObject.variations[0] = { main: errorMsg, think: null, notice: true };
+        const freshSendEl = document.querySelector(`[data-message-id="${CSS.escape(newMessageId)}"] .main-content`);
+        if(freshSendEl) freshSendEl.innerHTML = formatSubString(errorMsg);
+        else if(mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
         break;
     }
 }
@@ -4535,7 +4776,6 @@ if (elapsedTime > 20000) {
         // Aborted before any content arrived — remove the empty bubble entirely
         chat.history = chat.history.filter(m => m.id !== newMessageId);
         if (messageWrapper && messageWrapper.parentNode) messageWrapper.remove();
-        await saveSingleCharacterToDB(mainCharacter);
     } else if (!hasAnyReplyContent) {
         const errorMsg = `AI Model did not respond to the request. Please try the following steps:
 
@@ -4544,12 +4784,20 @@ if (elapsedTime > 20000) {
 • Try sending a message again later in case the model is overloaded. Also, use other AI models to see if the AI model itself was the problem.
 • In some cases your API provider might have a temporary problem. Try another provider/API key to see if your priveder was the problem.
 • Check the FAQ section (help button on main screen) for further details to this error.`;
-        aiMessageObject.variations[0].main = errorMsg;
-        if (mainContentEl) mainContentEl.innerHTML = errorMsg;
+        aiMessageObject.variations[0] = { main: errorMsg, think: null, notice: true };
+        if (mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
+    } else if (keptPartialReply) {
+        updateSingleMessageView(newMessageId);
+    }
+    // One write for every outcome - a finished reply, a stopped one, a partial
+    // one or a notice. A stop used to leave the stored message as '...'.
+    try {
         await saveSingleCharacterToDB(mainCharacter);
+    } catch (saveError) {
+        console.error('Could not save the reply:', saveError);
     }
     if (!streamAbortedByUser || hasAnyReplyContent) {
-        const finalMessageEl = document.querySelector(`[data-message-id="${newMessageId}"]`);
+        const finalMessageEl = document.querySelector(`[data-message-id="${CSS.escape(newMessageId)}"]`);
         if (finalMessageEl) {
             const regenBtn = finalMessageEl.querySelector('.regenerate-btn');
             if (regenBtn) { regenBtn.disabled = false; regenBtn.classList.remove('is-loading'); }
@@ -4563,7 +4811,7 @@ if (elapsedTime > 20000) {
     dialogBtn.disabled = false;
     storyBtn.disabled = false;
     stopStreamBtn.classList.add('hidden');
-    currentStreamController = null;
+    if (currentStreamController === streamController) currentStreamController = null;
     chatTurnInProgress = false;
     // Not after a stop, and not after a failure either: the bubble then holds
     // the "did not respond" notice, and suggesting replies to that is noise.
@@ -4573,7 +4821,10 @@ if (elapsedTime > 20000) {
 
 
 async function handleRegenerate(messageId) {
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    // Held for the whole request: the user may open another chat while it
+    // streams, and the reply must still be saved into this one.
+    const ownerCharacter = characters[currentCharacterId];
+    const chat = ownerCharacter?.chats?.[currentChatId];
     if (!chat) return;
     const messageIndex = chat.history.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
@@ -4589,7 +4840,7 @@ let thinkContentEl = null;
 let thinkOpened = false;
 let isFirstChunk = true;
 let sseBuffer = '';
-const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+const messageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
 if (messageElement) {
     mainContentEl = messageElement.querySelector('.main-content');
     thinkBlockEl = messageElement.querySelector('.think-block');
@@ -4646,10 +4897,27 @@ if (messageElement) {
     message.streamingVariant = message.activeVariant;
     updateSingleMessageView(messageId);
     if (thinkBlockEl) thinkBlockEl.open = false;
-    const promptHistory = chat.history.slice(0, messageIndex);
-    const lastUserMessageInHistory = promptHistory.slice().reverse().find(m => m.sender === 'user');
-    const userMessageForAPI = lastUserMessageInHistory ? lastUserMessageInHistory.main : '';
-    const historyForAPIcall = lastUserMessageInHistory ? promptHistory.slice(0, promptHistory.lastIndexOf(lastUserMessageInHistory)) : promptHistory;
+    // The request is rebuilt the way this reply was first asked for. After a
+    // user message, that message is the prompt and what precedes it the
+    // history. After another reply - the send with an empty message box - that
+    // reply was the prompt, as in handleChatSubmit. Searching back for the last
+    // user message instead dropped every reply in between from the context.
+    const promptHistory = historyForPrompt(chat.history.slice(0, messageIndex));
+    const precedingMessage = promptHistory[promptHistory.length - 1] || null;
+    let userMessageForAPI;
+    let historyForAPIcall;
+    if (!precedingMessage) {
+        userMessageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner.";
+        historyForAPIcall = [];
+    } else if (precedingMessage.sender === 'user') {
+        userMessageForAPI = precedingMessage.main;
+        historyForAPIcall = promptHistory.slice(0, -1);
+    } else {
+        const previousText = (precedingMessage.variations?.[precedingMessage.activeVariant]?.main || '').trim();
+        userMessageForAPI = (previousText || "Continue the scene plausibly based on the latest turn.")
+            + "\n\n(Continue the scene from your previous reply with new content. Do not repeat earlier sentences and drive the scene actively forward.)";
+        historyForAPIcall = promptHistory.slice(0, -1);
+    }
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
@@ -4671,6 +4939,11 @@ if (messageElement) {
 });
 
     let messageForAPIRegen = userMessageForAPI;
+    // Scanned for keyword-triggered lore, the same window the send path reads.
+    const loreScanText = [
+        ...mappedHistoryForAPI.slice(-6).map(h => h.main || ''),
+        messageForAPIRegen || ''
+    ].join('\n');
 const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder(
     (modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '',
     charNameForAI
@@ -4701,9 +4974,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
 
     if (isWorldRegenChat) {
         const worldName = worldRegenChar.name || 'This World';
-        if (worldRegenChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldRegenChar.description.trim()}\n\n`;
-        if (worldRegenChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldRegenChar.lore.trim()}\n\n`;
-        if (worldRegenChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldRegenChar.reminder.trim()}\n\n`;
+        if (worldRegenChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${fillPromptPlaceholders(worldRegenChar.description.trim(), charNameForAI, persona)}\n\n`;
+        { const loreText = getLoreText(worldRegenChar, loreScanText); if (loreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
+        if (worldRegenChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${fillPromptPlaceholders(worldRegenChar.reminder.trim(), charNameForAI, persona)}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
             fullSystemPrompt += getNarratorMetaInstruction();
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
@@ -4711,36 +4984,36 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
                 worldChars.forEach(pid => {
                     const pChar = characters[pid];
-                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
                 });
                 fullSystemPrompt += `\n`;
             }
         } else {
             if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-            if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
+            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(characterForAPI.description.trim(), charNameForAI, persona)}\n\n`;
+            { const loreText = getLoreText(characterForAPI, loreScanText); if (loreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
         }
     } else if (messageType === 'story') {
         fullSystemPrompt += getNarratorMetaInstruction();
         fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
         chat.participants.forEach(pid => {
             const pChar = characters[pid];
-            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
         });
         const mainCharacterForLore = characters[currentCharacterId];
-        if (mainCharacterForLore?.lore) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
+        { const loreText = getLoreText(mainCharacterForLore, loreScanText); if (loreText) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
     } else {
         if (isMultiChar) {
             fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
             chat.participants.forEach(pid => {
                 const pChar = characters[pid];
-                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
             });
             fullSystemPrompt += `\n`;
         }
         if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-        if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(characterForAPI.description.trim(), charNameForAI, persona)}\n\n`;
+        { const loreText = getLoreText(characterForAPI, loreScanText); if (loreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
     }
     fullSystemPrompt += getMoodSystemContext({
         mood: chat.mood,
@@ -4749,7 +5022,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     });
     const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
-        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
+        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${fillPromptPlaceholders(chatMemoriesText, charNameForAI, persona)}\n\n`;
     }
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
@@ -4758,24 +5031,31 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     }
     characterForAPI.description = fullSystemPrompt;
     const MAX_RETRIES = 90;
-    currentStreamController = new AbortController();
+    const streamController = new AbortController();
+    const streamSignal = streamController.signal;
+    currentStreamController = streamController;
+    const regenVariantIndex = message.activeVariant;
     let fullReply = '';
+    let reasoningBuf = '';
     let newVariant = null;
     let streamAbortedByUser = false;
+    let emptyReplies = 0;
+    let networkFailures = 0;
+    let rateLimitRetries = 0;
+    let bubbleStatus = null;
+    let regenFailed = false;
 
 const coldStartTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate && messageToUpdate.variations[message.activeVariant].main === '...') {
-        messageToUpdate.variations[message.activeVariant].main = "Connecting to AI Model - Please wait or regenerate the message.";
-        updateSingleMessageView(messageId);
+    if (message.variations[regenVariantIndex]?.main === '...') {
+        bubbleStatus = "Connecting to AI Model - Please wait or regenerate the message.";
+        showBubbleStatus(messageId, bubbleStatus);
     }
 }, 20000);
 
 const serverHungTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate && messageToUpdate.variations[message.activeVariant].main.includes("Connecting to AI Model")) {
-        messageToUpdate.variations[message.activeVariant].main = "The AI provider may be experiencing issues - Please wait a moment or try again later.";
-        updateSingleMessageView(messageId);
+    if (message.variations[regenVariantIndex]?.main === '...' && bubbleStatus && bubbleStatus.includes("Connecting to AI Model")) {
+        bubbleStatus = "The AI provider may be experiencing issues - Please wait a moment or try again later.";
+        showBubbleStatus(messageId, bubbleStatus);
     }
 }, 70000);
 
@@ -4786,7 +5066,7 @@ const clearStreamTimers = () => {
 
 const startTime = Date.now();
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        if (!currentStreamController) { streamAbortedByUser = true; break; }
+        if (streamSignal.aborted) { streamAbortedByUser = true; break; }
         try {
             console.log(`Regenerate request (Attempt ${attempt}/${MAX_RETRIES})...`);
 
@@ -4834,24 +5114,26 @@ const response = await fetch(fetchUrl, {
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
-    signal: currentStreamController.signal,
+    signal: streamSignal,
     body: fetchBody
 });
             clearStreamTimers();
             if (response.status === 429) {
-                const elapsedTime = Date.now() - startTime;
-if (elapsedTime > 20000) {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate) {
-        messageToUpdate.variations[message.activeVariant].main = `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
-        updateSingleMessageView(messageId);
-    }
-}
-await new Promise(resolve => setTimeout(resolve, 1000));
-if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
-continue;
+                const limitText = await response.text().catch(() => '');
+                rateLimitRetries++;
+                const delay = chatRetryDelayMs(rateLimitRetries, response);
+                if (isHardQuotaError(limitText) || attempt === MAX_RETRIES
+                    || Date.now() - startTime + delay > CHAT_RATE_LIMIT_PATIENCE_MS) {
+                    throw new Error(limitText || "AI Model did not respond after multiple retries. Please try again later or choose another Model.");
+                }
+                if (Date.now() - startTime > 20000 && message.variations[regenVariantIndex]?.main === '...') {
+                    bubbleStatus = `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
+                    showBubbleStatus(messageId, bubbleStatus);
+                }
+                await waitForRetry(delay, streamSignal);
+                continue;
             }
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) throw new Error((await response.text().catch(() => '')) || `HTTP ${response.status}`);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let mainContentEl = messageElement?.querySelector('.main-content');
@@ -4860,7 +5142,8 @@ continue;
             let isFirstChunk = true
             let sseBuffer = '';
             fullReply = '';
-            let reasoningBuf = '';
+            reasoningBuf = '';
+            let streamError = '';
             let thinkOpened = false;
             const mainTypewriter = createTypewriter();
             const thinkTypewriter = createTypewriter();
@@ -4870,7 +5153,7 @@ continue;
     sseBuffer += decoder.decode(value, { stream: true });
     const lines = sseBuffer.split('\n');
     sseBuffer = lines.pop() || '';
-    const currentMessageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    const currentMessageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
     mainContentEl = currentMessageElement ? currentMessageElement.querySelector('.main-content') : null;
     thinkBlockEl = currentMessageElement ? currentMessageElement.querySelector('.think-block') : null;
     thinkContentEl = thinkBlockEl ? thinkBlockEl.querySelector('.think-block-content') : null;
@@ -4903,6 +5186,7 @@ continue;
 }
         try {
             const parsed = JSON.parse(dataContent);
+            if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -5033,8 +5317,11 @@ continue;
                 }
                 break;
             } else {
-                console.log(`Attempt ${attempt} resulted in an empty response. Retry...`);
-                if (attempt < MAX_RETRIES) await new Promise(resolve => setTimeout(resolve, 1000));
+                if (streamError) throw new Error(streamError);
+                emptyReplies++;
+                console.log(`Attempt ${attempt} resulted in an empty response.`);
+                if (emptyReplies >= CHAT_MAX_EMPTY_ATTEMPTS || attempt >= MAX_RETRIES) break;
+                await waitForRetry(chatRetryDelayMs(emptyReplies), streamSignal);
             }
 } catch (error) {
     clearStreamTimers();
@@ -5044,24 +5331,26 @@ continue;
         break;
     }
     console.error(`Error during regeneration (Attempt ${attempt}):`, error.message);
-    const isTemporaryError = (error.message && error.message.includes('maximum capacity')) || (error.message && error.message.includes('Failed to fetch'));
-    if (isTemporaryError && attempt < MAX_RETRIES) {
+    // Part of the new reply had already arrived before the connection
+    // dropped: keep it rather than replacing it with an error notice.
+    if (newVariant || reasoningBuf.trim()) {
+        if (!newVariant) newVariant = { main: sanitizeModelOutput(extractMainFromReasoning(reasoningBuf)), think: null };
+        if (reasoningBuf.trim()) newVariant.think = sanitizeModelOutput(reasoningBuf.trim());
+        break;
+    }
+    networkFailures++;
+    if (isTemporaryChatError(error) && networkFailures < CHAT_MAX_NETWORK_ATTEMPTS && attempt < MAX_RETRIES) {
         console.log('Request failed or rate-limited. Retrying...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await waitForRetry(chatRetryDelayMs(networkFailures), streamSignal);
     } else {
-        let errorMsg = `AI Model did not respond to the request. Please try the following steps:
-
-• Re-enter your default API key (or model-specific API key) in the app settings by copy & paste to ensure that it's correct.
-• Check the request limits per minute/per day of the provider you're using, especially in free plans. Connection fails when limits are exceeded.
-• Try sending a message again later in case the model is overloaded. Also, use other AI models to see if the AI model itself was the problem.
-• In some cases your API provider might have a temporary problem. Try another provider/API key to see if your priveder was the problem.
-• Check the FAQ section (help button on main screen) for further details to this error.`;
-        if (error.message.includes('Failed to fetch')) {
+        let errorMsg = REGENERATE_NO_RESPONSE_NOTICE;
+        if (isConnectionFailure(error)) {
             errorMsg = "Could not connect to the AI provider. Please check your API key and internet connection, then try again.";
         }
-        if(mainContentEl) mainContentEl.innerHTML = errorMsg;
-        message.variations[message.variations.length - 1] = { main: errorMsg, think: null };
-        await saveSingleCharacterToDB(characters[currentCharacterId]);
+        errorMsg = withProviderDetail(errorMsg, error);
+        if(mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
+        message.variations[regenVariantIndex] = { main: errorMsg, think: null, notice: true };
+        regenFailed = true;
         break;
     }
 }
@@ -5070,6 +5359,10 @@ continue;
     message.isStreaming = false;
     message.streamingVariant = null;
     setBubbleLoading(mainContentEl, false);
+    // Every attempt came back empty: say so instead of leaving a blank variant.
+    if (!streamAbortedByUser && !newVariant && !regenFailed) {
+        message.variations[regenVariantIndex] = { main: REGENERATE_NO_RESPONSE_NOTICE, think: null, notice: true };
+    }
     if (streamAbortedByUser && !newVariant) {
         // Aborted before any content arrived — revert the empty new variant
         if (message.variations.length > 1) {
@@ -5084,7 +5377,7 @@ continue;
             updateTokenCount();
         }
     }
-    const finalMessageElement = document.querySelector(`[data-message-id="${messageId || newMessageId}"]`);
+    const finalMessageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
     if (finalMessageElement) {
         const regenBtn = finalMessageElement.querySelector('.regenerate-btn');
         const continueBtn = finalMessageElement.querySelector('.continue-btn');
@@ -5134,19 +5427,22 @@ continue;
     stopStreamBtn.classList.add('hidden');
     dialogBtn.disabled = false;
     storyBtn.disabled = false;
-    currentStreamController = null;
+    if (currentStreamController === streamController) currentStreamController = null;
     chatTurnInProgress = false;
     // newVariant is only set once a reply actually arrived; without it the
     // variant holds an error notice, which is nothing to suggest replies to.
     if (!streamAbortedByUser && newVariant) generateReplyOptionsInBackground();
-    await saveSingleCharacterToDB(characters[currentCharacterId]);
+    await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
 }
 
 
 
 async function handleContinue(messageId) {
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    // Held for the whole request, so the continuation is saved into this chat
+    // even if the user has opened another one in the meantime.
+    const ownerCharacter = characters[currentCharacterId];
+    const chat = ownerCharacter?.chats?.[currentChatId];
     if (!chat) return;
     const messageIndex = chat.history.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
@@ -5165,7 +5461,7 @@ let thinkContentEl = null;
 let thinkOpened = false;
 let isFirstChunk = true;
 let sseBuffer = '';
-const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+const messageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
 if (messageElement) {
     mainContentEl = messageElement.querySelector('.main-content');
     thinkBlockEl = messageElement.querySelector('.think-block');
@@ -5229,7 +5525,7 @@ if (messageElement) {
 
     // Keep the message being continued in its original assistant role. Sending
     // it back as a user message makes models more likely to restart or repeat it.
-    const historyCopy = chat.history.slice(0, messageIndex + 1);
+    const historyCopy = historyForPrompt(chat.history.slice(0, messageIndex)).concat([chat.history[messageIndex]]);
     const messageForAPI = getContinuationInstruction(replyLength);
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
@@ -5264,6 +5560,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
         return { sender: 'user', main: isMultiChar ? `${userName}: ${processedText}` : processedText };
     }
 });
+    // Scanned for keyword-triggered lore: the reply being continued and the
+    // turns before it.
+    const loreScanText = historyForAPIcall.slice(-7).map(h => h.main || '').join('\n');
 
     const characterForAPI = { ...speakerCharacter };
     let fullSystemPrompt = '';
@@ -5278,9 +5577,9 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     }
     if (isWorldContChat) {
         const worldName = worldContChar.name || 'This World';
-        if (worldContChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${worldContChar.description.trim()}\n\n`;
-        if (worldContChar.lore) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${worldContChar.lore.trim()}\n\n`;
-        if (worldContChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${worldContChar.reminder.trim()}\n\n`;
+        if (worldContChar.description) fullSystemPrompt += `--- WORLD CONTEXT ---\nWorld: ${worldName}\n${fillPromptPlaceholders(worldContChar.description.trim(), charNameForAI, persona)}\n\n`;
+        { const loreText = getLoreText(worldContChar, loreScanText); if (loreText) fullSystemPrompt += `--- WORLD LORE & HISTORY ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
+        if (worldContChar.reminder) fullSystemPrompt += `--- WORLD RULES (CRITICAL — THESE RULES MAY NEVER BE BROKEN UNDER ANY CIRCUMSTANCES) ---\n${fillPromptPlaceholders(worldContChar.reminder.trim(), charNameForAI, persona)}\n\n`;
         if (speakerId === currentCharacterId || messageType === 'story') {
             fullSystemPrompt += getNarratorMetaInstruction();
             const worldChars = chat.participants.filter(pid => pid !== currentCharacterId);
@@ -5288,36 +5587,36 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
                 fullSystemPrompt += `--- CHARACTERS IN THIS WORLD ---\n`;
                 worldChars.forEach(pid => {
                     const pChar = characters[pid];
-                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                    if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
                 });
                 fullSystemPrompt += `\n`;
             }
         } else {
             if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-            if (characterForAPI.lore) fullSystemPrompt += `--- CHARACTER LORE ---\n${characterForAPI.lore.trim()}\n\n`;
+            if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(characterForAPI.description.trim(), charNameForAI, persona)}\n\n`;
+            { const loreText = getLoreText(characterForAPI, loreScanText); if (loreText) fullSystemPrompt += `--- CHARACTER LORE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
         }
     } else if (messageType === 'story') {
         fullSystemPrompt += getNarratorMetaInstruction();
         fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
         chat.participants.forEach(pid => {
             const pChar = characters[pid];
-            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+            if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
         });
         const mainCharacterForLore = characters[currentCharacterId];
-        if (mainCharacterForLore?.lore) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${mainCharacterForLore.lore.trim()}\n\n`;
+        { const loreText = getLoreText(mainCharacterForLore, loreScanText); if (loreText) fullSystemPrompt += `\n--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
     } else {
         if (isMultiChar) {
             fullSystemPrompt += `--- CHARACTERS IN SCENE ---\n`;
             chat.participants.forEach(pid => {
                 const pChar = characters[pid];
-                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description || 'No description available.'}\n---\n`;
+                if (pChar) fullSystemPrompt += `Character: ${pChar.name}\nDescription: ${pChar.description ? fillPromptPlaceholders(pChar.description, pChar.chatName || pChar.name, persona) : 'No description available.'}\n---\n`;
             });
             fullSystemPrompt += `\n`;
         }
         if (characterForAPI.instructions) fullSystemPrompt += `--- CHARACTER AI INSTRUCTIONS ---\n${applyUserPlaceholder(applyCharPlaceholder(characterForAPI.instructions, charNameForAI), persona).trim()}\n\n`;
-        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${characterForAPI.description.trim()}\n\n`;
-        if (characterForAPI.lore) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${characterForAPI.lore.trim()}\n\n`;
+        if (characterForAPI.description) fullSystemPrompt += `--- CHARACTER DESCRIPTION ---\n${fillPromptPlaceholders(characterForAPI.description.trim(), charNameForAI, persona)}\n\n`;
+        { const loreText = getLoreText(characterForAPI, loreScanText); if (loreText) fullSystemPrompt += `--- LORE / BACKGROUND KNOWLEDGE ---\n${fillPromptPlaceholders(loreText, charNameForAI, persona)}\n\n`; }
     }
     fullSystemPrompt += getMoodSystemContext({
         mood: chat.mood,
@@ -5326,7 +5625,7 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     });
     const chatMemoriesText = getChatMemories(chat);
     if (chatMemoriesText) {
-        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${chatMemoriesText}\n\n`;
+        fullSystemPrompt += `--- CHAT MEMORIES (HIGH PRIORITY, persist for this chat only; distinct from the initial scenario / first message) ---\n${fillPromptPlaceholders(chatMemoriesText, charNameForAI, persona)}\n\n`;
     }
     fullSystemPrompt += getReplyLengthInstruction(replyLength);
     const needsSpeakerExclusivity = messageType === 'dialog' && isMultiChar;
@@ -5336,22 +5635,29 @@ let characterNarratorReminder = applyUserPlaceholder((speakerCharacter.narratorR
     characterForAPI.description = fullSystemPrompt;
 
     const MAX_RETRIES = 90;
-    currentStreamController = new AbortController();
+    const streamController = new AbortController();
+    const streamSignal = streamController.signal;
+    currentStreamController = streamController;
     let fullReply = '';
     let reasoningBuf = '';
+    let emptyReplies = 0;
+    let networkFailures = 0;
+    let rateLimitRetries = 0;
+    let bubbleStatus = null;
+    // An error is shown under the kept text once the view has been redrawn.
+    let continueErrorText = null;
 const startTime = Date.now();
+// Status lines are shown in the bubble only, never written into the message.
 const coldStartTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate) {
-        messageToUpdate.variations[message.activeVariant].main = originalText + " " + "Connecting to AI Model - Please wait or regenerate the message.";
-        updateSingleMessageView(messageId);
+    if (activeVariant.main === originalText) {
+        bubbleStatus = "Connecting to AI Model - Please wait or regenerate the message.";
+        showBubbleStatus(messageId, originalText + " " + bubbleStatus);
     }
 }, 20000);
 const serverHungTimer = setTimeout(() => {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate && messageToUpdate.variations[message.activeVariant].main.includes("Connecting to AI Model")) {
-        messageToUpdate.variations[message.activeVariant].main = originalText + " " + "The AI provider may be experiencing issues - Please wait a moment or try again later.";
-        updateSingleMessageView(messageId);
+    if (activeVariant.main === originalText && bubbleStatus && bubbleStatus.includes("Connecting to AI Model")) {
+        bubbleStatus = "The AI provider may be experiencing issues - Please wait a moment or try again later.";
+        showBubbleStatus(messageId, originalText + " " + bubbleStatus);
     }
 }, 70000);
 
@@ -5360,7 +5666,7 @@ const clearStreamTimers = () => {
     clearTimeout(serverHungTimer);
 };
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        if (!currentStreamController) { streamAbortedByUser = true; break; }
+        if (streamSignal.aborted) { streamAbortedByUser = true; break; }
         try {
             console.log(`Continue request (Attempt ${attempt}/${MAX_RETRIES})...`);
 
@@ -5408,31 +5714,34 @@ const response = await fetch(fetchUrl, {
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
-    signal: currentStreamController.signal,
+    signal: streamSignal,
     body: fetchBody
 });
             clearStreamTimers();
 
             if (response.status === 429) {
-    const elapsedTime = Date.now() - startTime;
-    if (elapsedTime > 20000) {
-    const messageToUpdate = chat.history.find(m => m.id === messageId);
-    if (messageToUpdate) {
-        messageToUpdate.variations[message.activeVariant].main = originalText + " " + `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
-        updateSingleMessageView(messageId);
+    const limitText = await response.text().catch(() => '');
+    rateLimitRetries++;
+    const delay = chatRetryDelayMs(rateLimitRetries, response);
+    if (isHardQuotaError(limitText) || attempt === MAX_RETRIES
+        || Date.now() - startTime + delay > CHAT_RATE_LIMIT_PATIENCE_MS) {
+        throw new Error(limitText || "AI Model did not respond after multiple retries. Please try again later or choose another Model.");
     }
+    if (Date.now() - startTime > 20000 && activeVariant.main === originalText) {
+        bubbleStatus = `The selected AI Model experiences heavy traffic or is rate-limited (requests per minute). Please wait...`;
+        showBubbleStatus(messageId, originalText + " " + bubbleStatus);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (attempt === MAX_RETRIES) throw new Error("AI Model did not respond after multiple retries. Please try again later or choose another Model.");
+    await waitForRetry(delay, streamSignal);
     continue;
 }
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) throw new Error((await response.text().catch(() => '')) || `HTTP ${response.status}`);
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let sseBuffer = '';
             fullReply = '';
             reasoningBuf = '';
+            let streamError = '';
             let thinkOpened = false;
             const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
             const mainTypewriter = createTypewriter();
@@ -5445,7 +5754,7 @@ const response = await fetch(fetchUrl, {
                 sseBuffer += decoder.decode(value, { stream: true });
                 const lines = sseBuffer.split('\n');
                 sseBuffer = lines.pop() || '';
-                const currentMessageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+                const currentMessageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
                 mainContentEl = currentMessageElement ? currentMessageElement.querySelector('.main-content') : null;
                 thinkBlockEl = currentMessageElement ? currentMessageElement.querySelector('.think-block') : null;
                 thinkContentEl = thinkBlockEl ? thinkBlockEl.querySelector('.think-block-content') : null;
@@ -5466,6 +5775,7 @@ const response = await fetch(fetchUrl, {
                     
                     try {
                         const parsed = JSON.parse(dataContent);
+                        if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
                         const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
                         const reasoningDelta = extractReasoningDelta(delta);
 
@@ -5601,9 +5911,15 @@ if (!finalThink) {
                 mainTypewriter.flush(activeVariant.main || '', t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
                 playNotificationSound();
                 updateTokenCount();
-                break; 
+                break;
             } else {
-                if (attempt < MAX_RETRIES) await new Promise(resolve => setTimeout(resolve, 1000));
+                if (streamError) throw new Error(streamError);
+                emptyReplies++;
+                if (emptyReplies >= CHAT_MAX_EMPTY_ATTEMPTS || attempt >= MAX_RETRIES) {
+                    continueErrorText = CONTINUE_NO_RESPONSE_NOTICE;
+                    break;
+                }
+                await waitForRetry(chatRetryDelayMs(emptyReplies), streamSignal);
             }
 
         } catch (error) {
@@ -5614,24 +5930,18 @@ if (!finalThink) {
                 break;
     }
     console.error(`Error during continue (Attempt ${attempt}):`, error.message);
-    const isTemporaryError = (error.message && error.message.includes('maximum capacity')) || (error.message && error.message.includes('Failed to fetch'));
-    if (isTemporaryError && attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    // The continuation that already arrived stays; it is merged into the
+    // message and on screen.
+    if (fullReply.trim() !== '' || reasoningBuf.trim() !== '') break;
+    networkFailures++;
+    if (isTemporaryChatError(error) && networkFailures < CHAT_MAX_NETWORK_ATTEMPTS && attempt < MAX_RETRIES) {
+        await waitForRetry(chatRetryDelayMs(networkFailures), streamSignal);
     } else {
-        let errorMsg = `AI Model did not respond to the request. Please try the following steps:
-
-• Re-enter your default API key (or model-specific API key) in the app settings by copy & paste to ensure that it's correct.
-• Check the request limits per minute/per day of the provider you're using, especially in free plans. Connection fails when limits are exceeded.
-• Try sending a message again later in case the model is overloaded. Also, use other AI models to see if the AI model itself was the problem.
-• In some cases your API provider might have a temporary problem. Try another provider/API key to see if your provider was the problem.
-• Check the FAQ section (help button on main screen) for further details to this error.`;
-        if (error.message.includes('Failed to fetch')) {
+        let errorMsg = CONTINUE_NO_RESPONSE_NOTICE;
+        if (isConnectionFailure(error)) {
             errorMsg = "Could not connect to the AI provider. Please check your API key and internet connection, then try again.";
         }
-        if(mainContentEl) {
-            const sanitizedError = sanitizeModelOutput(`${originalText}\n\n[--- ERROR: ${errorMsg} ---]`);
-            mainContentEl.innerHTML = formatSubString(sanitizedError);
-        }
+        continueErrorText = withProviderDetail(errorMsg, error);
         break;
     }
 }
@@ -5644,13 +5954,23 @@ if (!finalThink) {
     stopStreamBtn.classList.add('hidden');
     dialogBtn.disabled = false;
     storyBtn.disabled = false;
-    currentStreamController = null;
+    if (currentStreamController === streamController) currentStreamController = null;
     chatTurnInProgress = false;
-    if (!streamAbortedByUser) generateReplyOptionsInBackground();
-    await saveSingleCharacterToDB(characters[currentCharacterId]);
+    if (!streamAbortedByUser && !continueErrorText) generateReplyOptionsInBackground();
+    await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
+    // Shown after the redraw above, which used to paint over it at once, so a
+    // failed continue looked like nothing had happened. It is not saved into
+    // the message: the text being continued is left exactly as it was.
+    if (continueErrorText) {
+        const errorContentEl = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"] .main-content`);
+        if (errorContentEl) {
+            const sanitizedError = sanitizeModelOutput(`${activeVariant.main}\n\n[--- ERROR: ${continueErrorText} ---]`);
+            errorContentEl.innerHTML = formatSubString(sanitizedError);
+        }
+    }
 
-    const finalMessageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    const finalMessageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
     if (finalMessageElement) {
         const regenBtn = finalMessageElement.querySelector('.regenerate-btn');
         const continueBtn = finalMessageElement.querySelector('.continue-btn');
@@ -5684,7 +6004,7 @@ function updateSingleMessageView(messageId) {
     const message = chat.history.find(m => m.id === messageId);
     if (!message) return;
 
-    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    const messageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
     let mainContentEl = messageElement?.querySelector('.main-content');
     let thinkBlockEl = messageElement?.querySelector('.think-block');
     let thinkContentEl = thinkBlockEl ? thinkBlockEl.querySelector('.think-block-content') : null;
@@ -5920,7 +6240,7 @@ function renderWorldCharPickerModalList() {
     }
     chars.forEach(char => {
         const avatarSrc = char.avatar ? getImageUrl(char.avatar) : null;
-        const avatarHtml = `<img src="${avatarSrc || ''}" alt="Avatar" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon ${avatarSrc ? 'hidden' : ''}">👤</div>`;
+        const avatarHtml = `<img src="${escapeHtml(avatarSrc || '')}" alt="Avatar" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon ${avatarSrc ? 'hidden' : ''}">👤</div>`;
         const row = document.createElement('label');
         row.className = 'participant-option-btn';
         row.style.cssText = 'justify-content:space-between;width:100%;box-sizing:border-box;';
@@ -6235,7 +6555,7 @@ if (editorDisplayUrl) {
     editorAvatarImg.classList.remove('hidden');
     editorAvatarPlaceholder.classList.add('hidden');
     editorAvatarContainer.classList.add('effect-container');
-    editorAvatarContainer.style.backgroundImage = `url('${editorDisplayUrl}')`;
+    editorAvatarContainer.style.backgroundImage = cssUrl(editorDisplayUrl);
 } else {
     editorAvatarImg.src = '';
     editorAvatarImg.classList.add('hidden');
@@ -6248,7 +6568,7 @@ if (editorDisplayUrl) {
   document.getElementById('chat-name').value = isWorld ? '' : (character.chatName || character.name || '');
   document.getElementById('char-avatar').value = avatarUrl;
   document.getElementById('char-background').value = backgroundUrl;
-  document.getElementById('chat-list-screen').style.backgroundImage = backgroundUrl ? `url('${backgroundUrl}')` : 'none';
+  document.getElementById('chat-list-screen').style.backgroundImage = backgroundUrl ? cssUrl(backgroundUrl) : 'none';
   charInstructionsInput.value = character.instructions || '';
   charDescriptionInput.value = character.description || '';
   charLoreInput.value = character.lore || '';
@@ -6268,7 +6588,7 @@ if (editorDisplayUrl) {
   }
 
   const loreMode = character.loreMode || 'flat';
-  const loreModeRadio = document.querySelector(`input[name="lore-mode"][value="${loreMode}"]`);
+  const loreModeRadio = document.querySelector(`input[name="lore-mode"][value="${CSS.escape(loreMode)}"]`);
   if (loreModeRadio) loreModeRadio.checked = true;
   const loreListDiv = document.getElementById('lore-editor-list');
   loreListDiv.innerHTML = '';
@@ -6478,11 +6798,11 @@ function openParticipantModal(searchTerm = '') {
 
       const imageUrl = getImageUrl(char.avatar);
 const avatarHtml = `
-    <img src="${imageUrl}" class="${char.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <img src="${escapeHtml(imageUrl)}" class="${char.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
     <div class="placeholder-icon ${char.avatar ? 'hidden' : ''}">👤</div>
 `;
 
-      btn.innerHTML = `${avatarHtml} <span>${char.name}</span>`;
+      btn.innerHTML = `${avatarHtml} <span>${escapeHtml(char.name)}</span>`;
 
       participantSelectionList.appendChild(btn);
     }
@@ -6535,10 +6855,10 @@ function openPersonaListModal(searchTerm = '') {
 
       const imageUrl = getImageUrl(persona.avatar);
 const avatarHtml = `
-    <img src="${imageUrl}" class="${persona.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <img src="${escapeHtml(imageUrl)}" class="${persona.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
     <div class="placeholder-icon ${persona.avatar ? 'hidden' : ''}">👤</div>
 `;
-      const nameHtml = `<span style="flex-grow: 1;">${persona.name}</span>`;
+      const nameHtml = `<span style="flex-grow: 1;">${escapeHtml(persona.name)}</span>`;
       const buttonsHtml = `
         <span class="edit-persona-icon" title="Edit Persona"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
         <button class="delete-persona-btn" title="Delete Persona"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -6724,7 +7044,7 @@ function openPersonaSelectionModal(searchTerm = '') {
 
         const imageUrl = getImageUrl(persona.avatar);
 const avatarHtml = `
-    <img src="${imageUrl}" class="${persona.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <img src="${escapeHtml(imageUrl)}" class="${persona.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
     <div class="placeholder-icon ${persona.avatar ? 'hidden' : ''}">👤</div>
 `;
 
@@ -7122,26 +7442,37 @@ function createModelEntry(model = {}) {
     </div>
     <div class="model-content-wrapper">
         <div class="model-entry-inputs">
-            <input type="text" class="model-name-input" placeholder="Display Name (e.g., My favorite Model)" value="${name}">
-            <input type="text" class="model-id-input" placeholder="Technical Model ID (e.g., provider/model-name)" value="${id}">
-            <input type="url" class="model-target-api-url-input" placeholder="Other provider URL (https://.../v1/chat/completions)" value="${targetApiUrl}">
-            <input type="password" class="model-api-key-input" placeholder="Other provider API Key (sk-1a2b3c...xyz)" value="${apiKey}">
-            <input type="number" class="model-num-ctx-input" placeholder="Context length (only relevant for Ollama - e.g. 8192)" min="512" step="512" value="${numCtx}">
+            <input type="text" class="model-name-input" placeholder="Display Name (e.g., My favorite Model)">
+            <input type="text" class="model-id-input" placeholder="Technical Model ID (e.g., provider/model-name)">
+            <input type="url" class="model-target-api-url-input" placeholder="Other provider URL (https://.../v1/chat/completions)">
+            <input type="password" class="model-api-key-input" placeholder="Other provider API Key (sk-1a2b3c...xyz)">
+            <input type="number" class="model-num-ctx-input" placeholder="Context length (only relevant for Ollama - e.g. 8192)" min="512" step="512">
         </div>
         <details class="global-prompts-container">
             <summary class="global-prompts-summary">Global Prompts</summary>
             <div class="global-prompts-content">
                 <label>AI Instructions:</label>
-                <textarea class="model-instructions-input" rows="2" placeholder="General AI Instructions for this model... (e.g., 'Be creative and drive the plot forward.')">${instructions}</textarea>
+                <textarea class="model-instructions-input" rows="2" placeholder="General AI Instructions for this model... (e.g., 'Be creative and drive the plot forward.')"></textarea>
                 <label>Character Reminder:</label>
-                <textarea class="model-reminder-input" rows="2" placeholder="Character Reminder for this model... (e.g., 'Reply only as {{char}} now.')">${reminder}</textarea>
+                <textarea class="model-reminder-input" rows="2" placeholder="Character Reminder for this model... (e.g., 'Reply only as {{char}} now.')"></textarea>
                 <label>Narrator Reminder:</label>
-                <textarea class="model-narrator-reminder-input" rows="2" placeholder="Narrator Reminder for this model... (e.g., 'Reply only as an omniscient narrator now.')">${narratorReminder}</textarea>
+                <textarea class="model-narrator-reminder-input" rows="2" placeholder="Narrator Reminder for this model... (e.g., 'Reply only as an omniscient narrator now.')"></textarea>
             </div>
         </details>
     </div>
     <button type="button" class="delete-model-btn" title="Delete Model"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
     `;
+
+    // Assigned as properties rather than written into the markup above, so a
+    // quote or a tag in a name or prompt stays text and survives a save.
+    entryDiv.querySelector('.model-name-input').value = name;
+    entryDiv.querySelector('.model-id-input').value = id;
+    entryDiv.querySelector('.model-target-api-url-input').value = targetApiUrl;
+    entryDiv.querySelector('.model-api-key-input').value = apiKey;
+    entryDiv.querySelector('.model-num-ctx-input').value = numCtx;
+    entryDiv.querySelector('.model-instructions-input').value = instructions;
+    entryDiv.querySelector('.model-reminder-input').value = reminder;
+    entryDiv.querySelector('.model-narrator-reminder-input').value = narratorReminder;
 
     const targetApiUrlInput = entryDiv.querySelector('.model-target-api-url-input');
     const numCtxInput = entryDiv.querySelector('.model-num-ctx-input');
@@ -7195,6 +7526,9 @@ function createModelEntry(model = {}) {
         if(messageToUpdate.sender === 'ai') {
             const activeVariant = messageToUpdate.variations[messageToUpdate.activeVariant];
             activeVariant.main = messageEditorTextarea.value;
+            // Text the user wrote into an error bubble is theirs, and part of
+            // the story from now on.
+            delete activeVariant.notice;
         } else {
              messageToUpdate.main = messageEditorTextarea.value;
         }
@@ -7219,7 +7553,7 @@ function restoreLastSession() {
     const lastCharId = localStorage.getItem('activeCharacterId');
     const lastChatId = localStorage.getItem('activeChatId');
 
-    if (lastCharId && lastChatId && characters[lastCharId] && characters[lastCharId].chats[lastChatId]) {
+    if (lastCharId && lastChatId && characters[lastCharId] && characters[lastCharId].chats?.[lastChatId]) {
         startChat(lastCharId, lastChatId);
     } else if (lastCharId && characters[lastCharId]) {
         showChatList(lastCharId);
@@ -7921,7 +8255,7 @@ function renderEditorGallery() {
         thumb.className = 'editor-gallery-thumb effect-container';
         thumb.title = 'Use this image';
         thumb.setAttribute('aria-label', `Gallery image ${index + 1}`);
-        thumb.style.backgroundImage = `url('${src}')`;
+        thumb.style.backgroundImage = cssUrl(src);
 
         const img = document.createElement('img');
         img.src = src;
@@ -8011,7 +8345,7 @@ function openGalleryActionModal(index) {
 
     galleryActionIndex = index;
     galleryActionImg.src = src;
-    galleryActionImg.parentElement.style.backgroundImage = `url('${src}')`;
+    galleryActionImg.parentElement.style.backgroundImage = cssUrl(src);
     // A world card has no avatar of its own — its tile shows the background.
     galleryActionAvatarBtn.classList.toggle('hidden', cardTypeWorldRadio.checked);
     galleryActionModal.classList.remove('hidden');
@@ -8136,10 +8470,10 @@ personaEditorFieldsToMonitor.forEach(id => {
             element.addEventListener('input', autoResizeTextarea);
         }
     }
+});
 
-const personaAvatarInput = document.getElementById('persona-avatar');
-const personaEditorAvatarImg = document.getElementById('persona-editor-avatar-img');
-const personaEditorAvatarPlaceholder = document.getElementById('persona-editor-avatar-placeholder');
+// Registered once. It used to sit inside the loop above, so the preview ran
+// three times on every keystroke.
 personaAvatarInput.addEventListener('input', () => {
     const url = personaAvatarInput.value;
     const container = document.getElementById('persona-editor-avatar-container'); 
@@ -8150,7 +8484,7 @@ personaAvatarInput.addEventListener('input', () => {
         personaEditorAvatarImg.classList.remove('hidden');
         personaEditorAvatarPlaceholder.classList.add('hidden');
         container.classList.add('effect-container');
-        container.style.backgroundImage = `url('${url}')`;
+        container.style.backgroundImage = cssUrl(url);
     } else {
         personaEditorAvatarImg.classList.add('hidden');
         personaEditorAvatarPlaceholder.classList.remove('hidden');
@@ -8166,20 +8500,35 @@ personaEditorAvatarImg.onerror = () => {
     container.classList.remove('effect-container');
     container.style.backgroundImage = 'none';
 };
-});
 
     document.body.addEventListener('click', () => {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
     }, { once: true });
+    // A slider fires 'input' on every step of a drag. The setting is applied on
+    // each one, but written to the database once the value settles - or at
+    // once when the control reports its final value with 'change'.
+    const pendingSettingSaves = {};
     function addSettingListener(element, key, eventType = 'input') {
     const isCheckbox = element.type === 'checkbox';
-    element.addEventListener(eventType, async () => {
-        const value = isCheckbox ? element.checked.toString() : element.value;
-        applySetting(key, value);
-        await saveSettingToDB(key, value);
+    const readValue = () => (isCheckbox ? element.checked.toString() : element.value);
+    const writeNow = () => {
+        clearTimeout(pendingSettingSaves[key]);
+        delete pendingSettingSaves[key];
+        saveSettingToDB(key, readValue()).catch(err => console.error(`Could not save setting ${key}:`, err));
+    };
+    element.addEventListener(eventType, () => {
+        applySetting(key, readValue());
+        if (eventType !== 'input') { writeNow(); return; }
+        clearTimeout(pendingSettingSaves[key]);
+        pendingSettingSaves[key] = setTimeout(writeNow, 300);
     });
+    if (eventType === 'input') {
+        element.addEventListener('change', () => {
+            if (pendingSettingSaves[key]) writeNow();
+        });
+    }
 }
 
     // --- NEW FEATURES ---
@@ -8207,7 +8556,7 @@ personaEditorAvatarImg.onerror = () => {
             item.className = 'participant-option-btn';
             const imageUrl = getImageUrl(c.avatar);
             const avatarHtml = `
-    <img src="${imageUrl}" class="${c.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <img src="${escapeHtml(imageUrl)}" class="${c.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
     <div class="placeholder-icon ${c.avatar ? 'hidden' : ''}">👤</div>`;
             item.innerHTML = avatarHtml;
             const nameSpan = document.createElement('span');
@@ -8227,6 +8576,13 @@ personaEditorAvatarImg.onerror = () => {
         const chatToMove = oldChar.chats[currentChatId];
         // Groups belong to a single character, so the chat starts out ungrouped.
         chatToMove.groupId = null;
+        // The chat's main participant is its owner. Left as the old character,
+        // the scene roster and narrator prompts kept describing them instead
+        // of the one swapped in. A guest who becomes the owner is not listed twice.
+        if (Array.isArray(chatToMove.participants)) {
+            const guests = chatToMove.participants.filter(pid => pid !== currentCharacterId && pid !== newCharId);
+            chatToMove.participants = [newCharId, ...guests];
+        }
         if (!newChar.chats) newChar.chats = {};
         newChar.chats[currentChatId] = chatToMove;
         delete oldChar.chats[currentChatId];
@@ -9238,13 +9594,26 @@ personaEditorAvatarImg.onerror = () => {
     for (const [name, key] of Object.entries(FX_SETTING_KEYS)) {
         const slider = document.getElementById(`particle-${name}-slider`);
         if (!slider) continue;
-        slider.addEventListener('input', async () => {
+        // The level applies on every step of a drag; the character (images and
+        // all) is written once it settles, or at once on release.
+        let pendingSave = null;
+        const saveLevel = (character) => {
+            clearTimeout(pendingSave);
+            pendingSave = null;
+            saveSingleCharacterToDB(character).catch(err => console.error('Could not save the effect level:', err));
+        };
+        slider.addEventListener('input', () => {
             fxApplyLevels({ [name]: parseInt(slider.value, 10) });
             const character = characters[currentCharacterId];
             if (character) {
                 character[key] = fxLevels[name];
-                await saveSingleCharacterToDB(character);
+                clearTimeout(pendingSave);
+                pendingSave = setTimeout(() => saveLevel(character), 300);
             }
+        });
+        slider.addEventListener('change', () => {
+            const character = characters[currentCharacterId];
+            if (character && pendingSave) saveLevel(character);
         });
     }
     if (particlePickerModal) {
@@ -9521,7 +9890,7 @@ personaEditorAvatarImg.onerror = () => {
             const voice = speechSynthesis.getVoices().find(v => v.voiceURI === voiceURI);
             if (voice) utter.voice = voice;
         }
-        const btn = messageId ? document.querySelector(`[data-message-id="${messageId}"] .tts-btn`) : null;
+        const btn = messageId ? document.querySelector(`[data-message-id="${CSS.escape(messageId)}"] .tts-btn`) : null;
         if (btn) btn.textContent = '⏹';
         utter.onend = () => { if (btn) btn.textContent = '🔊'; };
         // Cancelled/interrupted utterances report onerror instead of onend in some browsers.
@@ -10037,7 +10406,10 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
     }
 
     async function handleGenerateImage(messageId, button) {
-        const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+        // Generation can take a minute; the picture belongs to this chat even
+        // if another one is open by the time it arrives.
+        const ownerCharacter = characters[currentCharacterId];
+        const chat = ownerCharacter?.chats?.[currentChatId];
         if (!chat) return;
         const message = chat.history.find(m => m.id === messageId);
         if (!message || message.sender !== 'ai') return;
@@ -10059,7 +10431,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         }
 
         const speaker = characters[message.speakerId] || characters[currentCharacterId];
-        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        const messageElement = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
         let stopSpinner = null;
         let pendingBlock = null;
         try {
@@ -10129,7 +10501,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             variation.images.push(imageRecord);
 
             try {
-                await saveSingleCharacterToDB(characters[currentCharacterId]);
+                await saveSingleCharacterToDB(ownerCharacter);
             } catch (saveErr) {
                 variation.images.pop();
                 const quotaHit = saveErr?.name === 'QuotaExceededError'
@@ -10143,7 +10515,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             updateSingleMessageView(messageId);
 
             if (imageRecord.provider === 'pollinations') {
-                maybeShowFreeImageHint(document.querySelector(`[data-message-id="${messageId}"]`));
+                maybeShowFreeImageHint(document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`));
             }
 
             if (typeof imageRecord.cost === 'number') {
@@ -10577,6 +10949,8 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         // one would talk past the conversation.
         const lastMsg = chat.history[chat.history.length - 1];
         if (!lastMsg || lastMsg.sender === 'user' || lastMsg.isStreaming) return;
+        // An error notice is not a reply to answer.
+        if (isChatNoticeMessage(lastMsg)) return;
         const lastAIText = (lastMsg.variations?.[lastMsg.activeVariant ?? 0]?.main || '').trim();
         if (!lastAIText || lastAIText.length < 5) return;
 
@@ -10588,7 +10962,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         _setReplyDropdownLoading();
 
         const character = characters[currentCharacterId];
-        const charName = character?.chatName || character?.cardName || 'the character';
+        const charName = character?.chatName || character?.name || 'the character';
         const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
         const personaContext = persona
             ? ` The user is playing as "${persona.chatName || persona.name}" (${(persona.description || '').substring(0, 200)}).`
@@ -10649,6 +11023,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         const btn = e.target.closest('.reply-option-btn');
         if (!btn) return;
         e.preventDefault();
+        // A spinner or a warning is not a reply: taking its text would paste
+        // the warning into the message box, or wipe what was typed there.
+        if (btn.classList.contains('reply-option-loading') || btn.classList.contains('reply-option-error')) return;
         messageInput.value = btn.textContent;
         autoResizeTextarea({ target: messageInput });
         hideReplyOptionsDropdown();
@@ -10844,7 +11221,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         btn.innerHTML = '<span class="btn-spinner"></span> Summarizing…';
         btn.disabled = true;
         try {
-            const historyText = chat.history.slice(-40).map(msg => {
+            const historyText = historyForPrompt(chat.history).slice(-40).map(msg => {
                 if (msg.sender === 'user') return `User: ${msg.main || ''}`;
                 const text = msg.variations?.[msg.activeVariant]?.main || '';
                 if (msg.type === 'story') return `Narrator: ${text}`;
@@ -11161,14 +11538,16 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
     newCharacterBtn.addEventListener('click', openEditorForNew);
     editCharacterBtn.addEventListener('click', openEditorForEdit);
     copyCharacterBtn.addEventListener('click', handleCopyCharacter);
-    searchInput.addEventListener('input', () => {
-    const searchTerm = searchInput.value.trim();
-    renderCharacterList(searchTerm);
-});
+    // The whole card grid is rebuilt per search, so a burst of keystrokes is
+    // answered once, just after typing pauses.
+    let characterSearchTimer = null;
+    const scheduleCharacterListRender = () => {
+        clearTimeout(characterSearchTimer);
+        characterSearchTimer = setTimeout(() => renderCharacterList(searchInput.value.trim()), 120);
+    };
+    searchInput.addEventListener('input', scheduleCharacterListRender);
 
-document.getElementById('tag-search-input').addEventListener('input', () => {
-    renderCharacterList();
-});
+document.getElementById('tag-search-input').addEventListener('input', scheduleCharacterListRender);
 
 
 
@@ -11203,7 +11582,7 @@ async function toggleArchiveState(charId) {
 
     await saveSingleCharacterToDB(character);
 
-    const card = document.querySelector(`.character-card[data-char-id="${charId}"]`);
+    const card = document.querySelector(`.character-card[data-char-id="${CSS.escape(charId)}"]`);
     if (!card) { renderCharacterList(searchInput.value.trim()); return; }
 
     const archiveBtn = card.querySelector('.archive-btn');
@@ -11228,7 +11607,7 @@ async function toggleArchiveState(charId) {
 
         // Remove from favorites bar
         const favBar = document.getElementById('favorites-bar');
-        const favItem = favBar?.querySelector(`[data-char-id="${charId}"]`);
+        const favItem = favBar?.querySelector(`[data-char-id="${CSS.escape(charId)}"]`);
         if (favItem) {
             favItem.remove();
             if (!favBar.querySelector('.favorite-item')) {
@@ -11283,10 +11662,10 @@ characterList.addEventListener('click', async (event) => {
                 favElement.dataset.charId = charId;
                 favElement.innerHTML = `
                   <div class="avatar-container">
-                    <img src="${imageUrl}" alt="${character.name}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
+                    <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(character.name)}" class="${favImageSource ? '' : 'hidden'}" onerror="this.classList.add('is-broken')">
                     <div class="placeholder-icon ${favImageSource ? 'hidden' : ''}">${isWorldFav ? '🌍' : '👤'}</div>
                   </div>
-                  <span>${character.name}</span>`;
+                  <span>${escapeHtml(character.name)}</span>`;
                 favElement.addEventListener('click', () => showChatList(charId));
 
                 const existing = [...favBar.querySelectorAll('.favorite-item')];
@@ -11301,7 +11680,7 @@ characterList.addEventListener('click', async (event) => {
                 if (!inserted) favBar.appendChild(favElement);
             } else {
                 favBtn.classList.remove('is-favorite');
-                favBar.querySelector(`[data-char-id="${charId}"]`)?.remove();
+                favBar.querySelector(`[data-char-id="${CSS.escape(charId)}"]`)?.remove();
                 if (!favBar.querySelector('.favorite-item')) {
                     favBar.innerHTML = `<span class="favorites-placeholder">No Favorites selected</span>`;
                 }
@@ -11827,7 +12206,6 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     addSettingListener(blurSlider, 'blur');
     addSettingListener(avatarSizeSlider, 'avatarSize');
     addSettingListener(modelSelect, 'model', 'change');
-    addSettingListener(avatarSizeSlider, 'avatarSize');
     if (suggestionModelSelect) addSettingListener(suggestionModelSelect, 'suggestionModelId', 'change');
 
     // Image generation is still in testing, so the whole block stays hidden
@@ -11870,16 +12248,24 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
         chatWindow.scrollTop = 0;
     });
 
+    let chatScrollSaveTimer = null;
     chatWindow.addEventListener('scroll', () => {
         if (chatWindow.scrollTop > 400) {
             scrollTopFab.classList.add('visible');
         } else {
             scrollTopFab.classList.remove('visible');
         }
+        // Remembered at most every 200 ms: a scroll fires dozens of events a
+        // second, and each synchronous localStorage write made it stutter.
         const k = (currentCharacterId && currentChatId)
   ? `chatScrollPos:${currentCharacterId}:${currentChatId}`
   : 'chatScrollPos';
-localStorage.setItem(k, String(chatWindow.scrollTop));
+        const scrollTopNow = chatWindow.scrollTop;
+        if (chatScrollSaveTimer) clearTimeout(chatScrollSaveTimer);
+        chatScrollSaveTimer = setTimeout(() => {
+            chatScrollSaveTimer = null;
+            try { localStorage.setItem(k, String(scrollTopNow)); } catch (_) {}
+        }, 200);
         chatWindow._autoScroll = chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop < 50;
     }, { passive: true });
 
@@ -11941,8 +12327,13 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
         if (!messageElement) return;
 
         const messageId = messageElement.dataset.messageId;
-        
+        // One reply is written at a time. The buttons on other messages stay
+        // clickable during a stream, and a second request running alongside
+        // shared the one Stop button and the stream state with the first.
+        const replyInProgress = chatTurnInProgress || !!currentStreamController;
+
         if (target.classList.contains('regenerate-btn')) {
+            if (replyInProgress) return;
             await handleRegenerate(messageId);
         }
         else if (target.classList.contains('edit-message-btn')) {
@@ -11968,6 +12359,8 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
                 const chat = characters[currentCharacterId]?.chats?.[currentChatId];
             if (!chat) return;
             const messageIndex = chat.history.findIndex(m => m.id === messageId);
+            // Not found must not become splice(-1), which deletes the last message.
+            if (messageIndex === -1) return;
             const currentScroll = chatWindow.scrollTop;
             lastDeletedSnapshot = { charId: currentCharacterId, chatId: currentChatId, fromIndex: messageIndex, messages: chat.history.splice(messageIndex) };
             await saveSingleCharacterToDB(characters[currentCharacterId]);
@@ -11979,6 +12372,7 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
                 }
              }
              else if (target.classList.contains('continue-btn')) {
+        if (replyInProgress) return;
         await handleContinue(messageId);
              }
         else if (target.classList.contains('prev-variant-btn') || target.classList.contains('next-variant-btn')) {
@@ -12011,10 +12405,26 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
 
 
 
+    // Arrow keys belong to whatever has focus. Only when nothing that takes
+    // keyboard input is focused do they flip the last reply's variants.
+    function isKeyboardInputFocused() {
+        const el = document.activeElement;
+        if (!el || el === document.body) return false;
+        if (el.isContentEditable) return true;
+        const tag = el.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    }
+
     document.addEventListener('keydown', async (event) => {
-        if (chatScreen.classList.contains('hidden')) return;
-        if (document.activeElement === messageInput || document.activeElement === messageEditorTextarea || document.activeElement === chatMemoriesTextarea) return;
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        // Alt+Left is the browser's Back; shortcuts with a modifier are not ours.
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        // The chat screen is hidden with 'is-inactive'; checking for 'hidden'
+        // never matched.
+        if (chatScreen.classList.contains('is-inactive')) return;
+        if (isKeyboardInputFocused()) return;
         if (chatMemoriesModal && !chatMemoriesModal.classList.contains('hidden')) return;
+        if (messageEditorModal && !messageEditorModal.classList.contains('hidden')) return;
         
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || chat.history.length === 0) return;
@@ -12036,7 +12446,7 @@ localStorage.setItem(k, String(chatWindow.scrollTop));
                 event.preventDefault();
                 // Ignore regenerate requests while a generation is already
                 // streaming; a second press mid-stream corrupts the formatting.
-                if (currentStreamController) return;
+                if (currentStreamController || chatTurnInProgress) return;
                 await handleRegenerate(lastMessage.id);
                 return;
             }
@@ -12274,9 +12684,13 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key.toLowerCase() === 'f' && 
-        document.activeElement.tagName !== 'INPUT' && 
-        document.activeElement.tagName !== 'TEXTAREA') {
+    // Plain F only. Ctrl+F / Cmd+F is the browser's Find and must reach it;
+    // autofill can also dispatch a keydown without a key at all.
+    if (typeof event.key !== 'string' || event.ctrlKey || event.metaKey || event.altKey) return;
+    const focused = document.activeElement;
+    if (event.key.toLowerCase() === 'f' &&
+        focused && focused.tagName !== 'INPUT' &&
+        focused.tagName !== 'TEXTAREA' && focused.tagName !== 'SELECT' && !focused.isContentEditable) {
         
         event.preventDefault(); 
 
@@ -12300,7 +12714,7 @@ charAvatarInput.addEventListener('input', () => {
         editorAvatarImg.classList.remove('hidden');
         editorAvatarPlaceholder.classList.add('hidden');
         editorAvatarContainer.classList.add('effect-container');
-        editorAvatarContainer.style.backgroundImage = `url('${url}')`;
+        editorAvatarContainer.style.backgroundImage = cssUrl(url);
     } else {
         editorAvatarImg.classList.add('hidden');
         editorAvatarPlaceholder.classList.remove('hidden');
@@ -12323,7 +12737,7 @@ const chatListScreenForPreview = document.getElementById('chat-list-screen');
 charBackgroundInput.addEventListener('input', () => {
     const url = charBackgroundInput.value;
     if (url) {
-        chatListScreenForPreview.style.backgroundImage = `url('${url}')`;
+        chatListScreenForPreview.style.backgroundImage = cssUrl(url);
         chatListScreenForPreview.style.backgroundSize = 'cover';
         chatListScreenForPreview.style.backgroundPosition = 'center';
     } else {
