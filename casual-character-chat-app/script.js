@@ -3236,7 +3236,7 @@ if (headerAvatarUrl) {
     updateTokenCount();
     updateMoodButton();
     updateParticleButton();
-    startParticles(character.particleEffect || 'none', character.particleIntensityLevel);
+    startParticles(character.particleEffect || 'none', fxSavedLevels(character));
     const musicUrlInputEl = document.getElementById('music-url-input');
     if (musicUrlInputEl) {
         const savedUserUrl = localStorage.getItem(`userMusicUrl:${currentCharacterId}`);
@@ -8319,11 +8319,35 @@ personaEditorAvatarImg.onerror = () => {
     const particleBtn = document.getElementById('particle-btn');
     const particlePickerModal = document.getElementById('particle-picker-modal');
     const closeParticlePickerBtn = document.getElementById('close-particle-picker-btn');
-    let particleIntensityLevel = 50;
-    let intensityFactor = 1.0;
-    const particleIntensitySlider = document.getElementById('particle-intensity-slider');
-    const particleIntensityValue = document.getElementById('particle-intensity-value');
-    const particleIntensityRow = document.getElementById('particle-intensity-row');
+    // Volume = how many particles, Opacity = how strongly they show, Speed = how fast they move.
+    // Each slider runs 1–100, and 50 is the effect's normal look.
+    const FX_SETTING_KEYS = { volume: 'particleVolumeLevel', opacity: 'particleOpacityLevel', speed: 'particleSpeedLevel' };
+    const fxLevels = { volume: 50, opacity: 50, speed: 50 };
+    let fxVolume = 1, fxOpacity = 1, fxSpeed = 1;
+    const particleSettingsRow = document.getElementById('particle-settings-row');
+    // older characters have a single intensity level, which drove both the amount and the opacity
+    function fxSavedLevels(character) {
+        const old = character?.particleIntensityLevel ?? 50;
+        return {
+            volume: character?.particleVolumeLevel ?? old,
+            opacity: character?.particleOpacityLevel ?? old,
+            speed: character?.particleSpeedLevel ?? 50,
+        };
+    }
+    function fxApplyLevels(levels) {
+        Object.assign(fxLevels, levels);
+        fxVolume = fxLevels.volume / 50;
+        fxOpacity = fxLevels.opacity / 50;
+        fxSpeed = Math.max(0.1, fxLevels.speed / 50);
+        // below normal the whole canvas fades; above normal the effects draw themselves stronger (fxFade)
+        if (particleCanvas) particleCanvas.style.opacity = fxOpacity < 1 ? String(fxOpacity) : '';
+        for (const name of Object.keys(FX_SETTING_KEYS)) {
+            const slider = document.getElementById(`particle-${name}-slider`);
+            const value = document.getElementById(`particle-${name}-value`);
+            if (slider) slider.value = fxLevels[name];
+            if (value) value.textContent = fxLevels[name];
+        }
+    }
 
     const PARTICLE_EMOJIS = { none:'✨', snow:'❄️', rain:'🌧️', sparks:'🔥', fireflies:'🟢', sakura:'🌸', fog:'🌫️', steam:'♨️', aurora:'🌌', leaves:'🍂', darkness:'🌑' };
     function updateParticleButton() {
@@ -8476,15 +8500,10 @@ personaEditorAvatarImg.onerror = () => {
     }
 
     let fxStartToken = 0;
-    function startParticles(effect, savedIntensity) {
+    function startParticles(effect, levels) {
         stopParticles();
         if (effect === 'none' || !particleCtx || !particleCanvas || !FX_EFFECTS[effect]) return;
-        if (savedIntensity !== undefined) {
-            particleIntensityLevel = savedIntensity;
-            intensityFactor = particleIntensityLevel / 50;
-            if (particleIntensitySlider) particleIntensitySlider.value = particleIntensityLevel;
-            if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
-        }
+        if (levels) fxApplyLevels(levels);
         currentParticleEffect = effect;
         const token = ++fxStartToken;
         fxLoadSprites().then(() => {
@@ -8501,7 +8520,8 @@ personaEditorAvatarImg.onerror = () => {
 
     function fxFrame(now) {
         if (!fx) return;
-        const dt = fx.last ? Math.min(0.05, Math.max(0, (now - fx.last) / 1000)) : 1 / 60;
+        // the Speed slider runs the effect's clock faster or slower
+        const dt = (fx.last ? Math.min(0.05, Math.max(0, (now - fx.last) / 1000)) : 1 / 60) * fxSpeed;
         fx.last = now;
         fx.t += dt;
         const g = particleCtx;
@@ -8521,11 +8541,11 @@ personaEditorAvatarImg.onerror = () => {
     const fxPick = (list) => list[Math.floor(Math.random() * list.length)];
     const fxSmooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     // how many particles for this screen: the counts are tuned for a 1280×800 window
-    const fxCount = (base) => Math.round(base * intensityFactor * Math.min(1.5, Math.max(0.45, (W * H) / (1280 * 800))));
+    const fxCount = (base) => Math.round(base * fxVolume * Math.min(1.5, Math.max(0.45, (W * H) / (1280 * 800))));
     // particle size for this screen
     const fxSize = () => Math.min(1.25, Math.max(0.75, Math.sqrt(W * H) / 1100));
-    // overall opacity follows the intensity slider, gently
-    const fxFade = () => Math.min(1.2, 0.45 + 0.55 * intensityFactor);
+    // extra strength when the Opacity slider is above normal (below normal, the canvas itself fades)
+    const fxFade = () => 1 + 0.35 * Math.max(0, fxOpacity - 1);
     function fxSync(list, target, spawn) {
         while (list.length < target) list.push(spawn(true));
         if (list.length > target) list.length = target;
@@ -8860,8 +8880,8 @@ personaEditorAvatarImg.onerror = () => {
             return {
                 lowRes: true,
                 frame(g, dt, t) {
-                    fxSync(banks, Math.round(22 * Math.max(intensityFactor, 0.3)), spawn);
-                    const k = Math.min(1.8, 0.4 + 0.8 * intensityFactor);
+                    fxSync(banks, Math.round(22 * Math.max(fxVolume, 0.3)), spawn);
+                    const k = Math.min(1.8, 0.4 + 0.8 * Math.max(1, fxOpacity));
                     g.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
                     g.globalAlpha = 1;
                     g.fillStyle = `rgba(212,222,236,${Math.min(0.12, 0.05 * k)})`;
@@ -8903,7 +8923,7 @@ personaEditorAvatarImg.onerror = () => {
             return {
                 frame(g, dt, t) {
                     fxSync(puffs, fxCount(32), spawnPuff);
-                    fxSync(wisps, Math.max(0, Math.round(6 * intensityFactor)), spawnWisp);
+                    fxSync(wisps, Math.max(0, Math.round(6 * fxVolume)), spawnWisp);
                     const fade = fxFade();
                     for (let i = 0; i < puffs.length; i++) {
                         const p = puffs[i];
@@ -8972,7 +8992,7 @@ personaEditorAvatarImg.onerror = () => {
                 frame(g, dt, t) {
                     fxSync(miasma, fxCount(14), spawnMiasma);
                     fxSync(motes, fxCount(30), spawnMote);
-                    const k = Math.min(1.6, 0.35 + 0.65 * intensityFactor);
+                    const k = Math.min(1.6, 0.35 + 0.65 * Math.max(1, fxOpacity));
                     g.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
                     g.globalAlpha = 1;
                     g.fillStyle = `rgba(6,2,14,${Math.min(0.45, 0.24 * k)})`;
@@ -9041,7 +9061,7 @@ personaEditorAvatarImg.onerror = () => {
                         if (s.big && tw > 0.7) fxDraw(g, sparkle, s.x, s.y, s.r * 9, s.r * 9, 0, (tw - 0.7) * 2.4 * fade);
                     }
                     g.globalCompositeOperation = 'lighter';
-                    const count = Math.max(1, Math.min(5, Math.round(3 * intensityFactor)));
+                    const count = Math.max(1, Math.min(5, Math.round(3 * fxVolume)));
                     const step = Math.max(5, W / 240);
                     g.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
                     for (let r = 0; r < count; r++) {
@@ -9119,7 +9139,7 @@ personaEditorAvatarImg.onerror = () => {
                     }
                     nextPop -= dt;
                     if (nextPop <= 0 && pops.length < 60) {
-                        nextPop = fxRand(1.2, 3.5) / Math.max(0.4, intensityFactor);
+                        nextPop = fxRand(1.2, 3.5) / Math.max(0.4, fxVolume);
                         const x = fxRand(W * 0.08, W * 0.92), y = H - fxRand(0, 60) * S;
                         for (let n = 0, m = 6 + Math.floor(Math.random() * 7); n < m; n++) {
                             const ang = -Math.PI / 2 + fxRand(-0.75, 0.75), sp = fxRand(220, 460) * S;
@@ -9206,25 +9226,21 @@ personaEditorAvatarImg.onerror = () => {
                 particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => {
                     b.classList.toggle('active', b.dataset.effect === currentEffect);
                 });
-                const savedLevel = character?.particleIntensityLevel ?? 50;
-                particleIntensityLevel = savedLevel;
-                intensityFactor = particleIntensityLevel / 50;
-                if (particleIntensitySlider) particleIntensitySlider.value = particleIntensityLevel;
-                if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
-                if (particleIntensityRow) particleIntensityRow.classList.toggle('hidden', currentEffect === 'none');
+                fxApplyLevels(fxSavedLevels(character));
+                if (particleSettingsRow) particleSettingsRow.classList.toggle('hidden', currentEffect === 'none');
                 particlePickerModal.classList.remove('hidden');
             }
         });
     }
     if (closeParticlePickerBtn) closeParticlePickerBtn.addEventListener('click', () => { if (particlePickerModal) particlePickerModal.classList.add('hidden'); });
-    if (particleIntensitySlider) {
-        particleIntensitySlider.addEventListener('input', async () => {
-            particleIntensityLevel = parseInt(particleIntensitySlider.value, 10);
-            intensityFactor = particleIntensityLevel / 50;
-            if (particleIntensityValue) particleIntensityValue.textContent = particleIntensityLevel;
+    for (const [name, key] of Object.entries(FX_SETTING_KEYS)) {
+        const slider = document.getElementById(`particle-${name}-slider`);
+        if (!slider) continue;
+        slider.addEventListener('input', async () => {
+            fxApplyLevels({ [name]: parseInt(slider.value, 10) });
             const character = characters[currentCharacterId];
             if (character) {
-                character.particleIntensityLevel = particleIntensityLevel;
+                character[key] = fxLevels[name];
                 await saveSingleCharacterToDB(character);
             }
         });
@@ -9239,7 +9255,7 @@ personaEditorAvatarImg.onerror = () => {
             if (!character) return;
             character.particleEffect = effect;
             particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
-            if (particleIntensityRow) particleIntensityRow.classList.toggle('hidden', effect === 'none');
+            if (particleSettingsRow) particleSettingsRow.classList.toggle('hidden', effect === 'none');
             await saveSingleCharacterToDB(character);
             startParticles(effect);
             updateParticleButton();

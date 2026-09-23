@@ -638,9 +638,13 @@
             <button class="particle-option-btn" data-effect="leaves">🍂 Leaves</button>
             <button class="particle-option-btn" data-effect="sakura">🌸 Sakura</button>
         </div>
-        <div id="particle-intensity-row" class="hidden" style="margin:10px 0 4px;">
-            <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span>Effect Intensity</span><span id="particle-intensity-value">50</span></label>
-            <input type="range" id="particle-intensity-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);">
+        <div id="particle-settings-row" class="hidden" style="margin:10px 0 4px;">
+            <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span title="How many particles appear">Volume</span><span id="particle-volume-value">50</span></label>
+            <input type="range" id="particle-volume-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);margin-bottom:10px;">
+            <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span title="How strongly the effect shows">Opacity</span><span id="particle-opacity-value">50</span></label>
+            <input type="range" id="particle-opacity-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);margin-bottom:10px;">
+            <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span title="How fast the particles move">Speed</span><span id="particle-speed-value">50</span></label>
+            <input type="range" id="particle-speed-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);">
         </div>
         <div class="form-buttons">
             <button type="button" id="close-particle-picker-btn">Close</button>
