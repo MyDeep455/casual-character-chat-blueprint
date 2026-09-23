@@ -526,14 +526,25 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Back Arrow (←):</strong> Takes you back to the character's chat dashboard.</li>
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
         <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
-        <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history.</li>
+        <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history. With OpenRouter models it also shows what this chat has cost so far, and what everything since you opened the app has cost (the "session").</li>
         <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, events still to come, or reminders the AI tends to forget over long conversations. A chat started from a scenario begins with that scenario's <strong>Chat Memories</strong> already in the box - its own copy, so rewriting it here changes nothing anywhere else. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
         <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
         <li><strong>Mood (😊):</strong> Click this button to set a mood for the character in the current chat session. A picker opens with preset options — <em>Happy, Sad, Angry, Excited, Nervous, Flirty, Tired, Curious, Scared, Bored</em> — plus a "None / Clear" option to remove the mood. The chosen mood is injected into the AI's system context with every message, subtly shaping how the character speaks and reacts throughout the conversation. The button icon updates to the emoji of the currently active mood so you can see it at a glance.</li>
-        <li><strong>Ambient Effects (✨):</strong> Opens the particle effects picker, where you can apply animated visual effects to the chat background. Available effects include: <em>Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,</em> and <em>Darkness</em>. Three sliders tune it to your taste: <em>Volume</em> sets how many particles appear, <em>Opacity</em> how strongly they show, and <em>Speed</em> how fast they move (50 is each effect's normal look). The selected effect is saved directly on the character card and activates automatically every time you open a chat with that character. Choose "None" to turn effects off.</li>
-        <li><strong>Quick Swap Character (↔️):</strong> Opens a searchable list of all your other characters. Clicking one instantly moves the entire current chat session — including its full message history — to that character, then opens the chat with them immediately. This is useful when you want to re-assign an ongoing story to a different character without going back to the main screen and recreating the chat manually.</li>
+        <li><strong>Ambient Effects (✨):</strong> Opens the particle effects picker, where you can apply animated visual effects to the chat background. Available effects include: <em>Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,</em> and <em>Darkness</em>. Three sliders tune it to your taste: <em>Volume</em> sets how many particles appear, <em>Opacity</em> how strongly they show, and <em>Speed</em> how fast they move (50 is each effect's normal look). The selected effect is saved directly on the character card and activates automatically every time you open a chat with that character. Choose "None" to turn effects off.
+            <br><strong>🪄 Automatic Atmosphere</strong> (in the same window, off by default): when switched on, the AI looks at the scene after each reply and picks a fitting effect and mood by itself — rain in a storm, fireflies on a summer night, darkness when things get tense. It uses one small extra request per reply with your <strong>Suggestions Model</strong>. Picking an effect by hand still works and applies at once; the next reply may change it again.</li>
+        <li><strong>More Tools (⋯):</strong> The first button in the row opens a small menu:
+            <ul>
+                <li><strong>🔍 Search Chats:</strong> Opens the search bar. See <em>Searching Your Chats</em> below.</li>
+                <li><strong>★ Bookmarks:</strong> Opens the search bar showing only your bookmarked messages. The number next to it is how many this chat has.</li>
+                <li><strong>📊 Chat Stats:</strong> Messages and words (yours and the AI's), when the chat started, bookmarks, generated images, the cost so far, and your milestones.</li>
+                <li><strong>▶️ Let Them Talk:</strong> Only appears in chats with at least two characters. See <em>Letting the Characters Talk</em> in the Group Chats section.</li>
+                <li><strong>🎲 Roll Dice:</strong> Puts <code>/roll 1d20</code> into the message box for you. See <em>Rolling Dice</em> below.</li>
+                <li><strong>🔃 Quick-Swap Character:</strong> Opens a searchable list of all your other characters. Clicking one instantly moves the entire current chat session — including its full message history — to that character, then opens the chat with them immediately. This is useful when you want to re-assign an ongoing story to a different character without going back to the main screen and recreating the chat manually.</li>
+                <li><strong>⌨️ Keyboard Shortcuts:</strong> Lists every shortcut (computer only).</li>
+            </ul>
+        </li>
     </ul>
 
     <h3>The Settings Panel</h3>
@@ -568,6 +579,7 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Reply Suggestions:</strong> A toggle that enables or disables AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response, giving you quick ideas for what your character could say next. While the suggestions are being generated, animated loading indicators appear in the suggestion fields — and if something goes wrong (e.g. the AI provider is unreachable), a short error message is shown there instead. If neither suggestion appeals to you, click the <strong>⟳</strong> button next to the "Reply Suggestions" label to generate a fresh pair — the discarded ones are named in the request, so the new pair takes different directions. The same button also retries a round that failed. Suggestions are also refreshed after you delete messages or switch a message to another variant, whenever the chat then ends on an AI message.</li>
         <li><strong>Suggestions Model:</strong> A dropdown that appears below the Reply Suggestions toggle. It lets you choose a dedicated AI model just for generating reply suggestions — independently from the model you use for chatting. <strong>Tip:</strong> Set a free or low-cost model here so that suggestions don't consume API quota from your main (paid) chat model. Leave it on "(same as chat model)" if you don't need to separate them.</li>
         <li><strong>Text-to-Speech (TTS):</strong> A toggle that enables your browser's built-in text-to-speech for AI responses. When active, each new AI message is automatically read aloud once it finishes generating. A <strong>Voice</strong> dropdown appears directly below the toggle, listing the English and Japanese voices installed on your operating system, plus those for the language spoken where you are — choose whichever sounds best to you. TTS runs entirely through the Web Speech API built into your browser; no external service or API key is required. Note: voice availability varies by browser and operating system.</li>
+        <li><strong>Auto-summarize Long Chats:</strong> Off by default. When on, the app keeps an eye on how long each chat gets. Once about 40 new messages have piled up, the older ones are summarized into a few bullet points and added to that chat's <strong>🧠 Chat Memories</strong> under an "Auto-summary" heading, so the AI keeps the important facts in view even when they happened long ago. The newest messages are always left out until the next round, and nothing is ever deleted from the chat itself. It uses your <strong>Suggestions Model</strong>. If you run <strong>✨ Auto-summarize Chat</strong> by hand and save the result, the automatic summary carries on after that point instead of covering it again.</li>
         <li><strong>Background Music:</strong> A text field where you can paste a direct link to an audio file (e.g., an <code>.mp3</code>) to play as looping background music for the current chat. This acts as a per-session override of the Music URL set in the character editor — your entry here is saved in your browser's local storage and does not change the character's saved data. Clear the field to stop the music.</li>
         <li><strong>Reset to Default Values:</strong> This button resets all settings on this panel to their original values.</li>
     </ul>
@@ -585,6 +597,14 @@ No one else, including the developer, can access your characters or conversation
                 <li><strong>Continuing a Response:</strong> Next to the regenerate icon, you'll find a continue button (»). Clicking it continues the previous AI message in its original context. The app asks the model to repair a cut-off word, sentence, dialogue line, quotation, or formatting marker before adding new content, and merges the result without inserting an unwanted space inside a repaired word.</li>
             </ul>
         </li>
+        <li><strong>More Actions (⋯):</strong> The last button that appears when you hover over a message opens a small menu:
+            <ul>
+                <li><strong>📋 Copy Text:</strong> Copies the message to your clipboard.</li>
+                <li><strong>★ Bookmark:</strong> Marks the message with a small gold star, so you can find key moments again later through <strong>★ Bookmarks</strong> in the ⋯ menu. Choose it again to remove the bookmark.</li>
+                <li><strong>🙈 Hide from AI:</strong> The message stays in the chat for you, faded and labelled "Hidden from the AI", but it is no longer sent to the AI — not in replies, summaries, suggestions or image prompts. Handy for out-of-character remarks, or a scene you want the story to forget. Choose <strong>Show to AI Again</strong> to undo it.</li>
+                <li><strong>🌿 Branch from Here:</strong> Starts a new chat that holds everything up to and including this message — with the same participants, persona, mood and Chat Memories — and opens it. The original chat stays exactly as it was, so you can try a different path without losing the first one. The copy is named after the original with "(branch)" added.</li>
+            </ul>
+        </li>
         <li><strong>AI Thoughts:</strong> Some AI models (Reasoning models) can provide their "thoughts" in a special <code>&lt;think&gt;</code> block. It will be automatically displayed in a collapsible box ("think block") above the main response. You can click "Show Thoughts" to see the AI's reasoning or internal monologue for its response.
         </li>
     </ul>
@@ -597,13 +617,40 @@ No one else, including the developer, can access your characters or conversation
             <blockquote>Note: Sometimes, the AI might get repetitive and it can look like as if the AI ignores the last message and doesn't drive the plot forward. In that case, simply make use of your Reminder instructions (e.g., "Drive the plot actively forward and let something new happen.") and also adjust the Temperature slider.</blockquote>
         </li>
         <li><strong>Tag Suggestions:</strong> When you click the input field in a group chat, suggestions for selecting a participant appear above it. Select a tag to direct <code>Character</code> requests to that character; the selection remains active until you dismiss it. <code>Narrator</code> requests always ignore the selected tag.</li>
-        <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind.</li>
+        <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind. On a computer, <code>Esc</code> does the same.</li>
+        <li><strong>🎤 Voice Input:</strong> The microphone in the corner of the message box lets you speak instead of type. Click it, allow microphone access the first time, and talk — your words appear in the box as you speak, after anything you had already typed. Click it again to stop, then check the text and send it as usual. It uses your browser's own speech recognition in your browser's language, so it only appears in browsers that have one (such as Chrome, Edge and Safari; Firefox has none).</li>
+        <li><strong>Unsent Messages Are Kept:</strong> Whatever you type but don't send stays in that chat's message box — even when you switch to another chat, close the tab or reload. Each chat keeps its own.</li>
+        <li><strong>🎲 Rolling Dice:</strong> Start a message with <code>/roll</code> to roll real dice. <code>/roll</code> alone rolls a 20-sided die; <code>/roll 2d6+3</code> rolls two 6-sided dice and adds 3. The result appears in the chat, e.g. <em>🎲 Rolled 2d6+3: 11 (4 + 4 + 3)</em>.
+            <ul>
+                <li>A roll on its own is only posted — the AI isn't asked yet. Write what you do next, or press send with an empty box to let the AI react to the roll.</li>
+                <li>Add your action after the dice (<code>/roll d20 I try to pick the lock</code>) and it is sent right away, with the result in front of it, so the AI plays out the outcome.</li>
+            </ul>
+        </li>
     </ul>
+
+    <h3>🔍 Searching Your Chats</h3>
+    <p>Open the search bar with <strong>🔍 Search Chats</strong> in the ⋯ menu (or press <code>/</code> on a computer). Every match in the chat is highlighted, and the current one is outlined in gold.</p>
+    <ul>
+        <li><strong>Moving between matches:</strong> The ⌃ and ⌄ buttons (or <code>Enter</code> and <code>Shift+Enter</code>) step to older and newer matches. The counter shows which one you are on.</li>
+        <li><strong>All Chats:</strong> Searches every chat with this character at once and lists the matches, newest first. Click one to open that chat right at the message.</li>
+        <li><strong>★:</strong> Shows only bookmarked messages. Leave the search box empty to see all of them.</li>
+        <li>Close the bar with <strong>×</strong> or <code>Esc</code>.</li>
+    </ul>
+
+    <h3>📊 Chat Stats & Milestones</h3>
+    <p><strong>📊 Chat Stats</strong> in the ⋯ menu shows how far a story has come: messages and words from you and the AI, the day it started, bookmarks, generated pictures and what it has cost. Along the way, the chat celebrates milestones — 25, 50, 100, 250 messages and more, and word counts from 10,000 up — with a short note at the bottom of the screen. The stats window shows the milestones you have reached and how close the next one is. Chats that existed before this feature count what they had already reached quietly, without a flood of notes.</p>
 
     <h3>Other Chat Functions</h3>
     <ul>
         <li><strong>Scroll to Top Button (↑):</strong> This floating button appears in the bottom-right corner after you've scrolled down a bit. Click it to jump instantly to the beginning of the chat.</li>
         <li><strong>Fullscreen Mode:</strong> When using the app on your computer, simply press the <code>F</code> key on your keyboard to toggle a distraction-free, immersive fullscreen mode. Press <code>F</code> again (or <code>ESC</code>) to exit fullscreen mode.</li>
+        <li><strong>⌨️ Keyboard Shortcuts:</strong> Press <code>?</code> in a chat (or choose it in the ⋯ menu) for the full list:
+            <ul>
+                <li><code>Enter</code> sends as Character, <code>Ctrl+Enter</code> sends as Narrator, <code>Shift+Enter</code> starts a new line.</li>
+                <li><code>Esc</code> stops the reply being written and closes the search bar.</li>
+                <li><code>/</code> opens the search, <code>←</code> <code>→</code> browse reply variants, <code>F</code> toggles fullscreen.</li>
+            </ul>
+        </li>
     </ul>
 
     <h2>6. Who Are You? Persona Management</h2>
@@ -659,6 +706,14 @@ No one else, including the developer, can access your characters or conversation
     <blockquote>
         However, to be certain, always put the instruction “Reply only as {{char}} now” in the Character Reminder. It will ensure that only your targeted character will speak.
     </blockquote>
+
+    <h3>▶️ Letting the Characters Talk</h3>
+    <p>In any chat with at least two characters (including a World with two or more characters), <strong>▶️ Let Them Talk</strong> in the ⋯ menu lets the characters carry the scene among themselves while you watch. Choose 4, 8 or 12 turns. Each turn goes to a different character than the one who just spoke, and each reply answers the one before it.</p>
+    <ul>
+        <li>A small bar above the message box shows the turn and who is replying. Its <strong>Stop</strong> button — or the red stop button, or <code>Esc</code> — ends the talk after the reply being written.</li>
+        <li>It also stops by itself if a reply fails or you leave the chat. Your own character tag is back as it was afterwards, and reply suggestions appear once it is over.</li>
+        <li>Anything you had typed in the message box is left alone while they talk.</li>
+    </ul>
 
     <h2>8. Import, Export & Backups</h2>
     <p>Your data is stored locally in your browser (IndexedDB), which means it's private but also vulnerable if your browser data is cleared. The Import and Export feature is the best way to safeguard your creations.</p>

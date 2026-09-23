@@ -233,6 +233,7 @@ h1 {
 #import-btn,
 #export-btn,
 #privacy-btn,
+#install-app-btn,
 #help-btn,
 #back-to-main-btn,
 #delete-character-btn-dashboard,
@@ -276,6 +277,7 @@ h1 {
 #import-btn:hover,
 #export-btn:hover,
 #privacy-btn:hover,
+#install-app-btn:hover,
 #help-btn:hover,
 #back-to-main-btn:hover,
 #edit-character-btn:hover,
@@ -309,6 +311,7 @@ h1 {
 #import-btn:active,
 #export-btn:active,
 #privacy-btn:active,
+#install-app-btn:active,
 #help-btn:active,
 #back-to-main-btn:active,
 #delete-character-btn-dashboard:active,
@@ -342,6 +345,7 @@ h1 {
 #import-btn:focus-visible,
 #export-btn:focus-visible,
 #privacy-btn:focus-visible,
+#install-app-btn:focus-visible,
 #help-btn:focus-visible,
 #back-to-main-btn:focus-visible,
 #delete-character-btn-dashboard:focus-visible,
@@ -466,6 +470,7 @@ h1 {
 #import-btn,
 #export-btn,
 #privacy-btn,
+#install-app-btn,
 #help-btn {
 	background-color: rgba(90,90,90,0.65);
 	padding: 6px 14px;
@@ -3030,7 +3035,7 @@ max-height: 27em;
     padding: 7px 11px;
     border-radius: 5px;
     font-size: 11px;
-    white-space: nowrap;
+    white-space: pre;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
@@ -3048,7 +3053,7 @@ max-height: 27em;
 #chat-memories-btn,
 #add-participant-btn,
 #select-persona-btn,
-#quick-swap-btn,
+#chat-menu-btn,
 #mood-btn,
 #music-btn,
 #particle-btn {
@@ -3074,7 +3079,7 @@ max-height: 27em;
 #chat-memories-btn:hover,
 #add-participant-btn:hover,
 #select-persona-btn:hover,
-#quick-swap-btn:hover,
+#chat-menu-btn:hover,
 #mood-btn:hover,
 #music-btn:hover,
 #particle-btn:hover {
@@ -3089,7 +3094,7 @@ max-height: 27em;
 #chat-memories-btn:active,
 #add-participant-btn:active,
 #select-persona-btn:active,
-#quick-swap-btn:active,
+#chat-menu-btn:active,
 #mood-btn:active,
 #music-btn:active,
 #particle-btn:active {
@@ -5902,7 +5907,8 @@ body.image-gen-off .generate-image-btn {
   }
 
   #help-btn,
-  #privacy-btn {
+  #privacy-btn,
+  #install-app-btn {
     justify-content: center;
     box-sizing: border-box;
     font-size: 13px;
@@ -6040,7 +6046,8 @@ body.image-gen-off .generate-image-btn {
   }
 
   #help-btn,
-  #privacy-btn {
+  #privacy-btn,
+  #install-app-btn {
     font-size: 12px;
     padding: 8px 10px;
   }
@@ -8053,6 +8060,716 @@ body.image-gen-off .generate-image-btn {
     }
 }
 
+
+/* =====================================================
+   CHAT TOOLS — chat menu, message menu, search, stats,
+   Let Them Talk, voice input, shortcuts, toast
+   ===================================================== */
+
+/* ── Header ⋯ menu ── */
+#chat-menu-btn svg {
+    display: block;
+    pointer-events: none;
+}
+
+#chat-menu,
+#message-menu {
+    background: rgba(12, 14, 20, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 11px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+#chat-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    min-width: 224px;
+    z-index: 120;
+}
+
+#message-menu {
+    position: fixed;
+    min-width: 196px;
+    z-index: 2500;
+}
+
+.chat-menu-item,
+.message-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: rgba(255, 255, 255, 0.88);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+
+.chat-menu-item:hover,
+.chat-menu-item:focus-visible,
+.message-menu-item:hover:not(:disabled),
+.message-menu-item:focus-visible {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    outline: none;
+}
+
+.message-menu-item:disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+.chat-menu-icon,
+.message-menu-icon {
+    width: 20px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.chat-menu-label,
+.message-menu-label {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.chat-menu-kbd {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-menu-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--dialogue-color, #ffd952);
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .chat-menu-desktop-only,
+    .chat-menu-kbd {
+        display: none !important;
+    }
+}
+
+/* ── Message flags ── */
+.message-bookmark-flag {
+    position: absolute;
+    top: -8px;
+    right: -5px;
+    font-size: 14px;
+    line-height: 1;
+    color: #ffd952;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75), 0 0 9px rgba(255, 217, 82, 0.5);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* The user's actions sit on the right, so the star moves to the left. */
+.user-message .message-bookmark-flag {
+    right: auto;
+    left: -5px;
+}
+
+.message.is-hidden-from-ai {
+    opacity: 0.55;
+    outline: 1px dashed rgba(255, 255, 255, 0.3);
+    outline-offset: -1px;
+    transition: opacity 0.2s ease;
+}
+
+.message.is-hidden-from-ai:hover {
+    opacity: 0.9;
+}
+
+.message-hidden-note {
+    margin-top: 6px;
+    font-size: 0.72em;
+    font-style: italic;
+    letter-spacing: 0.01em;
+    opacity: 0.85;
+}
+
+.message-hidden-note::before {
+    content: '🙈 ';
+    font-style: normal;
+}
+
+.message.dice-message {
+    border: 1px solid rgba(255, 217, 82, 0.35);
+    background-image: linear-gradient(135deg, rgba(255, 217, 82, 0.12), transparent 65%);
+    font-variant-numeric: tabular-nums;
+}
+
+.message.search-current {
+    box-shadow: 0 0 0 2px rgba(255, 217, 82, 0.75), 0 0 20px rgba(255, 217, 82, 0.22);
+}
+
+mark.chat-search-hit,
+.chat-search-result mark {
+    background: rgba(255, 217, 82, 0.38);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+/* ── Search bar ── */
+#chat-search-bar {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 15;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-search-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 780px;
+    margin: 0 auto;
+}
+
+#chat-search-input {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+#chat-search-input:focus {
+    outline: none;
+    border-color: rgba(167, 139, 250, 0.7);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18);
+}
+
+#chat-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* The bar has its own close button; the browser's blue clear icon clashed. */
+#chat-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.chat-search-chip,
+.chat-search-nav {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.85);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.chat-search-nav {
+    padding: 0;
+    font-size: 1.05rem;
+}
+
+.chat-search-nav svg {
+    pointer-events: none;
+}
+
+.chat-search-chip:hover,
+.chat-search-nav:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.chat-search-chip[aria-pressed="true"] {
+    background: rgba(167, 139, 250, 0.22);
+    border-color: rgba(167, 139, 250, 0.7);
+    color: #fff;
+}
+
+#chat-search-bookmarks-btn[aria-pressed="true"] {
+    color: #ffd952;
+}
+
+#chat-search-count {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.65);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+#chat-search-results {
+    max-width: 780px;
+    max-height: 45vh;
+    margin: 8px auto 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.chat-search-result {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding: 8px 11px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 14, 20, 0.72);
+    color: #fff;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.chat-search-result:hover,
+.chat-search-result:focus-visible {
+    background: rgba(167, 139, 250, 0.14);
+    border-color: rgba(167, 139, 250, 0.4);
+    outline: none;
+}
+
+.chat-search-result-meta {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-search-result-snippet {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.chat-search-results-more {
+    padding: 6px;
+    font-size: 0.75rem;
+    text-align: center;
+    opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+    #chat-search-bar {
+        padding: 6px 8px;
+    }
+
+    .chat-search-row {
+        gap: 4px;
+    }
+
+    .chat-search-chip,
+    .chat-search-nav {
+        height: 30px;
+        min-width: 30px;
+    }
+
+    #chat-search-scope-btn {
+        padding: 0 8px;
+        font-size: 0.72rem;
+    }
+}
+
+/* ── Let Them Talk ── */
+#autoplay-status {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 11;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100% - 24px);
+    margin: 0 auto 4px;
+    padding: 5px 6px 5px 14px;
+    border-radius: 999px;
+    background: rgba(12, 14, 20, 0.86);
+    border: 1px solid rgba(167, 139, 250, 0.45);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+}
+
+#autoplay-status-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.autoplay-pulse {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #a78bfa;
+    animation: autoplay-pulse 1.4s ease-out infinite;
+}
+
+@keyframes autoplay-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.6); }
+    100% { box-shadow: 0 0 0 9px rgba(167, 139, 250, 0); }
+}
+
+#autoplay-stop-btn {
+    flex-shrink: 0;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 90, 90, 0.5);
+    background: rgba(200, 40, 40, 0.25);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: background 0.14s ease;
+}
+
+#autoplay-stop-btn:hover {
+    background: rgba(200, 40, 40, 0.5);
+}
+
+/* ── Voice input: in the message box's corner, where the stop button sits
+   while a reply is being written ── */
+#chat-form #voice-input-btn {
+    position: absolute;
+    right: 11px;
+    bottom: 5px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    color: rgba(255, 255, 255, 0.7);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+#chat-form #voice-input-btn svg {
+    pointer-events: none;
+}
+
+#chat-form #voice-input-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    transform: none;
+    filter: none;
+}
+
+#chat-form #stop-stream-btn:not(.hidden) ~ #voice-input-btn {
+    display: none !important;
+}
+
+#chat-form #voice-input-btn.is-listening {
+    background: rgba(220, 50, 50, 0.85);
+    color: #fff;
+    animation: voice-listening 1.3s ease-out infinite;
+}
+
+@keyframes voice-listening {
+    0% { box-shadow: 0 0 0 0 rgba(255, 70, 70, 0.55); }
+    100% { box-shadow: 0 0 0 10px rgba(255, 70, 70, 0); }
+}
+
+@media (max-width: 768px) {
+    #chat-form #voice-input-btn {
+        right: 8px;
+        bottom: 6px;
+    }
+}
+
+/* ── Automatic atmosphere (Ambient Effects window) ── */
+.auto-atmosphere-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(167, 139, 250, 0.08);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    cursor: pointer;
+}
+
+.auto-atmosphere-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.auto-atmosphere-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.auto-atmosphere-hint {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Chat Stats & Keyboard Shortcuts windows ── */
+#chat-stats-modal,
+#shortcuts-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.65);
+}
+
+#chat-stats-content,
+#shortcuts-content {
+    max-width: 480px;
+    padding: 30px;
+}
+
+#chat-stats-subtitle {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    overflow-wrap: anywhere;
+}
+
+#chat-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.chat-stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.chat-stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.chat-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+}
+
+.chat-stat-sub {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.milestones-title {
+    margin-bottom: 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.milestone-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.milestone-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 217, 82, 0.14);
+    border: 1px solid rgba(255, 217, 82, 0.4);
+    color: #ffe38a;
+    font-size: 0.76rem;
+}
+
+.milestones-empty {
+    margin: 0;
+    font-size: 0.82rem;
+    opacity: 0.65;
+}
+
+.milestone-next {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.milestone-next-count {
+    opacity: 0.6;
+}
+
+.milestone-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.milestone-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #a78bfa, #ffd952);
+}
+
+.shortcuts-list {
+    display: flex;
+    flex-direction: column;
+    margin: 14px 0;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 7px 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.shortcut-keys {
+    flex: 0 0 128px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.shortcut-row kbd,
+.shortcuts-hint code {
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+}
+
+.shortcut-row kbd {
+    border-bottom-width: 2px;
+}
+
+.shortcuts-hint {
+    font-size: 0.8rem;
+    line-height: 1.7;
+    opacity: 0.8;
+}
+
+@media (max-width: 520px) {
+    #chat-stats-content,
+    #shortcuts-content {
+        padding: 22px 18px;
+    }
+
+    .chat-stat-value {
+        font-size: 1.1rem;
+    }
+}
+
+/* ── Toast ── */
+#chat-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 96px;
+    z-index: 5000;
+    max-width: min(92vw, 460px);
+    padding: 9px 16px;
+    border-radius: 12px;
+    background: rgba(12, 14, 20, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+#chat-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .autoplay-pulse,
+    #chat-form #voice-input-btn.is-listening {
+        animation: none;
+    }
+}
+
 /* =========================================================================
  * STANDALONE-ONLY STYLES
  * =========================================================================
@@ -8366,6 +9083,7 @@ mark.highlight.current-match {
 <div class="footer-menu">
     <button id="help-btn" onclick="document.getElementById('help-page-modal').classList.remove('standalone-modal-hidden')" title="Help Document & FAQ">❓Help & FAQ<span id="help-notification-dot" class="notification-dot hidden"></span></button>
     <button id="privacy-btn" onclick="document.getElementById('privacy-page-modal').classList.remove('standalone-modal-hidden')" title="Privacy & Terms">🔒 Privacy & Terms</button>
+    <button type="button" id="install-app-btn" class="hidden" title="Install Casual Character Chat as an app on this device">📲 Install App</button>
 </div>
 <div id="copyright-notice">© 2026 Casual Character Chat</div>
 </div>
@@ -8427,7 +9145,16 @@ mark.highlight.current-match {
     <div id="token-tooltip"></div>
 </div>
     <div id="settings-container">
-        <button id="quick-swap-btn" title="Quick-Swap Character">🔃</button>
+        <button id="chat-menu-btn" title="More chat tools" aria-label="More chat tools" aria-haspopup="true" aria-expanded="false" aria-controls="chat-menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg></button>
+        <div id="chat-menu" class="hidden" role="menu" aria-label="Chat tools">
+            <button type="button" class="chat-menu-item" data-action="search" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔍</span><span class="chat-menu-label">Search Chats</span><kbd class="chat-menu-kbd">/</kbd></button>
+            <button type="button" class="chat-menu-item" data-action="bookmarks" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">★</span><span class="chat-menu-label">Bookmarks</span><span class="chat-menu-count" id="chat-menu-bookmark-count"></span></button>
+            <button type="button" class="chat-menu-item" data-action="stats" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">📊</span><span class="chat-menu-label">Chat Stats</span></button>
+            <button type="button" class="chat-menu-item hidden" data-action="autoplay" id="chat-menu-autoplay" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">▶️</span><span class="chat-menu-label">Let Them Talk</span></button>
+            <button type="button" class="chat-menu-item" data-action="dice" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🎲</span><span class="chat-menu-label">Roll Dice</span></button>
+            <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
+            <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
+        </div>
         <button id="mood-btn" title="Set Character Mood">😊</button>
         <div id="mood-picker" class="hidden">
             <button class="mood-option" data-mood="Happy">😊 Happy</button>
@@ -8594,6 +9321,13 @@ mark.highlight.current-match {
                                 <input type="checkbox" id="tts-toggle" class="toggle-switch">
                             </label>
                         </div>
+                        <div class="setting">
+                            <label for="auto-summarize-toggle">
+                                <span>Auto-summarize Long Chats:</span>
+                                <span class="setting-info-icon" data-tooltip="Once 40 new messages have piled up, the older ones are summarized into the chat's 🧠 Chat Memories, so the AI keeps the important facts in view. Uses your Suggestions Model.">ℹ️</span>
+                                <input type="checkbox" id="auto-summarize-toggle" class="toggle-switch">
+                            </label>
+                        </div>
                         <div id="image-gen-settings" class="hidden">
                             <div class="setting">
                                 <label for="image-gen-toggle">
@@ -8623,9 +9357,26 @@ mark.highlight.current-match {
         </div>
             </div>
         </div>
+        <div id="chat-search-bar" class="hidden" role="search">
+            <div class="chat-search-row">
+                <input type="search" id="chat-search-input" placeholder="🔎 Search this chat..." autocomplete="off" aria-label="Search messages">
+                <button type="button" id="chat-search-bookmarks-btn" class="chat-search-chip" aria-pressed="false" title="Only bookmarked messages">★</button>
+                <button type="button" id="chat-search-scope-btn" class="chat-search-chip" aria-pressed="false" title="Search every chat with this character">All Chats</button>
+                <span id="chat-search-count" aria-live="polite"></span>
+                <button type="button" id="chat-search-prev-btn" class="chat-search-nav" title="Older match (Enter)" aria-label="Older match"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+                <button type="button" id="chat-search-next-btn" class="chat-search-nav" title="Newer match (Shift+Enter)" aria-label="Newer match"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                <button type="button" id="chat-search-close-btn" class="chat-search-nav" title="Close search (Esc)" aria-label="Close search">×</button>
+            </div>
+            <div id="chat-search-results" class="hidden"></div>
+        </div>
         <div id="chat-window">
         </div>
-    
+
+        <div id="autoplay-status" class="hidden" aria-live="polite">
+            <span class="autoplay-pulse" aria-hidden="true"></span>
+            <span id="autoplay-status-text"></span>
+            <button type="button" id="autoplay-stop-btn">Stop</button>
+        </div>
         <div id="reply-options-dropdown" class="reply-options-dropdown hidden">
             <div class="reply-options-header">
                 <span class="reply-options-label">Reply Suggestions</span>
@@ -8643,6 +9394,7 @@ mark.highlight.current-match {
         </div>
         <textarea id="message-input" placeholder="Write a message..." rows="1"></textarea>
         <button type="button" id="stop-stream-btn" class="hidden" title="Stop Generation"><span class="stop-square"></span></button>
+        <button type="button" id="voice-input-btn" class="hidden" title="Voice input" aria-label="Start voice input" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="21.5"></line></svg></button>
     </div>
     <button type="submit" id="dialog-btn"><span class="btn-icon" aria-hidden="true">💬</span><span class="btn-text">Character</span></button>
     <button type="button" id="story-btn"><span class="btn-icon" aria-hidden="true">📖</span><span class="btn-text">Narrator</span></button>
@@ -8913,6 +9665,13 @@ mark.highlight.current-match {
             <button class="particle-option-btn" data-effect="leaves">🍂 Leaves</button>
             <button class="particle-option-btn" data-effect="sakura">🌸 Sakura</button>
         </div>
+        <label class="auto-atmosphere-row" for="auto-atmosphere-toggle">
+            <span class="auto-atmosphere-text">
+                <span class="auto-atmosphere-title">🪄 Automatic Atmosphere</span>
+                <span class="auto-atmosphere-hint">After each reply, the AI picks the effect and mood that fit the scene.</span>
+            </span>
+            <input type="checkbox" id="auto-atmosphere-toggle" class="toggle-switch">
+        </label>
         <div id="particle-settings-row" class="hidden" style="margin:10px 0 4px;">
             <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span title="How many particles appear">Volume</span><span id="particle-volume-value">50</span></label>
             <input type="range" id="particle-volume-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);margin-bottom:10px;">
@@ -8925,6 +9684,45 @@ mark.highlight.current-match {
             <button type="button" id="close-particle-picker-btn">Close</button>
         </div>
     </div>
+</div>
+
+<div id="chat-stats-modal" class="hidden">
+    <div class="modal-content" id="chat-stats-content">
+        <h2>📊 Chat Stats</h2>
+        <p id="chat-stats-subtitle"></p>
+        <div id="chat-stats-grid"></div>
+        <div id="chat-stats-milestones"></div>
+        <div class="form-buttons">
+            <button type="button" id="close-chat-stats-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="shortcuts-modal" class="hidden">
+    <div class="modal-content" id="shortcuts-content">
+        <h2>⌨️ Keyboard Shortcuts</h2>
+        <div class="shortcuts-list">
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Enter</kbd></span><span>Send as Character</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span>Send as Narrator</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Shift</kbd>+<kbd>Enter</kbd></span><span>New line</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Esc</kbd></span><span>Stop the reply · close search</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>/</kbd></span><span>Search chats</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>←</kbd><kbd>→</kbd></span><span>Browse reply variants (→ on the last one regenerates)</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>F</kbd></span><span>Fullscreen</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span>Show this list</span></div>
+        </div>
+        <p class="shortcuts-hint">🎲 Type <code>/roll 1d20</code> or <code>/roll 2d6+3</code> to roll dice. Add text after it to act on the roll.</p>
+        <div class="form-buttons">
+            <button type="button" id="close-shortcuts-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="message-menu" class="hidden" role="menu" aria-label="Message actions">
+    <button type="button" class="message-menu-item" data-action="copy" role="menuitem"><span class="message-menu-icon" aria-hidden="true">📋</span><span class="message-menu-label">Copy Text</span></button>
+    <button type="button" class="message-menu-item" data-action="bookmark" role="menuitem"><span class="message-menu-icon" aria-hidden="true">★</span><span class="message-menu-label">Bookmark</span></button>
+    <button type="button" class="message-menu-item" data-action="hide" role="menuitem"><span class="message-menu-icon" aria-hidden="true">🙈</span><span class="message-menu-label">Hide from AI</span></button>
+    <button type="button" class="message-menu-item" data-action="branch" role="menuitem"><span class="message-menu-icon" aria-hidden="true">🌿</span><span class="message-menu-label">Branch from Here</span></button>
 </div>
 
 <div id="persona-list-modal" class="hidden">
@@ -18437,9 +19235,18 @@ const defaultSettings = {
         imageGenEnabled: 'true',
         imageGenProvider: 'pollinations',
         imageGenModel: 'google/gemini-3.1-flash-lite-image',
+        autoSummarize: 'false',
+        autoAtmosphere: 'false',
     };
 
     let audioCtx;
+    let autoSummarizeEnabled = false;
+    let autoAtmosphereEnabled = false;
+    // What the provider reported for every request since the app was opened.
+    // Each chat keeps its own running total in chat.costUsd.
+    let sessionCostUsd = 0;
+    // "Let Them Talk": characters taking turns without the user.
+    const autoPlayState = { running: false, stopRequested: false, chatId: null };
     let soundEnabled = true;
     let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
@@ -19416,9 +20223,87 @@ function isChatNoticeMessage(message) {
         && isChatNoticeVariant(message.variations?.[message.activeVariant]);
 }
 
-// History as the model should see it: without the app's own notices.
+// A message the user hid from the AI stays in the chat for them to read, but
+// is never sent - not in replies, summaries, suggestions or image prompts.
+function isHiddenFromAI(message) {
+    return !!message && message.hiddenFromAI === true;
+}
+
+// History as the model should see it: without the app's own notices, and
+// without anything the user hid from it.
 function historyForPrompt(history) {
-    return (history || []).filter(msg => !isChatNoticeMessage(msg));
+    return (history || []).filter(msg => !isChatNoticeMessage(msg) && !isHiddenFromAI(msg));
+}
+
+/* ===========================================================================
+ * DICE ROLLS
+ * ===========================================================================
+ * "/roll" at the start of a message rolls real dice: "/roll" alone is a d20,
+ * "/roll 2d6+3" anything else. Text after the dice is sent on as the user's
+ * action, with the result in front of it so the model plays the outcome. A
+ * bare roll is only posted, so the user can decide what to do with it.
+ * ======================================================================== */
+
+const DICE_MAX_COUNT = 100;
+const DICE_MAX_SIDES = 1000;
+
+function parseDiceCommand(input) {
+    const match = String(input || '').trim()
+        .match(/^\/roll\b(?:\s+(\d{0,3})d(\d{1,4})(?:\s*([+-])\s*(\d{1,5}))?(?=\s|$))?\s*([\s\S]*)$/i);
+    if (!match) return null;
+    const hasDice = match[2] !== undefined;
+    const count = hasDice ? parseInt(match[1] || '1', 10) : 1;
+    const sides = hasDice ? parseInt(match[2], 10) : 20;
+    const modifier = match[3] ? (match[3] === '-' ? -1 : 1) * parseInt(match[4], 10) : 0;
+    if (count < 1 || count > DICE_MAX_COUNT || sides < 2 || sides > DICE_MAX_SIDES) {
+        return { error: `Dice go from 1 to ${DICE_MAX_COUNT} dice with 2 to ${DICE_MAX_SIDES} sides, e.g. /roll 2d6+3.` };
+    }
+    return { count, sides, modifier, text: (match[5] || '').trim() };
+}
+
+function diceRandom() {
+    const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+    if (cryptoApi?.getRandomValues) return cryptoApi.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+    return Math.random();
+}
+
+function rollDice(spec, random = diceRandom) {
+    const rolls = Array.from({ length: spec.count }, () => 1 + Math.floor(random() * spec.sides));
+    return { rolls, total: rolls.reduce((sum, roll) => sum + roll, 0) + spec.modifier };
+}
+
+function formatDiceResult(spec, result) {
+    const sign = spec.modifier > 0 ? '+' : '-';
+    const notation = `${spec.count}d${spec.sides}${spec.modifier ? `${sign}${Math.abs(spec.modifier)}` : ''}`;
+    const parts = spec.count > 1 || spec.modifier
+        ? ` (${result.rolls.join(' + ')}${spec.modifier ? ` ${sign} ${Math.abs(spec.modifier)}` : ''})`
+        : '';
+    let flourish = '';
+    if (spec.count === 1 && spec.sides === 20) {
+        if (result.rolls[0] === 20) flourish = ' - natural 20!';
+        else if (result.rolls[0] === 1) flourish = ' - natural 1!';
+    }
+    return `🎲 Rolled ${notation}: ${result.total}${parts}${flourish}`;
+}
+
+/* ===========================================================================
+ * MILESTONES
+ * ======================================================================== */
+
+const MESSAGE_MILESTONES = [25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+const WORD_MILESTONES = [10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+
+// Milestone keys ('m100', 'w50000') reached by the given counts, lowest first.
+function reachedMilestones(messageCount, wordCount) {
+    return [
+        ...MESSAGE_MILESTONES.filter(n => messageCount >= n).map(n => `m${n}`),
+        ...WORD_MILESTONES.filter(n => wordCount >= n).map(n => `w${n}`)
+    ];
+}
+
+function countWords(text) {
+    const trimmed = String(text || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
 // Pacing for the chat request retries. A rate limit is waited out with a
@@ -19745,6 +20630,15 @@ async function resetAppSettings() {
             case 'imageGenModel':
                 imageGenModel = value || defaultSettings.imageGenModel;
                 break;
+            case 'autoSummarize':
+                autoSummarizeEnabled = (value === 'true' || value === true);
+                break;
+            case 'autoAtmosphere': {
+                const wasEnabled = autoAtmosphereEnabled;
+                autoAtmosphereEnabled = (value === 'true' || value === true);
+                if (wasEnabled !== autoAtmosphereEnabled) onAutoAtmosphereToggled();
+                break;
+            }
         }
     }
 
@@ -19802,6 +20696,8 @@ async function resetAppSettings() {
         imageGenEnabled: document.getElementById('image-gen-toggle'),
         imageGenProvider: document.getElementById('image-gen-provider-select'),
         imageGenModel: document.getElementById('image-gen-model-input'),
+        autoSummarize: document.getElementById('auto-summarize-toggle'),
+        autoAtmosphere: document.getElementById('auto-atmosphere-toggle'),
     };
 
     for (const key in defaultSettings) {
@@ -19977,6 +20873,11 @@ function getOtherSpeakerNames(chat, selfId) {
 }
 
     function handleTextareaEnter(event) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        storyBtn.click();
+        return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         const mainCharacter = characters[currentCharacterId];
@@ -20722,6 +21623,7 @@ if (dashboardAvatarUrl) {
         const chatName = characters[charId].chats[chatId].name;
         if (await showCustomConfirm(`Are you sure you want to delete the chat "${chatName}"?`, true)) {
             delete characters[charId].chats[chatId];
+            try { localStorage.removeItem(chatDraftKey(charId, chatId)); } catch (_) {}
             await saveSingleCharacterToDB(characters[charId]);
             showChatList(charId);
         }
@@ -20739,7 +21641,7 @@ if (dashboardAvatarUrl) {
         contextText += personas[chat.activePersonaId].description || '';
     }
     contextText += getChatMemories(chat);
-    chat.history.forEach(msg => {
+    historyForPrompt(chat.history).forEach(msg => {
         contextText += msg.sender === 'user' ? msg.main : msg.variations[msg.activeVariant].main;
     });
     let totalTokens = Math.round(contextText.length / 4);
@@ -20764,7 +21666,12 @@ if (dashboardAvatarUrl) {
 
     totalTokens += 2000;
 
-    tokenTooltip.textContent = `Estimated Tokens in Context: ~${totalTokens}`;
+    const lines = [`Estimated Tokens in Context: ~${totalTokens}`];
+    const chatCost = Number(chat.costUsd) || 0;
+    if (chatCost > 0 || sessionCostUsd > 0) {
+        lines.push(`Cost: ${formatUsd(chatCost)} this chat · ${formatUsd(sessionCostUsd)} this session`);
+    }
+    tokenTooltip.textContent = lines.join('\n');
 }
 
 
@@ -20826,10 +21733,15 @@ function updatePersonaEditorTokenCount() {
 
 
 
+    // Set when "Auto-summarize Chat" fills the box, and only acted on if the
+    // box is then saved.
+    let pendingManualSummary = null;
+
     function closeChatMemoriesModal() {
         if (chatMemoriesModal) {
             chatMemoriesModal.classList.add('hidden');
         }
+        pendingManualSummary = null;
     }
 
 
@@ -20857,6 +21769,13 @@ function updatePersonaEditorTokenCount() {
         chat.memories = (chatMemoriesTextarea?.value || '').trim();
         delete chat.storyLine;
         delete chat.plan;
+        // A manual summary that was kept covers the same ground the automatic
+        // one would, so the automatic one starts after it.
+        if (pendingManualSummary && pendingManualSummary.chat === chat
+            && chat.history.some(m => m.id === pendingManualSummary.upToId)) {
+            chat.summarizedUpToId = pendingManualSummary.upToId;
+        }
+        pendingManualSummary = null;
         await saveSingleCharacterToDB(characters[currentCharacterId]);
         updateChatMemoriesButtonState();
         updateTokenCount();
@@ -21353,6 +22272,8 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     // message, switching a variant, etc.) must keep the current selection.
     if (charId !== currentCharacterId || chatId !== currentChatId) {
         clearActiveGroupParticipant();
+        // Each chat keeps its own unsent message.
+        loadChatDraft(charId, chatId);
     }
     cancelReplyOptions();
     starsContainer.classList.remove('visible');
@@ -21438,7 +22359,8 @@ if (headerAvatarUrl) {
     updateTokenCount();
     updateMoodButton();
     updateParticleButton();
-    startParticles(character.particleEffect || 'none', fxSavedLevels(character));
+    startParticles(getEffectiveParticleEffect(character, chat), fxSavedLevels(character));
+    refreshChatSearchAfterRender();
     const musicUrlInputEl = document.getElementById('music-url-input');
     if (musicUrlInputEl) {
         const savedUserUrl = localStorage.getItem(`userMusicUrl:${currentCharacterId}`);
@@ -22109,6 +23031,16 @@ messageWrapper.appendChild(avatarContainer);
         imageBtn.addEventListener('click', () => handleGenerateImage(message.id, imageBtn));
         actionGroup.appendChild(imageBtn);
     }
+    // Copy, bookmark, hide and branch live behind one button, so the row of
+    // actions on every message does not grow.
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'message-more-btn message-action-btn';
+    moreBtn.title = 'More';
+    moreBtn.setAttribute('aria-label', 'More message actions');
+    moreBtn.setAttribute('aria-haspopup', 'true');
+    moreBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="13" cy="8" r="1.6"/></svg>`;
+    actionGroup.appendChild(moreBtn);
     messageElement.appendChild(actionGroup);
 
     if (message.sender === 'ai') {
@@ -22154,13 +23086,48 @@ messageWrapper.appendChild(avatarContainer);
         if(message.sender === 'ai') messageWrapper.appendChild(messageElement);
     }
 
+    if (message.dice) messageElement.classList.add('dice-message');
+    applyMessageFlags(messageElement, message);
+
     chatWindow.appendChild(messageWrapper);
     return messageWrapper;
 }
 
+// The small marks a message carries for the user: a star when bookmarked, and
+// a faded bubble with a note when it is hidden from the AI.
+function applyMessageFlags(messageElement, message) {
+    if (!messageElement || !message) return;
+    const bookmarked = message.bookmarked === true;
+    const hidden = isHiddenFromAI(message);
+    messageElement.classList.toggle('is-bookmarked', bookmarked);
+    messageElement.classList.toggle('is-hidden-from-ai', hidden);
+
+    let star = messageElement.querySelector(':scope > .message-bookmark-flag');
+    if (bookmarked && !star) {
+        star = document.createElement('span');
+        star.className = 'message-bookmark-flag';
+        star.title = 'Bookmarked';
+        star.textContent = '★';
+        messageElement.appendChild(star);
+    } else if (!bookmarked && star) {
+        star.remove();
+    }
+
+    let note = messageElement.querySelector(':scope > .message-hidden-note');
+    if (hidden && !note) {
+        note = document.createElement('div');
+        note.className = 'message-hidden-note';
+        note.textContent = 'Hidden from the AI';
+        const anchor = messageElement.querySelector(':scope > .message-action-group');
+        messageElement.insertBefore(note, anchor);
+    } else if (!hidden && note) {
+        note.remove();
+    }
+}
 
 
-async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = false) {
+
+async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = false, extra = null) {
     const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const ownerCharacter = characters[currentCharacterId];
     const chat = ownerCharacter?.chats?.[currentChatId];
@@ -22169,7 +23136,7 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
     let messageObject;
 
     if (sender === 'user') {
-        messageObject = { id: messageId, sender: 'user', main: rawMessage };
+        messageObject = { id: messageId, sender: 'user', main: rawMessage, ...(extra || {}) };
     } else { 
         const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
         const thinkMatch = rawMessage.match(thinkRegex);
@@ -22206,7 +23173,31 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
 
 
-async function handleChatSubmit(type) {
+// `autoTurn` is one turn of "Let Them Talk": no user message, the box and
+// whatever is typed in it are left alone, and the tagged character answers the
+// last reply.
+async function handleChatSubmit(type, { autoTurn = false } = {}) {
+    if (!autoTurn) {
+        const dice = parseDiceCommand(messageInput.value);
+        if (dice) {
+            if (dice.error) { showCustomAlert(dice.error); return; }
+            const rollLine = formatDiceResult(dice, rollDice(dice));
+            if (!dice.text) {
+                // A bare roll is only posted. The user decides what to do
+                // with it, or sends an empty message to let the AI react.
+                messageInput.value = '';
+                clearChatDraft();
+                autoResizeTextarea({ target: messageInput });
+                hideUndoDeleteFab();
+                cancelReplyOptions();
+                await addNewMessage(rollLine, 'user', 'dialog', true, { dice: true });
+                updateTokenCount();
+                checkChatMilestones(characters[currentCharacterId], characters[currentCharacterId]?.chats?.[currentChatId]);
+                return;
+            }
+            messageInput.value = `${rollLine}\n${dice.text}`;
+        }
+    }
     // Set before the message box is focused below, since that focus fires the
     // handler that requests reply suggestions.
     chatTurnInProgress = true;
@@ -22215,10 +23206,14 @@ async function handleChatSubmit(type) {
     // round in flight matters as much as hiding the bar: its answer used to
     // arrive mid-stream and reopen the bar over the reply being written.
     cancelReplyOptions();
-    const userMessageRaw = messageInput.value.trim();
-    messageInput.value = '';
-    autoResizeTextarea({ target: messageInput });
-    messageInput.focus();
+    const userMessageRaw = autoTurn ? '' : messageInput.value.trim();
+    if (!autoTurn) {
+        messageInput.value = '';
+        clearChatDraft();
+        stopVoiceInput({ discard: true });
+        autoResizeTextarea({ target: messageInput });
+        messageInput.focus();
+    }
     let mainCharacter = characters[currentCharacterId];
     let chat = mainCharacter.chats[currentChatId];
     const selectedTargetCharId = getValidActiveGroupParticipantId(chat);
@@ -22272,7 +23267,18 @@ async function handleChatSubmit(type) {
         const lastMainText = lastMessage.main || (lastVariant ? lastVariant.main : '');
         const trimmedLastMain = (lastMainText || '').trim();
         messageForAPI = trimmedLastMain || "Continue the scene plausibly based on the latest turn.";
-        if (lastMessage.sender === 'ai') {
+        if (autoTurn && lastMessage.sender === 'ai') {
+            // Someone else usually spoke last, so the line is handed over with
+            // its speaker's name and the turn is passed on explicitly.
+            const lastSpeakerId = lastMessage.speakerId || currentCharacterId;
+            const lastSpeaker = lastMessage.type === 'story' ? null : characters[lastSpeakerId];
+            const spokenBy = lastSpeaker && lastSpeaker.type !== 'world' && lastSpeakerId !== targetCharId
+                ? `${lastSpeaker.chatName || lastSpeaker.name}: `
+                : '';
+            const turnTaker = characters[targetCharId];
+            const turnTakerName = turnTaker?.chatName || turnTaker?.name || 'the character';
+            messageForAPI = `${spokenBy}${messageForAPI}\n\n(It is now ${turnTakerName}'s turn. React in character to what just happened and move the conversation forward with something new. Do not repeat earlier lines.)`;
+        } else if (lastMessage.sender === 'ai') {
             messageForAPI += "\n\n(Continue the scene from your previous reply with new content. Do not repeat earlier sentences and drive the scene actively forward.)";
         }
         const isMultiChar = chat.participants && chat.participants.length > 1;
@@ -22583,6 +23589,7 @@ const response = await fetch(fetchUrl, {
             // A provider that fails after the stream has started reports it as
             // an error object inside the 200 response.
             if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+            if (parsed.usage) recordUsageCost(parsed.usage, chat);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -22816,6 +23823,9 @@ const response = await fetch(fetchUrl, {
     // Not after a stop, and not after a failure either: the bubble then holds
     // the "did not respond" notice, and suggesting replies to that is noise.
     if (!streamAbortedByUser && hasAnyReplyContent) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && hasAnyReplyContent && !isChatNoticeVariant(aiMessageObject.variations[0])) {
+        afterAIReply(mainCharacter, chat);
+    }
 }
 
 
@@ -23187,6 +24197,7 @@ const response = await fetch(fetchUrl, {
         try {
             const parsed = JSON.parse(dataContent);
             if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+            if (parsed.usage) recordUsageCost(parsed.usage, chat);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -23431,7 +24442,10 @@ const response = await fetch(fetchUrl, {
     chatTurnInProgress = false;
     // newVariant is only set once a reply actually arrived; without it the
     // variant holds an error notice, which is nothing to suggest replies to.
-    if (!streamAbortedByUser && newVariant) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && newVariant) {
+        generateReplyOptionsInBackground();
+        afterAIReply(ownerCharacter, chat);
+    }
     await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
 }
@@ -23776,6 +24790,7 @@ const response = await fetch(fetchUrl, {
                     try {
                         const parsed = JSON.parse(dataContent);
                         if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+                        if (parsed.usage) recordUsageCost(parsed.usage, chat);
                         const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
                         const reasoningDelta = extractReasoningDelta(delta);
 
@@ -23956,7 +24971,10 @@ if (!finalThink) {
     storyBtn.disabled = false;
     if (currentStreamController === streamController) currentStreamController = null;
     chatTurnInProgress = false;
-    if (!streamAbortedByUser && !continueErrorText) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && !continueErrorText) {
+        generateReplyOptionsInBackground();
+        afterAIReply(ownerCharacter, chat);
+    }
     await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
     // Shown after the redraw above, which used to paint over it at once, so a
@@ -26706,9 +27724,11 @@ personaEditorAvatarImg.onerror = () => {
     const PARTICLE_EMOJIS = { none:'✨', snow:'❄️', rain:'🌧️', sparks:'🔥', fireflies:'🟢', sakura:'🌸', fog:'🌫️', steam:'♨️', aurora:'🌌', leaves:'🍂', darkness:'🌑' };
     function updateParticleButton() {
         if (!particleBtn) return;
-        const effect = characters[currentCharacterId]?.particleEffect || 'none';
+        const character = characters[currentCharacterId];
+        const effect = getEffectiveParticleEffect(character, character?.chats?.[currentChatId]);
         particleBtn.textContent = PARTICLE_EMOJIS[effect] || '✨';
-        particleBtn.title = effect !== 'none' ? `Effect: ${effect.charAt(0).toUpperCase()+effect.slice(1)}` : 'Ambient Effects';
+        const autoNote = autoAtmosphereEnabled ? ' (automatic)' : '';
+        particleBtn.title = effect !== 'none' ? `Effect: ${effect.charAt(0).toUpperCase()+effect.slice(1)}${autoNote}` : `Ambient Effects${autoNote}`;
         particleBtn.classList.toggle('particle-active', effect !== 'none');
     }
 
@@ -27580,7 +28600,7 @@ personaEditorAvatarImg.onerror = () => {
             e.stopPropagation();
             const character = characters[currentCharacterId];
             if (particlePickerModal) {
-                const currentEffect = character?.particleEffect || 'none';
+                const currentEffect = getEffectiveParticleEffect(character, character?.chats?.[currentChatId]);
                 particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => {
                     b.classList.toggle('active', b.dataset.effect === currentEffect);
                 });
@@ -27625,6 +28645,10 @@ personaEditorAvatarImg.onerror = () => {
             const character = characters[currentCharacterId];
             if (!character) return;
             character.particleEffect = effect;
+            // A hand-picked effect replaces whatever the automatic atmosphere
+            // chose for this chat, until the next reply picks again.
+            const openChat = character.chats?.[currentChatId];
+            if (openChat) delete openChat.sceneEffect;
             particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
             if (particleSettingsRow) particleSettingsRow.classList.toggle('hidden', effect === 'none');
             await saveSingleCharacterToDB(character);
@@ -28015,7 +29039,8 @@ personaEditorAvatarImg.onerror = () => {
     // `reasoningEffort` defaults to 'auto', which sends no reasoning field and
     // lets a thinking model deliberate as it normally would. Short mechanical
     // jobs can pass 'none' to skip that, where the model supports it.
-    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto') {
+    // `chat`, when given, is the chat whose running cost this request adds to.
+    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto', { chat = null } = {}) {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
         const lookupId = modelId.replace(/:online$/, '');
         const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
@@ -28063,6 +29088,7 @@ personaEditorAvatarImg.onerror = () => {
                 try {
                     const parsed = JSON.parse(dataContent);
                     if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+                    if (parsed.usage) recordUsageCost(parsed.usage, chat);
                     const delta = parsed.choices?.[0]?.delta;
                     if (delta?.content) fullText += delta.content;
                     reasoningText += extractReasoningDelta(delta);
@@ -28323,7 +29349,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             // this, a thinking model set as the Suggestions Model spends time
             // and tokens deliberating before writing a single line.
             const distilled = await callAISimple(
-                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none'
+                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none', { chat: getCurrentChat() }
             );
             const cleaned = String(distilled || '').replace(/\s+/g, ' ').trim();
             return cleaned || fallback;
@@ -28520,6 +29546,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             if (typeof imageRecord.cost === 'number') {
                 console.info(`[image] generated via ${imageRecord.provider} for $${imageRecord.cost.toFixed(5)}`);
+                recordUsageCost({ cost: imageRecord.cost }, chat);
             }
         } catch (err) {
             if (err?.name === 'AbortError') {
@@ -28905,7 +29932,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                 // Suggestions appear while the user is deciding what to type, so
                 // speed matters more than deliberation. Reasoning is switched off
                 // where the model allows it, as with the image prompt builder.
-                raw = await callAISimple(attempt.system, attempt.user, modelId, controller.signal, 'none');
+                raw = await callAISimple(attempt.system, attempt.user, modelId, controller.signal, 'none', { chat: getCurrentChat() });
             } catch (err) {
                 if (timedOut) {
                     throw new ReplyOptionsError(`No answer within ${Math.round(REPLY_OPTION_TIMEOUT_MS / 1000)} seconds. A faster Suggestions Model in App Settings will do better.`);
@@ -28934,6 +29961,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
     // screen are named in the prompt and ruled out.
     async function generateReplyOptionsInBackground({ avoid = null } = {}) {
         if (!replyOptionsEnabled) return;
+        // Characters talking among themselves need no suggestions after every
+        // turn; the round is asked for once when they stop.
+        if (autoPlayState.running) return;
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || !chat.history || chat.history.length === 0) return;
 
@@ -29221,21 +30251,15 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         btn.innerHTML = '<span class="btn-spinner"></span> Summarizing…';
         btn.disabled = true;
         try {
-            const historyText = historyForPrompt(chat.history).slice(-40).map(msg => {
-                if (msg.sender === 'user') return `User: ${msg.main || ''}`;
-                const text = msg.variations?.[msg.activeVariant]?.main || '';
-                if (msg.type === 'story') return `Narrator: ${text}`;
-                const charName = characters[msg.speakerId || currentCharacterId]?.chatName || 'Character';
-                return `${charName}: ${text}`;
-            }).join('\n\n');
-            const systemPrompt = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 5-10 bullet points. No intro, no outro, no markdown headers.`;
-            const userMessage = `Summarize the key events and facts from this roleplay conversation:\n\n${historyText}`;
-            const summary = await callAISimple(systemPrompt, userMessage, selectedModelId);
+            const lastMessageId = chat.history[chat.history.length - 1]?.id;
+            const historyText = buildSummaryTranscript(historyForPrompt(chat.history).slice(-40), currentCharacterId);
+            const summary = await callAISimple(SUMMARY_SYSTEM_PROMPT, `Summarize the key events and facts from this roleplay conversation:\n\n${historyText}`, selectedModelId, null, 'auto', { chat });
             const existing = chatMemoriesTextarea.value.trim();
             chatMemoriesTextarea.value = existing
                 ? `${existing}\n\n--- Summary (${new Date().toLocaleDateString()}) ---\n${summary}`
                 : summary;
             autoResizeTextarea({ target: chatMemoriesTextarea });
+            pendingManualSummary = lastMessageId ? { chat, upToId: lastMessageId } : null;
         } catch (err) {
             showCustomAlert(`Summarization failed: ${err.message}`);
         } finally {
@@ -30545,6 +31569,1172 @@ editorTextareasToResize.forEach(id => {
 
 
 
+    // =============================================================
+    // CHAT TOOLS
+    // The message menu (copy, bookmark, hide from AI, branch), the chat menu,
+    // search, chat stats with milestones and cost, automatic summaries,
+    // "Let Them Talk", automatic atmosphere, voice input, unsent drafts,
+    // keyboard shortcuts and the install button.
+    // =============================================================
+
+    function getCurrentChat() {
+        return characters[currentCharacterId]?.chats?.[currentChatId] || null;
+    }
+
+    function getMessageText(message) {
+        if (!message) return '';
+        if (message.sender === 'user') return message.main || '';
+        return message.variations?.[message.activeVariant]?.main || '';
+    }
+
+    function isChatScreenActive() {
+        return !chatScreen.classList.contains('is-inactive');
+    }
+
+    function getCharacterDisplayName(character) {
+        if (!character) return 'the character';
+        return character.type === 'world' ? (character.name || 'this world') : (character.chatName || character.name || 'the character');
+    }
+
+    // ── Toast: one short line at the bottom that fades out by itself ──
+    let chatToastTimer = null;
+    function showChatToast(text) {
+        let toast = document.getElementById('chat-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'chat-toast';
+            toast.setAttribute('role', 'status');
+            document.body.appendChild(toast);
+        }
+        toast.textContent = text;
+        toast.classList.remove('visible');
+        void toast.offsetWidth; // restarts the fade when a second toast follows at once
+        toast.classList.add('visible');
+        clearTimeout(chatToastTimer);
+        chatToastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+    }
+
+    // ── Cost ──
+    function formatUsd(value) {
+        const amount = Number(value) || 0;
+        if (amount === 0) return '$0.00';
+        if (amount < 0.01) return `$${amount.toFixed(4)}`;
+        return `$${amount.toFixed(2)}`;
+    }
+
+    // OpenRouter reports the price of every request in the `usage` object at
+    // the end of its answer. Other providers send no cost, and add nothing.
+    function recordUsageCost(usage, chat) {
+        const cost = Number(usage?.cost);
+        if (!Number.isFinite(cost) || cost <= 0) return;
+        sessionCostUsd += cost;
+        if (chat) chat.costUsd = (Number(chat.costUsd) || 0) + cost;
+        updateTokenCount();
+    }
+
+    // ── Message menu ──
+    const messageMenu = document.getElementById('message-menu');
+    let messageMenuMessageId = null;
+
+    function closeMessageMenu() {
+        if (!messageMenu || messageMenu.classList.contains('hidden')) return;
+        messageMenu.classList.add('hidden');
+        messageMenuMessageId = null;
+    }
+
+    function openMessageMenu(messageId, anchor) {
+        const message = getCurrentChat()?.history?.find(m => m.id === messageId);
+        if (!messageMenu || !message || !anchor) return;
+        closeChatMenu();
+        messageMenuMessageId = messageId;
+        const streaming = !!message.isStreaming;
+        const hidden = isHiddenFromAI(message);
+        const setItem = (action, icon, label, disabled = false) => {
+            const item = messageMenu.querySelector(`[data-action="${action}"]`);
+            if (!item) return;
+            item.querySelector('.message-menu-icon').textContent = icon;
+            item.querySelector('.message-menu-label').textContent = label;
+            item.disabled = disabled;
+        };
+        setItem('copy', '📋', 'Copy Text', streaming);
+        setItem('bookmark', message.bookmarked ? '☆' : '★', message.bookmarked ? 'Remove Bookmark' : 'Bookmark');
+        setItem('hide', hidden ? '👁️' : '🙈', hidden ? 'Show to AI Again' : 'Hide from AI', streaming);
+        setItem('branch', '🌿', 'Branch from Here', streaming || chatTurnInProgress || !!currentStreamController);
+
+        messageMenu.classList.remove('hidden');
+        // Beside the button, and kept on screen near an edge.
+        const rect = anchor.getBoundingClientRect();
+        const margin = 8;
+        const menuWidth = messageMenu.offsetWidth;
+        const menuHeight = messageMenu.offsetHeight;
+        let left = Math.min(rect.left, window.innerWidth - menuWidth - margin);
+        left = Math.max(margin, left);
+        let top = rect.bottom + 6;
+        if (top + menuHeight > window.innerHeight - margin) top = Math.max(margin, rect.top - menuHeight - 6);
+        messageMenu.style.left = `${left}px`;
+        messageMenu.style.top = `${top}px`;
+        messageMenu.querySelector('.message-menu-item:not(:disabled)')?.focus({ preventScroll: true });
+    }
+
+    async function copyMessageText(messageId) {
+        const text = getMessageText(getCurrentChat()?.history?.find(m => m.id === messageId));
+        if (!text) return;
+        let copied = false;
+        try {
+            await navigator.clipboard.writeText(text);
+            copied = true;
+        } catch (_) {
+            // The clipboard API is missing on file:// in some browsers.
+            const scratch = document.createElement('textarea');
+            scratch.value = text;
+            scratch.setAttribute('readonly', '');
+            scratch.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+            document.body.appendChild(scratch);
+            scratch.select();
+            try { copied = document.execCommand('copy'); } catch (_) {}
+            scratch.remove();
+        }
+        showChatToast(copied ? '📋 Copied to the clipboard.' : 'Your browser did not allow copying.');
+    }
+
+    async function toggleMessageFlag(messageId, flag) {
+        const character = characters[currentCharacterId];
+        const message = getCurrentChat()?.history?.find(m => m.id === messageId);
+        if (!character || !message) return;
+        if (message[flag] === true) delete message[flag];
+        else message[flag] = true;
+        applyMessageFlags(chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`), message);
+        await saveSingleCharacterToDB(character);
+        if (flag === 'hiddenFromAI') {
+            updateTokenCount();
+            showChatToast(message.hiddenFromAI
+                ? '🙈 Hidden from the AI. It stays in the chat for you.'
+                : '👁️ The AI can see this message again.');
+        } else if (chatSearch.open && chatSearch.bookmarksOnly) {
+            runChatSearch();
+        }
+    }
+
+    // A new chat holding everything up to and including this message, so a
+    // different path can be tried without losing the original one.
+    async function branchChatFrom(messageId) {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat) return;
+        const index = chat.history.findIndex(m => m.id === messageId);
+        if (index === -1) return;
+        if (chatTurnInProgress || currentStreamController) {
+            showChatToast('Wait until the current reply has finished.');
+            return;
+        }
+        const copyOf = value => (typeof structuredClone === 'function'
+            ? structuredClone(value)
+            : JSON.parse(JSON.stringify(value)));
+        const history = copyOf(chat.history.slice(0, index + 1));
+        history.forEach(m => { delete m.isStreaming; delete m.streamingVariant; });
+        const newChatId = 'chat-' + Date.now();
+        const baseName = String(chat.name || 'Chat').replace(/\s*\(branch\)$/i, '');
+        character.chats[newChatId] = {
+            id: newChatId,
+            name: `${baseName} (branch)`,
+            history,
+            memories: getChatMemories(chat),
+            participants: [...(chat.participants || [currentCharacterId])],
+            activePersonaId: chat.activePersonaId ?? null,
+            mood: normalizeMood(chat.mood),
+            groupId: chat.groupId ?? null,
+            // Milestones already celebrated in the original are not repeated.
+            milestones: Array.isArray(chat.milestones) ? [...chat.milestones] : undefined,
+            summarizedUpToId: history.some(m => m.id === chat.summarizedUpToId) ? chat.summarizedUpToId : history[history.length - 1]?.id,
+            sceneEffect: chat.sceneEffect,
+            branchedFrom: { chatId: chat.id, messageId }
+        };
+        await saveSingleCharacterToDB(character);
+        closeChatSearch();
+        window.__scrollToBottomNextStartChat = true;
+        await startChat(currentCharacterId, newChatId);
+        showChatToast('🌿 New branch created. The original chat is unchanged.');
+    }
+
+    chatWindow.addEventListener('click', (event) => {
+        const moreBtn = event.target.closest('.message-more-btn');
+        if (!moreBtn) return;
+        event.stopPropagation();
+        const messageId = moreBtn.closest('.message')?.dataset.messageId;
+        if (!messageId) return;
+        if (messageMenuMessageId === messageId && !messageMenu.classList.contains('hidden')) {
+            closeMessageMenu();
+        } else {
+            openMessageMenu(messageId, moreBtn);
+        }
+    });
+
+    messageMenu?.addEventListener('click', async (event) => {
+        const item = event.target.closest('.message-menu-item');
+        if (!item || item.disabled) return;
+        const messageId = messageMenuMessageId;
+        closeMessageMenu();
+        if (!messageId) return;
+        switch (item.dataset.action) {
+            case 'copy': await copyMessageText(messageId); break;
+            case 'bookmark': await toggleMessageFlag(messageId, 'bookmarked'); break;
+            case 'hide': await toggleMessageFlag(messageId, 'hiddenFromAI'); break;
+            case 'branch': await branchChatFrom(messageId); break;
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (messageMenu && !messageMenu.contains(event.target) && !event.target.closest('.message-more-btn')) {
+            closeMessageMenu();
+        }
+    });
+    chatWindow.addEventListener('scroll', closeMessageMenu, { passive: true });
+    window.addEventListener('resize', closeMessageMenu);
+
+    // ── Chat menu (⋯ in the header) ──
+    const chatMenuBtn = document.getElementById('chat-menu-btn');
+    const chatMenu = document.getElementById('chat-menu');
+    const chatMenuBookmarkCount = document.getElementById('chat-menu-bookmark-count');
+    const chatMenuAutoPlay = document.getElementById('chat-menu-autoplay');
+
+    function closeChatMenu() {
+        if (!chatMenu || chatMenu.classList.contains('hidden')) return;
+        chatMenu.classList.add('hidden');
+        chatMenuBtn?.setAttribute('aria-expanded', 'false');
+    }
+
+    function updateChatMenuItems() {
+        const chat = getCurrentChat();
+        const bookmarks = (chat?.history || []).filter(m => m.bookmarked === true).length;
+        if (chatMenuBookmarkCount) chatMenuBookmarkCount.textContent = bookmarks ? String(bookmarks) : '';
+        if (chatMenuAutoPlay) {
+            chatMenuAutoPlay.classList.toggle('hidden', getSpeakingParticipants(chat).length < 2);
+            chatMenuAutoPlay.querySelector('.chat-menu-icon').textContent = autoPlayState.running ? '⏹️' : '▶️';
+            chatMenuAutoPlay.querySelector('.chat-menu-label').textContent = autoPlayState.running ? 'Stop Talking' : 'Let Them Talk';
+        }
+    }
+
+    chatMenuBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!chatMenu) return;
+        if (!chatMenu.classList.contains('hidden')) { closeChatMenu(); return; }
+        // The other header popovers stop their clicks from reaching the
+        // document, so they are closed here rather than by an outside click.
+        document.getElementById('mood-picker')?.classList.add('hidden');
+        document.getElementById('music-panel')?.classList.add('hidden');
+        closeMessageMenu();
+        updateChatMenuItems();
+        chatMenu.classList.remove('hidden');
+        chatMenuBtn.setAttribute('aria-expanded', 'true');
+    });
+
+    ['mood-btn', 'music-btn', 'particle-btn', 'settings-btn', 'quick-swap-btn'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', closeChatMenu);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (chatMenu && !chatMenu.contains(event.target) && !chatMenuBtn?.contains(event.target)) closeChatMenu();
+    });
+
+    chatMenu?.addEventListener('click', (event) => {
+        const item = event.target.closest('.chat-menu-item[data-action]');
+        if (!item) return;
+        closeChatMenu();
+        switch (item.dataset.action) {
+            case 'search': openChatSearch(); break;
+            case 'bookmarks': openChatSearch({ bookmarksOnly: true }); break;
+            case 'stats': openChatStats(); break;
+            case 'autoplay': if (autoPlayState.running) stopAutoPlay(); else startAutoPlay(); break;
+            case 'dice': prefillDiceRoll(); break;
+            case 'shortcuts': openShortcuts(); break;
+        }
+    });
+
+    function prefillDiceRoll() {
+        const typed = messageInput.value.trim();
+        if (!/^\/roll\b/i.test(typed)) {
+            messageInput.value = typed ? `/roll 1d20 ${typed}` : '/roll 1d20 ';
+        }
+        autoResizeTextarea({ target: messageInput });
+        scheduleChatDraftSave();
+        messageInput.focus();
+        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+        showChatToast('🎲 Press Enter to roll. Change it to e.g. /roll 2d6+3, or add your action after it.');
+    }
+
+    // ── Search ──
+    const chatSearchBar = document.getElementById('chat-search-bar');
+    const chatSearchInput = document.getElementById('chat-search-input');
+    const chatSearchCount = document.getElementById('chat-search-count');
+    const chatSearchResults = document.getElementById('chat-search-results');
+    const chatSearchScopeBtn = document.getElementById('chat-search-scope-btn');
+    const chatSearchBookmarksBtn = document.getElementById('chat-search-bookmarks-btn');
+    const chatSearchPrevBtn = document.getElementById('chat-search-prev-btn');
+    const chatSearchNextBtn = document.getElementById('chat-search-next-btn');
+    // matches: message ids in this chat, oldest first. index: the one in focus.
+    const chatSearch = { open: false, allChats: false, bookmarksOnly: false, matches: [], index: -1 };
+    let chatSearchTimer = null;
+
+    function openChatSearch({ bookmarksOnly = false } = {}) {
+        if (!chatSearchBar || !getCurrentChat()) return;
+        chatSearch.open = true;
+        chatSearch.allChats = false;
+        chatSearch.bookmarksOnly = bookmarksOnly;
+        chatSearchBar.classList.remove('hidden');
+        syncChatSearchControls();
+        runChatSearch({ jump: true });
+        chatSearchInput.focus();
+        chatSearchInput.select();
+    }
+
+    function closeChatSearch() {
+        if (!chatSearch.open) return;
+        chatSearch.open = false;
+        chatSearch.matches = [];
+        chatSearch.index = -1;
+        clearTimeout(chatSearchTimer);
+        clearSearchMarks();
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        chatSearchBar?.classList.add('hidden');
+        if (chatSearchResults) {
+            chatSearchResults.classList.add('hidden');
+            chatSearchResults.innerHTML = '';
+        }
+    }
+
+    function syncChatSearchControls() {
+        chatSearchScopeBtn?.setAttribute('aria-pressed', String(chatSearch.allChats));
+        chatSearchBookmarksBtn?.setAttribute('aria-pressed', String(chatSearch.bookmarksOnly));
+        if (chatSearchInput) {
+            chatSearchInput.placeholder = chatSearch.allChats
+                ? (chatSearch.bookmarksOnly ? '🔎 Bookmarks in all chats...' : '🔎 Search all chats...')
+                : (chatSearch.bookmarksOnly ? '🔎 Bookmarks in this chat...' : '🔎 Search this chat...');
+        }
+        // Stepping through matches only makes sense inside the open chat.
+        chatSearchPrevBtn?.classList.toggle('hidden', chatSearch.allChats);
+        chatSearchNextBtn?.classList.toggle('hidden', chatSearch.allChats);
+    }
+
+    function chatSearchQuery() {
+        return (chatSearchInput?.value || '').trim().toLowerCase();
+    }
+
+    function messageMatchesSearch(message, query) {
+        if (!message || isChatNoticeMessage(message)) return false;
+        if (chatSearch.bookmarksOnly && message.bookmarked !== true) return false;
+        if (!query) return chatSearch.bookmarksOnly;
+        return getMessageText(message).toLowerCase().includes(query);
+    }
+
+    function collectChatMatches(query) {
+        const chat = getCurrentChat();
+        chatSearch.matches = (chat?.history || []).filter(m => messageMatchesSearch(m, query)).map(m => m.id);
+        chatSearch.matches.forEach(id => markSearchHits(id, query));
+    }
+
+    function runChatSearch({ jump = false } = {}) {
+        if (!chatSearch.open) return;
+        clearSearchMarks();
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        const query = chatSearchQuery();
+        if (chatSearch.allChats) {
+            renderAllChatsResults(query);
+            return;
+        }
+        chatSearchResults?.classList.add('hidden');
+        collectChatMatches(query);
+        // The newest match first: that is where the user usually is.
+        chatSearch.index = chatSearch.matches.length - 1;
+        updateChatSearchCount(query);
+        focusSearchMatch({ scroll: jump });
+    }
+
+    // After the chat is redrawn (an edit, a deleted message, another chat):
+    // the marks are put back without moving the view.
+    function refreshChatSearchAfterRender() {
+        if (!chatSearch.open || chatSearch.allChats) return;
+        const focusedId = chatSearch.matches[chatSearch.index];
+        const query = chatSearchQuery();
+        collectChatMatches(query);
+        const kept = chatSearch.matches.indexOf(focusedId);
+        chatSearch.index = kept !== -1 ? kept : chatSearch.matches.length - 1;
+        updateChatSearchCount(query);
+        focusSearchMatch({ scroll: false });
+    }
+
+    function updateChatSearchCount(query) {
+        if (!chatSearchCount) return;
+        const total = chatSearch.matches.length;
+        chatSearchCount.textContent = total
+            ? `${chatSearch.index + 1}/${total}`
+            : ((query || chatSearch.bookmarksOnly) ? 'No results' : '');
+    }
+
+    // direction -1 = older, +1 = newer; wraps around at either end.
+    function stepChatSearch(direction) {
+        if (chatSearch.allChats) return;
+        const total = chatSearch.matches.length;
+        if (!total) return;
+        chatSearch.index = (chatSearch.index + direction + total) % total;
+        updateChatSearchCount(chatSearchQuery());
+        focusSearchMatch({ scroll: true });
+    }
+
+    function focusSearchMatch({ scroll = true, smooth = true } = {}) {
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        const messageId = chatSearch.matches[chatSearch.index];
+        if (!messageId) return;
+        const el = chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`);
+        if (!el) return;
+        el.classList.add('search-current');
+        if (scroll) el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+    }
+
+    // Wraps each occurrence in the message's text nodes in a <mark>, leaving
+    // the formatting (dialogue colour, italics, links) around it intact.
+    function markSearchHits(messageId, query) {
+        if (!query) return;
+        const content = chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"] > .main-content`);
+        if (!content) return;
+        const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        for (const node of textNodes) {
+            const text = node.nodeValue;
+            const lower = text.toLowerCase();
+            let at = lower.indexOf(query);
+            if (at === -1) continue;
+            const fragment = document.createDocumentFragment();
+            let from = 0;
+            while (at !== -1) {
+                fragment.appendChild(document.createTextNode(text.slice(from, at)));
+                const mark = document.createElement('mark');
+                mark.className = 'chat-search-hit';
+                mark.textContent = text.slice(at, at + query.length);
+                fragment.appendChild(mark);
+                from = at + query.length;
+                at = lower.indexOf(query, from);
+            }
+            fragment.appendChild(document.createTextNode(text.slice(from)));
+            node.parentNode.replaceChild(fragment, node);
+        }
+    }
+
+    function clearSearchMarks() {
+        chatWindow.querySelectorAll('mark.chat-search-hit').forEach(mark => {
+            const parent = mark.parentNode;
+            if (!parent) return;
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize();
+        });
+    }
+
+    function searchSnippetHtml(text, query) {
+        const clean = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!query) return escapeHtml(clean.length > 140 ? `${clean.slice(0, 140)}…` : clean);
+        const at = clean.toLowerCase().indexOf(query);
+        if (at === -1) return escapeHtml(clean.slice(0, 140));
+        const start = Math.max(0, at - 50);
+        const end = Math.min(clean.length, at + query.length + 90);
+        return `${start > 0 ? '…' : ''}${escapeHtml(clean.slice(start, at))}<mark>${escapeHtml(clean.slice(at, at + query.length))}</mark>${escapeHtml(clean.slice(at + query.length, end))}${end < clean.length ? '…' : ''}`;
+    }
+
+    function speakerLabel(message, ownerId) {
+        if (message.sender === 'user') return 'You';
+        if (message.type === 'story') return 'Narrator';
+        return getCharacterDisplayName(characters[message.speakerId || ownerId]);
+    }
+
+    const CHAT_SEARCH_RESULT_LIMIT = 200;
+
+    function renderAllChatsResults(query) {
+        chatSearch.matches = [];
+        chatSearch.index = -1;
+        if (!chatSearchResults) return;
+        chatSearchResults.innerHTML = '';
+        const character = characters[currentCharacterId];
+        if (!character || (!query && !chatSearch.bookmarksOnly)) {
+            chatSearchResults.classList.add('hidden');
+            if (chatSearchCount) chatSearchCount.textContent = '';
+            return;
+        }
+        // Newest chats first, and the newest messages first inside each.
+        const results = [];
+        Object.values(character.chats || {})
+            .sort((a, b) => String(b.id).localeCompare(String(a.id)))
+            .forEach(chat => {
+                const history = chat.history || [];
+                for (let i = history.length - 1; i >= 0; i--) {
+                    if (messageMatchesSearch(history[i], query)) results.push({ chat, message: history[i] });
+                }
+            });
+        if (chatSearchCount) chatSearchCount.textContent = results.length ? `${results.length} found` : 'No results';
+        if (!results.length) {
+            chatSearchResults.classList.add('hidden');
+            return;
+        }
+        results.slice(0, CHAT_SEARCH_RESULT_LIMIT).forEach(({ chat, message }) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'chat-search-result';
+            item.dataset.chatId = chat.id;
+            item.dataset.messageId = message.id;
+            item.innerHTML = `<span class="chat-search-result-meta">${escapeHtml(chat.name || 'Chat')} · ${escapeHtml(speakerLabel(message, currentCharacterId))}${message.bookmarked ? ' ★' : ''}</span>`
+                + `<span class="chat-search-result-snippet">${searchSnippetHtml(getMessageText(message), query)}</span>`;
+            chatSearchResults.appendChild(item);
+        });
+        if (results.length > CHAT_SEARCH_RESULT_LIMIT) {
+            const more = document.createElement('div');
+            more.className = 'chat-search-results-more';
+            more.textContent = `Showing the first ${CHAT_SEARCH_RESULT_LIMIT} matches. Type more to narrow them down.`;
+            chatSearchResults.appendChild(more);
+        }
+        chatSearchResults.scrollTop = 0;
+        chatSearchResults.classList.remove('hidden');
+    }
+
+    async function openSearchResult(chatId, messageId) {
+        if (!characters[currentCharacterId]?.chats?.[chatId]) return;
+        if (chatId !== currentChatId) await startChat(currentCharacterId, chatId);
+        // From here on the search continues inside the chat that was opened.
+        chatSearch.allChats = false;
+        syncChatSearchControls();
+        chatSearchResults?.classList.add('hidden');
+        clearSearchMarks();
+        const query = chatSearchQuery();
+        collectChatMatches(query);
+        chatSearch.index = Math.max(0, chatSearch.matches.indexOf(messageId));
+        updateChatSearchCount(query);
+        // After startChat has put back the saved scroll position.
+        setTimeout(() => focusSearchMatch({ scroll: true, smooth: false }), 60);
+    }
+
+    chatSearchInput?.addEventListener('input', () => {
+        clearTimeout(chatSearchTimer);
+        chatSearchTimer = setTimeout(() => runChatSearch({ jump: true }), 160);
+    });
+    chatSearchInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeChatSearch();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (chatSearch.allChats) {
+                chatSearchResults?.querySelector('.chat-search-result')?.click();
+            } else {
+                stepChatSearch(event.shiftKey ? 1 : -1);
+            }
+        }
+    });
+    chatSearchScopeBtn?.addEventListener('click', () => {
+        chatSearch.allChats = !chatSearch.allChats;
+        syncChatSearchControls();
+        runChatSearch({ jump: !chatSearch.allChats });
+        chatSearchInput?.focus();
+    });
+    chatSearchBookmarksBtn?.addEventListener('click', () => {
+        chatSearch.bookmarksOnly = !chatSearch.bookmarksOnly;
+        syncChatSearchControls();
+        runChatSearch({ jump: true });
+        chatSearchInput?.focus();
+    });
+    chatSearchPrevBtn?.addEventListener('click', () => stepChatSearch(-1));
+    chatSearchNextBtn?.addEventListener('click', () => stepChatSearch(1));
+    document.getElementById('chat-search-close-btn')?.addEventListener('click', closeChatSearch);
+    chatSearchResults?.addEventListener('click', (event) => {
+        const result = event.target.closest('.chat-search-result');
+        if (result) openSearchResult(result.dataset.chatId, result.dataset.messageId);
+    });
+
+    // ── Chat stats & milestones ──
+    const chatStatsModal = document.getElementById('chat-stats-modal');
+
+    function computeChatStats(chat) {
+        const stats = { messages: 0, userMessages: 0, aiMessages: 0, words: 0, userWords: 0, aiWords: 0, images: 0, bookmarks: 0, hidden: 0 };
+        for (const message of chat?.history || []) {
+            if (isChatNoticeMessage(message)) continue;
+            if (message.bookmarked === true) stats.bookmarks++;
+            if (isHiddenFromAI(message)) stats.hidden++;
+            const words = countWords(getMessageText(message));
+            if (message.sender === 'user') {
+                stats.userMessages++;
+                stats.userWords += words;
+            } else {
+                stats.aiMessages++;
+                stats.aiWords += words;
+                stats.images += (message.variations || []).reduce((sum, v) => sum + (Array.isArray(v?.images) ? v.images.length : 0), 0);
+            }
+        }
+        stats.messages = stats.userMessages + stats.aiMessages;
+        stats.words = stats.userWords + stats.aiWords;
+        // Chat ids are "chat-" plus the time the chat was started.
+        const startedAt = parseInt(String(chat?.id || '').replace(/^chat-/, ''), 10);
+        stats.startedAt = Number.isFinite(startedAt) && startedAt > 1e12 ? startedAt : null;
+        stats.cost = Number(chat?.costUsd) || 0;
+        return stats;
+    }
+
+    function formatCompactNumber(n) {
+        if (n >= 1000000) return `${n / 1000000}M`;
+        if (n >= 1000) return `${n / 1000}k`;
+        return String(n);
+    }
+
+    function milestoneLabel(key) {
+        const n = parseInt(key.slice(1), 10);
+        return key[0] === 'm' ? `💬 ${formatCompactNumber(n)} messages` : `✍️ ${formatCompactNumber(n)} words`;
+    }
+
+    function daysAgoLabel(timestamp) {
+        const days = Math.floor((Date.now() - timestamp) / 86400000);
+        if (days <= 0) return 'today';
+        return days === 1 ? '1 day ago' : `${days.toLocaleString('en-US')} days ago`;
+    }
+
+    function openChatStats() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || !chatStatsModal) return;
+        const stats = computeChatStats(chat);
+        const fmt = n => n.toLocaleString('en-US');
+        document.getElementById('chat-stats-subtitle').textContent = `${chat.name || 'This chat'} · with ${getCharacterDisplayName(character)}`;
+
+        const tiles = [
+            ['💬', 'Messages', fmt(stats.messages), `You ${fmt(stats.userMessages)} · AI ${fmt(stats.aiMessages)}`],
+            ['✍️', 'Words', fmt(stats.words), `You ${fmt(stats.userWords)} · AI ${fmt(stats.aiWords)}`],
+            ['📅', 'Started', stats.startedAt ? new Date(stats.startedAt).toLocaleDateString() : '-', stats.startedAt ? daysAgoLabel(stats.startedAt) : ''],
+            ['★', 'Bookmarks', fmt(stats.bookmarks), stats.hidden ? `${fmt(stats.hidden)} hidden from AI` : ''],
+            ['🎨', 'Images', fmt(stats.images), ''],
+            ['💲', 'Cost', stats.cost > 0 ? formatUsd(stats.cost) : '-',
+                (stats.cost > 0 || sessionCostUsd > 0) ? `${formatUsd(sessionCostUsd)} this session` : 'Shown for OpenRouter models']
+        ];
+        document.getElementById('chat-stats-grid').innerHTML = tiles.map(([icon, label, value, sub]) => `
+            <div class="chat-stat-tile">
+                <span class="chat-stat-label"><span aria-hidden="true">${icon}</span> ${escapeHtml(label)}</span>
+                <span class="chat-stat-value">${escapeHtml(value)}</span>
+                ${sub ? `<span class="chat-stat-sub">${escapeHtml(sub)}</span>` : ''}
+            </div>`).join('');
+
+        const reached = reachedMilestones(stats.messages, stats.words);
+        const nextMessages = MESSAGE_MILESTONES.find(n => n > stats.messages);
+        const previousMessages = [...MESSAGE_MILESTONES].reverse().find(n => n <= stats.messages) || 0;
+        const progress = nextMessages ? Math.round(((stats.messages - previousMessages) / (nextMessages - previousMessages)) * 100) : 100;
+        document.getElementById('chat-stats-milestones').innerHTML = `
+            <div class="milestones-title">🏆 Milestones</div>
+            ${reached.length
+                ? `<div class="milestone-badges">${reached.map(key => `<span class="milestone-badge">${milestoneLabel(key)}</span>`).join('')}</div>`
+                : '<p class="milestones-empty">None yet. The first one is waiting at 25 messages.</p>'}
+            ${nextMessages ? `
+            <div class="milestone-next">
+                <span>Next: ${fmt(nextMessages)} messages <span class="milestone-next-count">(${fmt(stats.messages)}/${fmt(nextMessages)})</span></span>
+                <div class="milestone-bar"><div class="milestone-bar-fill" style="width:${progress}%"></div></div>
+            </div>` : ''}`;
+        chatStatsModal.classList.remove('hidden');
+        document.getElementById('close-chat-stats-btn')?.focus();
+    }
+
+    function closeChatStats() {
+        chatStatsModal?.classList.add('hidden');
+    }
+
+    document.getElementById('close-chat-stats-btn')?.addEventListener('click', closeChatStats);
+    chatStatsModal?.addEventListener('click', (event) => { if (event.target === chatStatsModal) closeChatStats(); });
+
+    function checkChatMilestones(character, chat) {
+        if (!character || !chat) return;
+        const stats = computeChatStats(chat);
+        const reached = reachedMilestones(stats.messages, stats.words);
+        if (!Array.isArray(chat.milestones)) {
+            // A chat from before milestones existed has what it already
+            // reached recorded quietly, instead of celebrated all at once.
+            chat.milestones = reached;
+            return;
+        }
+        const fresh = reached.filter(key => !chat.milestones.includes(key));
+        if (!fresh.length) return;
+        chat.milestones.push(...fresh);
+        saveSingleCharacterToDB(character).catch(err => console.error('Could not save the milestone:', err));
+        if (chat !== getCurrentChat()) return;
+        const key = fresh[fresh.length - 1];
+        const n = parseInt(key.slice(1), 10).toLocaleString('en-US');
+        const name = getCharacterDisplayName(character);
+        showChatToast(key[0] === 'm'
+            ? `🎉 ${n} messages with ${name}!`
+            : `📚 ${n} words written together with ${name}!`);
+    }
+
+    // Everything that follows a finished reply, whichever way it was asked for.
+    function afterAIReply(character, chat) {
+        if (!character || !chat) return;
+        checkChatMilestones(character, chat);
+        maybeAutoSummarize(character, chat);
+        maybeAutoAtmosphere(character, chat);
+    }
+
+    // ── Automatic summaries ──
+    const SUMMARY_SYSTEM_PROMPT = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 5-10 bullet points. No intro, no outro, no markdown headers.`;
+    // A round starts once this many messages are waiting beyond the newest few,
+    const AUTO_SUMMARY_CHUNK = 40;
+    // which are left for the next round while the scene is still unfolding.
+    const AUTO_SUMMARY_KEEP_RECENT = 10;
+    // Switched on in a long chat, only its latest stretch is summarized.
+    const AUTO_SUMMARY_MAX_WINDOW = 80;
+    let autoSummaryRunning = false;
+
+    function buildSummaryTranscript(messages, ownerId) {
+        return messages.map(msg => {
+            if (msg.sender === 'user') return `User: ${msg.main || ''}`;
+            const text = msg.variations?.[msg.activeVariant]?.main || '';
+            if (msg.type === 'story') return `Narrator: ${text}`;
+            const charName = characters[msg.speakerId || ownerId]?.chatName || 'Character';
+            return `${charName}: ${text}`;
+        }).join('\n\n');
+    }
+
+    async function maybeAutoSummarize(character, chat) {
+        if (!autoSummarizeEnabled || autoSummaryRunning || !character || !Array.isArray(chat?.history)) return;
+        const end = chat.history.length - AUTO_SUMMARY_KEEP_RECENT;
+        let start;
+        if (chat.summarizedUpToId) {
+            const index = chat.history.findIndex(m => m.id === chat.summarizedUpToId);
+            // Gone means the chat was cut back past it: all that is left was covered.
+            start = index === -1 ? chat.history.length : index + 1;
+        } else {
+            start = Math.max(0, end - AUTO_SUMMARY_MAX_WINDOW);
+        }
+        if (end - start < AUTO_SUMMARY_CHUNK) return;
+        const upToId = chat.history[end - 1].id;
+        const messages = historyForPrompt(chat.history.slice(start, end));
+        autoSummaryRunning = true;
+        try {
+            if (messages.length >= 6) {
+                const ownerId = Object.keys(characters).find(id => characters[id] === character) || currentCharacterId;
+                const summary = String(await callAISimple(
+                    SUMMARY_SYSTEM_PROMPT,
+                    `Summarize the key events and facts from this part of a roleplay conversation:\n\n${buildSummaryTranscript(messages, ownerId)}`,
+                    suggestionModelId || modelSelect?.value || defaultSettings.model,
+                    null,
+                    'none',
+                    { chat }
+                ) || '').trim();
+                if (!summary) return;
+                const existing = getChatMemories(chat);
+                const block = `--- Auto-summary (${new Date().toLocaleDateString()}) ---\n${summary}`;
+                chat.memories = existing ? `${existing}\n\n${block}` : block;
+                delete chat.storyLine;
+                delete chat.plan;
+            }
+            chat.summarizedUpToId = upToId;
+            await saveSingleCharacterToDB(character);
+            if (chat === getCurrentChat()) {
+                updateChatMemoriesButtonState();
+                updateTokenCount();
+                if (messages.length >= 6) showChatToast('🧠 Older messages were summarized into Chat Memories.');
+            }
+        } catch (err) {
+            console.warn('Auto-summary failed:', err);
+        } finally {
+            autoSummaryRunning = false;
+        }
+    }
+
+    const autoSummarizeToggle = document.getElementById('auto-summarize-toggle');
+    if (autoSummarizeToggle) addSettingListener(autoSummarizeToggle, 'autoSummarize', 'change');
+
+    // ── Let Them Talk ──
+    const autoPlayStatus = document.getElementById('autoplay-status');
+    const autoPlayStatusText = document.getElementById('autoplay-status-text');
+
+    // The characters who can take a turn: everyone but the world card.
+    function getSpeakingParticipants(chat) {
+        return (chat?.participants || []).filter(pid => characters[pid] && characters[pid].type !== 'world');
+    }
+
+    function renderAutoPlayStatus(turn, total, speakerId) {
+        if (!autoPlayStatus) return;
+        if (!autoPlayState.running) {
+            autoPlayStatus.classList.add('hidden');
+            return;
+        }
+        const speaker = characters[speakerId];
+        autoPlayStatusText.textContent = `Turn ${turn} of ${total}${speaker ? ` · ${getCharacterDisplayName(speaker)} is replying` : ''}`;
+        autoPlayStatus.classList.remove('hidden');
+    }
+
+    async function startAutoPlay() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || autoPlayState.running) return;
+        if (chatTurnInProgress || currentStreamController) {
+            showChatToast('Wait until the current reply has finished.');
+            return;
+        }
+        if (getSpeakingParticipants(chat).length < 2) {
+            showCustomAlert('Add at least two characters to this chat with 👥 to let them talk to each other.');
+            return;
+        }
+        const turns = await showChoiceDialog('Let the characters talk among themselves. How many turns?', [
+            { label: 'Cancel', value: 0 },
+            { label: '4 turns', value: 4 },
+            { label: '8 turns', value: 8, primary: true },
+            { label: '12 turns', value: 12 }
+        ]);
+        if (!turns || getCurrentChat() !== chat) return;
+
+        const charId = currentCharacterId;
+        const chatId = currentChatId;
+        const previousTag = activeGroupParticipantId;
+        autoPlayState.running = true;
+        autoPlayState.stopRequested = false;
+        autoPlayState.chatId = chatId;
+        cancelReplyOptions();
+        const lastReply = [...chat.history].reverse().find(m => m.sender === 'ai' && m.type !== 'story');
+        let lastSpeakerId = lastReply ? (lastReply.speakerId || charId) : null;
+        try {
+            for (let turn = 1; turn <= turns; turn++) {
+                if (autoPlayState.stopRequested || currentCharacterId !== charId || currentChatId !== chatId) break;
+                const speakers = getSpeakingParticipants(chat);
+                if (speakers.length < 2) break;
+                const candidates = speakers.filter(id => id !== lastSpeakerId);
+                const nextId = candidates[Math.floor(diceRandom() * candidates.length)];
+                renderAutoPlayStatus(turn, turns, nextId);
+                activeGroupParticipantId = nextId;
+                await handleChatSubmit('dialog', { autoTurn: true });
+                const last = chat.history[chat.history.length - 1];
+                if (!last || last.sender !== 'ai' || isChatNoticeMessage(last)) break;
+                lastSpeakerId = last.speakerId || nextId;
+            }
+        } finally {
+            autoPlayState.running = false;
+            autoPlayState.stopRequested = false;
+            autoPlayState.chatId = null;
+            renderAutoPlayStatus();
+            if (currentCharacterId === charId && currentChatId === chatId) {
+                // The user's own tag, if they had one, is theirs again.
+                activeGroupParticipantId = previousTag && chat.participants?.includes(previousTag) ? previousTag : null;
+                updateChatReplyControls();
+                generateReplyOptionsInBackground();
+            }
+        }
+    }
+
+    function stopAutoPlay() {
+        if (!autoPlayState.running) return;
+        autoPlayState.stopRequested = true;
+        if (autoPlayStatusText) autoPlayStatusText.textContent = 'Stopping…';
+        if (currentStreamController) stopStreamBtn.click();
+    }
+
+    document.getElementById('autoplay-stop-btn')?.addEventListener('click', stopAutoPlay);
+    stopStreamBtn.addEventListener('click', () => {
+        if (autoPlayState.running) autoPlayState.stopRequested = true;
+    });
+
+    // ── Automatic atmosphere ──
+    let atmosphereRequestId = 0;
+
+    // The effect a chat shows: the scene's own pick while the automatic
+    // atmosphere is on, otherwise the one chosen for the character.
+    function getEffectiveParticleEffect(character, chat) {
+        if (autoAtmosphereEnabled && typeof chat?.sceneEffect === 'string' && PARTICLE_EMOJIS[chat.sceneEffect]) {
+            return chat.sceneEffect;
+        }
+        return character?.particleEffect || 'none';
+    }
+
+    async function maybeAutoAtmosphere(character, chat) {
+        if (!autoAtmosphereEnabled || !character || !chat) return;
+        const lastReply = [...historyForPrompt(chat.history)].reverse().find(m => m.sender === 'ai');
+        const scene = getMessageText(lastReply).trim();
+        if (!scene) return;
+        const requestId = ++atmosphereRequestId;
+        const subject = character.type === 'world' ? 'the scene' : getCharacterDisplayName(character);
+        const effects = Object.keys(PARTICLE_EMOJIS);
+        const moods = Object.keys(CCC_MOOD_DEFINITIONS);
+        const system = `You set the ambience of a roleplay chat from its latest scene. Choose:
+- "effect": exactly one of ${effects.join(', ')}. Pick what the scene's place and moment suggest: rain in a storm, snow in winter, fireflies on a summer night, sparks near fire or battle, darkness for dread, fog for mystery, sakura for spring romance. Use "none" when nothing fits, such as an ordinary indoor conversation.
+- "mood": exactly one of ${moods.join(', ')}, or "none". It is the current emotional state of ${subject}.
+Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
+        try {
+            const raw = await callAISimple(
+                system,
+                `Latest scene:\n${scene.slice(-1500)}`,
+                suggestionModelId || modelSelect?.value || defaultSettings.model,
+                null,
+                'none',
+                { chat }
+            );
+            if (requestId !== atmosphereRequestId || !autoAtmosphereEnabled) return;
+            const json = String(raw || '').match(/\{[\s\S]*?\}/);
+            if (!json) return;
+            const picked = JSON.parse(json[0]);
+            const effect = typeof picked.effect === 'string' ? picked.effect.trim().toLowerCase() : '';
+            const moodText = typeof picked.mood === 'string' ? picked.mood.trim() : '';
+            let effectChanged = false;
+            let moodChanged = false;
+            if (PARTICLE_EMOJIS[effect] && chat.sceneEffect !== effect) {
+                chat.sceneEffect = effect;
+                effectChanged = true;
+            }
+            const mood = moodText.toLowerCase() === 'none' ? null : normalizeMood(moodText);
+            if ((mood || moodText.toLowerCase() === 'none') && mood !== normalizeMood(chat.mood)) {
+                chat.mood = mood;
+                moodChanged = true;
+            }
+            if (!effectChanged && !moodChanged) return;
+            await saveSingleCharacterToDB(character);
+            if (chat !== getCurrentChat() || !isChatScreenActive()) return;
+            if (effectChanged) startParticles(getEffectiveParticleEffect(character, chat), fxSavedLevels(character));
+            updateParticleButton();
+            updateMoodButton();
+        } catch (err) {
+            console.warn('Automatic atmosphere failed:', err);
+        }
+    }
+
+    // Called by applySetting whenever the setting actually changes.
+    function onAutoAtmosphereToggled() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || !isChatScreenActive()) return;
+        const effect = getEffectiveParticleEffect(character, chat);
+        startParticles(effect, fxSavedLevels(character));
+        updateParticleButton();
+        particlePickerModal?.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
+        particleSettingsRow?.classList.toggle('hidden', effect === 'none');
+        if (autoAtmosphereEnabled) maybeAutoAtmosphere(character, chat);
+    }
+
+    const autoAtmosphereToggle = document.getElementById('auto-atmosphere-toggle');
+    if (autoAtmosphereToggle) addSettingListener(autoAtmosphereToggle, 'autoAtmosphere', 'change');
+
+    // ── Unsent drafts ──
+    function chatDraftKey(charId, chatId) {
+        return `chatDraft:${charId}:${chatId}`;
+    }
+    let chatDraftTimer = null;
+    // The chat the pending save belongs to, fixed when the typing happened.
+    let chatDraftOwner = null;
+
+    function saveChatDraftNow() {
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = null;
+        if (!chatDraftOwner) return;
+        const key = chatDraftKey(chatDraftOwner.charId, chatDraftOwner.chatId);
+        chatDraftOwner = null;
+        const value = messageInput.value;
+        try {
+            if (value.trim()) localStorage.setItem(key, value);
+            else localStorage.removeItem(key);
+        } catch (_) {}
+    }
+
+    function scheduleChatDraftSave() {
+        if (!currentCharacterId || !currentChatId) return;
+        chatDraftOwner = { charId: currentCharacterId, chatId: currentChatId };
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = setTimeout(saveChatDraftNow, 400);
+    }
+
+    function loadChatDraft(charId, chatId) {
+        saveChatDraftNow();
+        stopVoiceInput({ discard: true });
+        let draft = '';
+        try { draft = localStorage.getItem(chatDraftKey(charId, chatId)) || ''; } catch (_) {}
+        messageInput.value = draft;
+        autoResizeTextarea({ target: messageInput });
+    }
+
+    function clearChatDraft() {
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = null;
+        chatDraftOwner = null;
+        if (!currentCharacterId || !currentChatId) return;
+        try { localStorage.removeItem(chatDraftKey(currentCharacterId, currentChatId)); } catch (_) {}
+    }
+
+    messageInput.addEventListener('input', scheduleChatDraftSave);
+    window.addEventListener('pagehide', saveChatDraftNow);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) saveChatDraftNow(); });
+
+    // ── Voice input ──
+    const voiceInputBtn = document.getElementById('voice-input-btn');
+    const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    const messageInputPlaceholder = messageInput.placeholder;
+    let voiceRecognition = null;
+    // Firefox has no speech recognition, so the button only appears where it works.
+    if (SpeechRecognitionApi && voiceInputBtn) voiceInputBtn.classList.remove('hidden');
+
+    function setVoiceListening(listening) {
+        if (!voiceInputBtn) return;
+        voiceInputBtn.classList.toggle('is-listening', listening);
+        voiceInputBtn.setAttribute('aria-pressed', String(listening));
+        voiceInputBtn.title = listening ? 'Stop voice input' : 'Voice input';
+        voiceInputBtn.setAttribute('aria-label', listening ? 'Stop voice input' : 'Start voice input');
+        messageInput.placeholder = listening ? 'Listening... speak now' : messageInputPlaceholder;
+    }
+
+    // `discard` drops what the browser has not delivered yet: after a send
+    // or a chat switch, late words would otherwise land in the emptied box.
+    // A plain stop keeps them - that is the user finishing a sentence.
+    function stopVoiceInput({ discard = false } = {}) {
+        if (!voiceRecognition) return;
+        const recognition = voiceRecognition;
+        voiceRecognition = null;
+        if (discard) {
+            recognition.onresult = null;
+            try { recognition.abort(); } catch (_) {}
+        } else {
+            try { recognition.stop(); } catch (_) {}
+        }
+        setVoiceListening(false);
+    }
+
+    function startVoiceInput() {
+        if (!SpeechRecognitionApi || voiceRecognition) return;
+        const recognition = new SpeechRecognitionApi();
+        recognition.lang = navigator.language || 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+        // Speech is added after what is already typed, and rewritten as the
+        // browser firms up its guesses.
+        const typedBefore = messageInput.value.replace(/\s+$/, '');
+        recognition.onresult = (event) => {
+            let spoken = '';
+            for (let i = 0; i < event.results.length; i++) spoken += event.results[i][0].transcript;
+            spoken = spoken.trim();
+            messageInput.value = typedBefore && spoken ? `${typedBefore} ${spoken}` : (typedBefore || spoken);
+            autoResizeTextarea({ target: messageInput });
+            scheduleChatDraftSave();
+        };
+        recognition.onerror = (event) => {
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                showChatToast('🎤 Microphone access is blocked. Allow it for this site to use voice input.');
+            } else if (event.error === 'network') {
+                showChatToast('🎤 Voice input needs an internet connection in this browser.');
+            } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                showChatToast(`🎤 Voice input stopped (${event.error}).`);
+            }
+        };
+        recognition.onend = () => {
+            if (voiceRecognition !== recognition) return;
+            voiceRecognition = null;
+            setVoiceListening(false);
+        };
+        try {
+            recognition.start();
+        } catch (_) {
+            showChatToast('🎤 Voice input could not start.');
+            return;
+        }
+        voiceRecognition = recognition;
+        setVoiceListening(true);
+    }
+
+    voiceInputBtn?.addEventListener('click', () => {
+        if (voiceRecognition) stopVoiceInput();
+        else startVoiceInput();
+    });
+
+    // ── Leaving the chat ──
+    backToSelectionBtn.addEventListener('click', () => {
+        stopAutoPlay();
+        stopVoiceInput({ discard: true });
+        saveChatDraftNow();
+        closeChatSearch();
+        closeChatMenu();
+        closeMessageMenu();
+    });
+
+    // ── Keyboard shortcuts ──
+    const shortcutsModal = document.getElementById('shortcuts-modal');
+
+    function openShortcuts() {
+        shortcutsModal?.classList.remove('hidden');
+        document.getElementById('close-shortcuts-btn')?.focus();
+    }
+
+    function closeShortcuts() {
+        shortcutsModal?.classList.add('hidden');
+    }
+
+    document.getElementById('close-shortcuts-btn')?.addEventListener('click', closeShortcuts);
+    shortcutsModal?.addEventListener('click', (event) => { if (event.target === shortcutsModal) closeShortcuts(); });
+
+    const DIALOG_IDS = [
+        'character-editor-modal', 'message-editor-modal', 'chat-memories-modal', 'scenario-selection-modal',
+        'participant-selection-modal', 'persona-selection-modal', 'quick-swap-modal', 'move-chat-modal',
+        'particle-picker-modal', 'persona-list-modal', 'persona-editor-modal', 'app-settings-modal',
+        'image-crop-modal', 'gallery-action-modal', 'chat-stats-modal', 'shortcuts-modal'
+    ];
+
+    function isAnyDialogOpen() {
+        if (document.querySelector('.custom-alert-overlay')) return true;
+        if (document.getElementById('tutorial-backdrop')?.classList.contains('tutorial-active')) return true;
+        return DIALOG_IDS.some(id => {
+            const el = document.getElementById(id);
+            return !!el && !el.classList.contains('hidden');
+        });
+    }
+
+    // Registered for the capture phase, so it sees a key before the dialog it
+    // belongs to closes itself - Escape in a dialog must never also stop a reply.
+    document.addEventListener('keydown', (event) => {
+        if (typeof event.key !== 'string') return;
+        if (event.key === 'Escape') {
+            if (messageMenu && !messageMenu.classList.contains('hidden')) { closeMessageMenu(); return; }
+            if (chatMenu && !chatMenu.classList.contains('hidden')) { closeChatMenu(); chatMenuBtn?.focus(); return; }
+            if (shortcutsModal && !shortcutsModal.classList.contains('hidden')) { closeShortcuts(); return; }
+            if (chatStatsModal && !chatStatsModal.classList.contains('hidden')) { closeChatStats(); return; }
+            if (!isChatScreenActive() || isAnyDialogOpen()) return;
+            if (chatSearch.open) {
+                event.preventDefault();
+                closeChatSearch();
+                return;
+            }
+            if (currentStreamController || autoPlayState.running) {
+                event.preventDefault();
+                stopAutoPlay();
+                stopStreamBtn.click();
+            }
+            return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!isChatScreenActive() || isKeyboardInputFocused() || isAnyDialogOpen()) return;
+        if (event.key === '?') {
+            event.preventDefault();
+            openShortcuts();
+        } else if (event.key === '/') {
+            event.preventDefault();
+            openChatSearch();
+        }
+    }, true);
+
+    // ── Install as an app ──
+    // Browsers that can install the app announce it with this event; the
+    // button only appears then. The address bar's own install icon still works.
+    const installAppBtn = document.getElementById('install-app-btn');
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installAppBtn?.classList.remove('hidden');
+    });
+    installAppBtn?.addEventListener('click', async () => {
+        const installPrompt = deferredInstallPrompt;
+        if (!installPrompt) return;
+        deferredInstallPrompt = null;
+        installAppBtn.classList.add('hidden');
+        try {
+            await installPrompt.prompt();
+            await installPrompt.userChoice;
+        } catch (_) {}
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        installAppBtn?.classList.add('hidden');
+    });
+
     // --- INITIALIZATION ---
 
 
@@ -30882,7 +33072,7 @@ const tutorialTours = {
                 targetId: 'settings-container',
                 position: 'bottom',
                 title: 'Your chat control panel',
-                text: 'This row is per-chat: mood, ambient effects, music, memories and story plan, group chat, and your persona.',
+                text: 'This row is per-chat: the ⋯ menu (search, bookmarks, stats, dice and more), mood, ambient effects, music, memories and story plan, group chat, and your persona.',
             },
             {
                 targetId: 'settings-btn',
@@ -31500,14 +33690,25 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Back Arrow (←):</strong> Takes you back to the character's chat dashboard.</li>
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
         <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
-        <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history.</li>
+        <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history. With OpenRouter models it also shows what this chat has cost so far, and what everything since you opened the app has cost (the "session").</li>
         <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, events still to come, or reminders the AI tends to forget over long conversations. A chat started from a scenario begins with that scenario's <strong>Chat Memories</strong> already in the box - its own copy, so rewriting it here changes nothing anywhere else. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
         <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
         <li><strong>Mood (😊):</strong> Click this button to set a mood for the character in the current chat session. A picker opens with preset options — <em>Happy, Sad, Angry, Excited, Nervous, Flirty, Tired, Curious, Scared, Bored</em> — plus a "None / Clear" option to remove the mood. The chosen mood is injected into the AI's system context with every message, subtly shaping how the character speaks and reacts throughout the conversation. The button icon updates to the emoji of the currently active mood so you can see it at a glance.</li>
-        <li><strong>Ambient Effects (✨):</strong> Opens the particle effects picker, where you can apply animated visual effects to the chat background. Available effects include: <em>Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,</em> and <em>Darkness</em>. Three sliders tune it to your taste: <em>Volume</em> sets how many particles appear, <em>Opacity</em> how strongly they show, and <em>Speed</em> how fast they move (50 is each effect's normal look). The selected effect is saved directly on the character card and activates automatically every time you open a chat with that character. Choose "None" to turn effects off.</li>
-        <li><strong>Quick Swap Character (↔️):</strong> Opens a searchable list of all your other characters. Clicking one instantly moves the entire current chat session — including its full message history — to that character, then opens the chat with them immediately. This is useful when you want to re-assign an ongoing story to a different character without going back to the main screen and recreating the chat manually.</li>
+        <li><strong>Ambient Effects (✨):</strong> Opens the particle effects picker, where you can apply animated visual effects to the chat background. Available effects include: <em>Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,</em> and <em>Darkness</em>. Three sliders tune it to your taste: <em>Volume</em> sets how many particles appear, <em>Opacity</em> how strongly they show, and <em>Speed</em> how fast they move (50 is each effect's normal look). The selected effect is saved directly on the character card and activates automatically every time you open a chat with that character. Choose "None" to turn effects off.
+            <br><strong>🪄 Automatic Atmosphere</strong> (in the same window, off by default): when switched on, the AI looks at the scene after each reply and picks a fitting effect and mood by itself — rain in a storm, fireflies on a summer night, darkness when things get tense. It uses one small extra request per reply with your <strong>Suggestions Model</strong>. Picking an effect by hand still works and applies at once; the next reply may change it again.</li>
+        <li><strong>More Tools (⋯):</strong> The first button in the row opens a small menu:
+            <ul>
+                <li><strong>🔍 Search Chats:</strong> Opens the search bar. See <em>Searching Your Chats</em> below.</li>
+                <li><strong>★ Bookmarks:</strong> Opens the search bar showing only your bookmarked messages. The number next to it is how many this chat has.</li>
+                <li><strong>📊 Chat Stats:</strong> Messages and words (yours and the AI's), when the chat started, bookmarks, generated images, the cost so far, and your milestones.</li>
+                <li><strong>▶️ Let Them Talk:</strong> Only appears in chats with at least two characters. See <em>Letting the Characters Talk</em> in the Group Chats section.</li>
+                <li><strong>🎲 Roll Dice:</strong> Puts <code>/roll 1d20</code> into the message box for you. See <em>Rolling Dice</em> below.</li>
+                <li><strong>🔃 Quick-Swap Character:</strong> Opens a searchable list of all your other characters. Clicking one instantly moves the entire current chat session — including its full message history — to that character, then opens the chat with them immediately. This is useful when you want to re-assign an ongoing story to a different character without going back to the main screen and recreating the chat manually.</li>
+                <li><strong>⌨️ Keyboard Shortcuts:</strong> Lists every shortcut (computer only).</li>
+            </ul>
+        </li>
     </ul>
 
     <h3>The Settings Panel</h3>
@@ -31542,6 +33743,7 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Reply Suggestions:</strong> A toggle that enables or disables AI-generated reply suggestions. When active, two short dialogue options appear above the input field after each AI response, giving you quick ideas for what your character could say next. While the suggestions are being generated, animated loading indicators appear in the suggestion fields — and if something goes wrong (e.g. the AI provider is unreachable), a short error message is shown there instead. If neither suggestion appeals to you, click the <strong>⟳</strong> button next to the "Reply Suggestions" label to generate a fresh pair — the discarded ones are named in the request, so the new pair takes different directions. The same button also retries a round that failed. Suggestions are also refreshed after you delete messages or switch a message to another variant, whenever the chat then ends on an AI message.</li>
         <li><strong>Suggestions Model:</strong> A dropdown that appears below the Reply Suggestions toggle. It lets you choose a dedicated AI model just for generating reply suggestions — independently from the model you use for chatting. <strong>Tip:</strong> Set a free or low-cost model here so that suggestions don't consume API quota from your main (paid) chat model. Leave it on "(same as chat model)" if you don't need to separate them.</li>
         <li><strong>Text-to-Speech (TTS):</strong> A toggle that enables your browser's built-in text-to-speech for AI responses. When active, each new AI message is automatically read aloud once it finishes generating. A <strong>Voice</strong> dropdown appears directly below the toggle, listing the English and Japanese voices installed on your operating system, plus those for the language spoken where you are — choose whichever sounds best to you. TTS runs entirely through the Web Speech API built into your browser; no external service or API key is required. Note: voice availability varies by browser and operating system.</li>
+        <li><strong>Auto-summarize Long Chats:</strong> Off by default. When on, the app keeps an eye on how long each chat gets. Once about 40 new messages have piled up, the older ones are summarized into a few bullet points and added to that chat's <strong>🧠 Chat Memories</strong> under an "Auto-summary" heading, so the AI keeps the important facts in view even when they happened long ago. The newest messages are always left out until the next round, and nothing is ever deleted from the chat itself. It uses your <strong>Suggestions Model</strong>. If you run <strong>✨ Auto-summarize Chat</strong> by hand and save the result, the automatic summary carries on after that point instead of covering it again.</li>
         <li><strong>Background Music:</strong> A text field where you can paste a direct link to an audio file (e.g., an <code>.mp3</code>) to play as looping background music for the current chat. This acts as a per-session override of the Music URL set in the character editor — your entry here is saved in your browser's local storage and does not change the character's saved data. Clear the field to stop the music.</li>
         <li><strong>Reset to Default Values:</strong> This button resets all settings on this panel to their original values.</li>
     </ul>
@@ -31559,6 +33761,14 @@ No one else, including the developer, can access your characters or conversation
                 <li><strong>Continuing a Response:</strong> Next to the regenerate icon, you'll find a continue button (»). Clicking it continues the previous AI message in its original context. The app asks the model to repair a cut-off word, sentence, dialogue line, quotation, or formatting marker before adding new content, and merges the result without inserting an unwanted space inside a repaired word.</li>
             </ul>
         </li>
+        <li><strong>More Actions (⋯):</strong> The last button that appears when you hover over a message opens a small menu:
+            <ul>
+                <li><strong>📋 Copy Text:</strong> Copies the message to your clipboard.</li>
+                <li><strong>★ Bookmark:</strong> Marks the message with a small gold star, so you can find key moments again later through <strong>★ Bookmarks</strong> in the ⋯ menu. Choose it again to remove the bookmark.</li>
+                <li><strong>🙈 Hide from AI:</strong> The message stays in the chat for you, faded and labelled "Hidden from the AI", but it is no longer sent to the AI — not in replies, summaries, suggestions or image prompts. Handy for out-of-character remarks, or a scene you want the story to forget. Choose <strong>Show to AI Again</strong> to undo it.</li>
+                <li><strong>🌿 Branch from Here:</strong> Starts a new chat that holds everything up to and including this message — with the same participants, persona, mood and Chat Memories — and opens it. The original chat stays exactly as it was, so you can try a different path without losing the first one. The copy is named after the original with "(branch)" added.</li>
+            </ul>
+        </li>
         <li><strong>AI Thoughts:</strong> Some AI models (Reasoning models) can provide their "thoughts" in a special <code>&lt;think&gt;</code> block. It will be automatically displayed in a collapsible box ("think block") above the main response. You can click "Show Thoughts" to see the AI's reasoning or internal monologue for its response.
         </li>
     </ul>
@@ -31571,13 +33781,40 @@ No one else, including the developer, can access your characters or conversation
             <blockquote>Note: Sometimes, the AI might get repetitive and it can look like as if the AI ignores the last message and doesn't drive the plot forward. In that case, simply make use of your Reminder instructions (e.g., "Drive the plot actively forward and let something new happen.") and also adjust the Temperature slider.</blockquote>
         </li>
         <li><strong>Tag Suggestions:</strong> When you click the input field in a group chat, suggestions for selecting a participant appear above it. Select a tag to direct <code>Character</code> requests to that character; the selection remains active until you dismiss it. <code>Narrator</code> requests always ignore the selected tag.</li>
-        <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind.</li>
+        <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind. On a computer, <code>Esc</code> does the same.</li>
+        <li><strong>🎤 Voice Input:</strong> The microphone in the corner of the message box lets you speak instead of type. Click it, allow microphone access the first time, and talk — your words appear in the box as you speak, after anything you had already typed. Click it again to stop, then check the text and send it as usual. It uses your browser's own speech recognition in your browser's language, so it only appears in browsers that have one (such as Chrome, Edge and Safari; Firefox has none).</li>
+        <li><strong>Unsent Messages Are Kept:</strong> Whatever you type but don't send stays in that chat's message box — even when you switch to another chat, close the tab or reload. Each chat keeps its own.</li>
+        <li><strong>🎲 Rolling Dice:</strong> Start a message with <code>/roll</code> to roll real dice. <code>/roll</code> alone rolls a 20-sided die; <code>/roll 2d6+3</code> rolls two 6-sided dice and adds 3. The result appears in the chat, e.g. <em>🎲 Rolled 2d6+3: 11 (4 + 4 + 3)</em>.
+            <ul>
+                <li>A roll on its own is only posted — the AI isn't asked yet. Write what you do next, or press send with an empty box to let the AI react to the roll.</li>
+                <li>Add your action after the dice (<code>/roll d20 I try to pick the lock</code>) and it is sent right away, with the result in front of it, so the AI plays out the outcome.</li>
+            </ul>
+        </li>
     </ul>
+
+    <h3>🔍 Searching Your Chats</h3>
+    <p>Open the search bar with <strong>🔍 Search Chats</strong> in the ⋯ menu (or press <code>/</code> on a computer). Every match in the chat is highlighted, and the current one is outlined in gold.</p>
+    <ul>
+        <li><strong>Moving between matches:</strong> The ⌃ and ⌄ buttons (or <code>Enter</code> and <code>Shift+Enter</code>) step to older and newer matches. The counter shows which one you are on.</li>
+        <li><strong>All Chats:</strong> Searches every chat with this character at once and lists the matches, newest first. Click one to open that chat right at the message.</li>
+        <li><strong>★:</strong> Shows only bookmarked messages. Leave the search box empty to see all of them.</li>
+        <li>Close the bar with <strong>×</strong> or <code>Esc</code>.</li>
+    </ul>
+
+    <h3>📊 Chat Stats & Milestones</h3>
+    <p><strong>📊 Chat Stats</strong> in the ⋯ menu shows how far a story has come: messages and words from you and the AI, the day it started, bookmarks, generated pictures and what it has cost. Along the way, the chat celebrates milestones — 25, 50, 100, 250 messages and more, and word counts from 10,000 up — with a short note at the bottom of the screen. The stats window shows the milestones you have reached and how close the next one is. Chats that existed before this feature count what they had already reached quietly, without a flood of notes.</p>
 
     <h3>Other Chat Functions</h3>
     <ul>
         <li><strong>Scroll to Top Button (↑):</strong> This floating button appears in the bottom-right corner after you've scrolled down a bit. Click it to jump instantly to the beginning of the chat.</li>
         <li><strong>Fullscreen Mode:</strong> When using the app on your computer, simply press the <code>F</code> key on your keyboard to toggle a distraction-free, immersive fullscreen mode. Press <code>F</code> again (or <code>ESC</code>) to exit fullscreen mode.</li>
+        <li><strong>⌨️ Keyboard Shortcuts:</strong> Press <code>?</code> in a chat (or choose it in the ⋯ menu) for the full list:
+            <ul>
+                <li><code>Enter</code> sends as Character, <code>Ctrl+Enter</code> sends as Narrator, <code>Shift+Enter</code> starts a new line.</li>
+                <li><code>Esc</code> stops the reply being written and closes the search bar.</li>
+                <li><code>/</code> opens the search, <code>←</code> <code>→</code> browse reply variants, <code>F</code> toggles fullscreen.</li>
+            </ul>
+        </li>
     </ul>
 
     <h2>6. Who Are You? Persona Management</h2>
@@ -31633,6 +33870,14 @@ No one else, including the developer, can access your characters or conversation
     <blockquote>
         However, to be certain, always put the instruction “Reply only as {{char}} now” in the Character Reminder. It will ensure that only your targeted character will speak.
     </blockquote>
+
+    <h3>▶️ Letting the Characters Talk</h3>
+    <p>In any chat with at least two characters (including a World with two or more characters), <strong>▶️ Let Them Talk</strong> in the ⋯ menu lets the characters carry the scene among themselves while you watch. Choose 4, 8 or 12 turns. Each turn goes to a different character than the one who just spoke, and each reply answers the one before it.</p>
+    <ul>
+        <li>A small bar above the message box shows the turn and who is replying. Its <strong>Stop</strong> button — or the red stop button, or <code>Esc</code> — ends the talk after the reply being written.</li>
+        <li>It also stops by itself if a reply fails or you leave the chat. Your own character tag is back as it was afterwards, and reply suggestions appear once it is over.</li>
+        <li>Anything you had typed in the message box is left alone while they talk.</li>
+    </ul>
 
     <h2>8. Import, Export & Backups</h2>
     <p>Your data is stored locally in your browser (IndexedDB), which means it's private but also vulnerable if your browser data is cleared. The Import and Export feature is the best way to safeguard your creations.</p>

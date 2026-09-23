@@ -91,6 +91,7 @@
 <div class="footer-menu">
     <a href="help.html" target="_blank" id="help-btn" title="Help Document & FAQ">❓Help & FAQ<span id="help-notification-dot" class="notification-dot hidden"></span></a>
     <a href="privacy & terms.html" target="_blank" id="privacy-btn" title="Privacy & Terms">🔒 Privacy & Terms</a>
+    <button type="button" id="install-app-btn" class="hidden" title="Install Casual Character Chat as an app on this device">📲 Install App</button>
 </div>
 <div id="copyright-notice">© 2026 Casual Character Chat</div>
 </div>
@@ -152,7 +153,16 @@
     <div id="token-tooltip"></div>
 </div>
     <div id="settings-container">
-        <button id="quick-swap-btn" title="Quick-Swap Character">🔃</button>
+        <button id="chat-menu-btn" title="More chat tools" aria-label="More chat tools" aria-haspopup="true" aria-expanded="false" aria-controls="chat-menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg></button>
+        <div id="chat-menu" class="hidden" role="menu" aria-label="Chat tools">
+            <button type="button" class="chat-menu-item" data-action="search" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔍</span><span class="chat-menu-label">Search Chats</span><kbd class="chat-menu-kbd">/</kbd></button>
+            <button type="button" class="chat-menu-item" data-action="bookmarks" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">★</span><span class="chat-menu-label">Bookmarks</span><span class="chat-menu-count" id="chat-menu-bookmark-count"></span></button>
+            <button type="button" class="chat-menu-item" data-action="stats" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">📊</span><span class="chat-menu-label">Chat Stats</span></button>
+            <button type="button" class="chat-menu-item hidden" data-action="autoplay" id="chat-menu-autoplay" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">▶️</span><span class="chat-menu-label">Let Them Talk</span></button>
+            <button type="button" class="chat-menu-item" data-action="dice" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🎲</span><span class="chat-menu-label">Roll Dice</span></button>
+            <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
+            <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
+        </div>
         <button id="mood-btn" title="Set Character Mood">😊</button>
         <div id="mood-picker" class="hidden">
             <button class="mood-option" data-mood="Happy">😊 Happy</button>
@@ -319,6 +329,13 @@
                                 <input type="checkbox" id="tts-toggle" class="toggle-switch">
                             </label>
                         </div>
+                        <div class="setting">
+                            <label for="auto-summarize-toggle">
+                                <span>Auto-summarize Long Chats:</span>
+                                <span class="setting-info-icon" data-tooltip="Once 40 new messages have piled up, the older ones are summarized into the chat's 🧠 Chat Memories, so the AI keeps the important facts in view. Uses your Suggestions Model.">ℹ️</span>
+                                <input type="checkbox" id="auto-summarize-toggle" class="toggle-switch">
+                            </label>
+                        </div>
                         <div id="image-gen-settings" class="hidden">
                             <div class="setting">
                                 <label for="image-gen-toggle">
@@ -348,9 +365,26 @@
         </div>
             </div>
         </div>
+        <div id="chat-search-bar" class="hidden" role="search">
+            <div class="chat-search-row">
+                <input type="search" id="chat-search-input" placeholder="🔎 Search this chat..." autocomplete="off" aria-label="Search messages">
+                <button type="button" id="chat-search-bookmarks-btn" class="chat-search-chip" aria-pressed="false" title="Only bookmarked messages">★</button>
+                <button type="button" id="chat-search-scope-btn" class="chat-search-chip" aria-pressed="false" title="Search every chat with this character">All Chats</button>
+                <span id="chat-search-count" aria-live="polite"></span>
+                <button type="button" id="chat-search-prev-btn" class="chat-search-nav" title="Older match (Enter)" aria-label="Older match"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+                <button type="button" id="chat-search-next-btn" class="chat-search-nav" title="Newer match (Shift+Enter)" aria-label="Newer match"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                <button type="button" id="chat-search-close-btn" class="chat-search-nav" title="Close search (Esc)" aria-label="Close search">×</button>
+            </div>
+            <div id="chat-search-results" class="hidden"></div>
+        </div>
         <div id="chat-window">
         </div>
-    
+
+        <div id="autoplay-status" class="hidden" aria-live="polite">
+            <span class="autoplay-pulse" aria-hidden="true"></span>
+            <span id="autoplay-status-text"></span>
+            <button type="button" id="autoplay-stop-btn">Stop</button>
+        </div>
         <div id="reply-options-dropdown" class="reply-options-dropdown hidden">
             <div class="reply-options-header">
                 <span class="reply-options-label">Reply Suggestions</span>
@@ -368,6 +402,7 @@
         </div>
         <textarea id="message-input" placeholder="Write a message..." rows="1"></textarea>
         <button type="button" id="stop-stream-btn" class="hidden" title="Stop Generation"><span class="stop-square"></span></button>
+        <button type="button" id="voice-input-btn" class="hidden" title="Voice input" aria-label="Start voice input" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="21.5"></line></svg></button>
     </div>
     <button type="submit" id="dialog-btn"><span class="btn-icon" aria-hidden="true">💬</span><span class="btn-text">Character</span></button>
     <button type="button" id="story-btn"><span class="btn-icon" aria-hidden="true">📖</span><span class="btn-text">Narrator</span></button>
@@ -638,6 +673,13 @@
             <button class="particle-option-btn" data-effect="leaves">🍂 Leaves</button>
             <button class="particle-option-btn" data-effect="sakura">🌸 Sakura</button>
         </div>
+        <label class="auto-atmosphere-row" for="auto-atmosphere-toggle">
+            <span class="auto-atmosphere-text">
+                <span class="auto-atmosphere-title">🪄 Automatic Atmosphere</span>
+                <span class="auto-atmosphere-hint">After each reply, the AI picks the effect and mood that fit the scene.</span>
+            </span>
+            <input type="checkbox" id="auto-atmosphere-toggle" class="toggle-switch">
+        </label>
         <div id="particle-settings-row" class="hidden" style="margin:10px 0 4px;">
             <label style="font-size:0.82rem;color:rgba(255,255,255,0.75);display:flex;justify-content:space-between;margin-bottom:5px;"><span title="How many particles appear">Volume</span><span id="particle-volume-value">50</span></label>
             <input type="range" id="particle-volume-slider" min="1" max="100" value="50" style="width:100%;accent-color:rgba(167,139,250,0.9);margin-bottom:10px;">
@@ -650,6 +692,45 @@
             <button type="button" id="close-particle-picker-btn">Close</button>
         </div>
     </div>
+</div>
+
+<div id="chat-stats-modal" class="hidden">
+    <div class="modal-content" id="chat-stats-content">
+        <h2>📊 Chat Stats</h2>
+        <p id="chat-stats-subtitle"></p>
+        <div id="chat-stats-grid"></div>
+        <div id="chat-stats-milestones"></div>
+        <div class="form-buttons">
+            <button type="button" id="close-chat-stats-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="shortcuts-modal" class="hidden">
+    <div class="modal-content" id="shortcuts-content">
+        <h2>⌨️ Keyboard Shortcuts</h2>
+        <div class="shortcuts-list">
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Enter</kbd></span><span>Send as Character</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span>Send as Narrator</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Shift</kbd>+<kbd>Enter</kbd></span><span>New line</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Esc</kbd></span><span>Stop the reply · close search</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>/</kbd></span><span>Search chats</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>←</kbd><kbd>→</kbd></span><span>Browse reply variants (→ on the last one regenerates)</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>F</kbd></span><span>Fullscreen</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span>Show this list</span></div>
+        </div>
+        <p class="shortcuts-hint">🎲 Type <code>/roll 1d20</code> or <code>/roll 2d6+3</code> to roll dice. Add text after it to act on the roll.</p>
+        <div class="form-buttons">
+            <button type="button" id="close-shortcuts-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="message-menu" class="hidden" role="menu" aria-label="Message actions">
+    <button type="button" class="message-menu-item" data-action="copy" role="menuitem"><span class="message-menu-icon" aria-hidden="true">📋</span><span class="message-menu-label">Copy Text</span></button>
+    <button type="button" class="message-menu-item" data-action="bookmark" role="menuitem"><span class="message-menu-icon" aria-hidden="true">★</span><span class="message-menu-label">Bookmark</span></button>
+    <button type="button" class="message-menu-item" data-action="hide" role="menuitem"><span class="message-menu-icon" aria-hidden="true">🙈</span><span class="message-menu-label">Hide from AI</span></button>
+    <button type="button" class="message-menu-item" data-action="branch" role="menuitem"><span class="message-menu-icon" aria-hidden="true">🌿</span><span class="message-menu-label">Branch from Here</span></button>
 </div>
 
 <div id="persona-list-modal" class="hidden">

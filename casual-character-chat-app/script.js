@@ -437,9 +437,18 @@ const defaultSettings = {
         imageGenEnabled: 'true',
         imageGenProvider: 'pollinations',
         imageGenModel: 'google/gemini-3.1-flash-lite-image',
+        autoSummarize: 'false',
+        autoAtmosphere: 'false',
     };
 
     let audioCtx;
+    let autoSummarizeEnabled = false;
+    let autoAtmosphereEnabled = false;
+    // What the provider reported for every request since the app was opened.
+    // Each chat keeps its own running total in chat.costUsd.
+    let sessionCostUsd = 0;
+    // "Let Them Talk": characters taking turns without the user.
+    const autoPlayState = { running: false, stopRequested: false, chatId: null };
     let soundEnabled = true;
     let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
@@ -1416,9 +1425,87 @@ function isChatNoticeMessage(message) {
         && isChatNoticeVariant(message.variations?.[message.activeVariant]);
 }
 
-// History as the model should see it: without the app's own notices.
+// A message the user hid from the AI stays in the chat for them to read, but
+// is never sent - not in replies, summaries, suggestions or image prompts.
+function isHiddenFromAI(message) {
+    return !!message && message.hiddenFromAI === true;
+}
+
+// History as the model should see it: without the app's own notices, and
+// without anything the user hid from it.
 function historyForPrompt(history) {
-    return (history || []).filter(msg => !isChatNoticeMessage(msg));
+    return (history || []).filter(msg => !isChatNoticeMessage(msg) && !isHiddenFromAI(msg));
+}
+
+/* ===========================================================================
+ * DICE ROLLS
+ * ===========================================================================
+ * "/roll" at the start of a message rolls real dice: "/roll" alone is a d20,
+ * "/roll 2d6+3" anything else. Text after the dice is sent on as the user's
+ * action, with the result in front of it so the model plays the outcome. A
+ * bare roll is only posted, so the user can decide what to do with it.
+ * ======================================================================== */
+
+const DICE_MAX_COUNT = 100;
+const DICE_MAX_SIDES = 1000;
+
+function parseDiceCommand(input) {
+    const match = String(input || '').trim()
+        .match(/^\/roll\b(?:\s+(\d{0,3})d(\d{1,4})(?:\s*([+-])\s*(\d{1,5}))?(?=\s|$))?\s*([\s\S]*)$/i);
+    if (!match) return null;
+    const hasDice = match[2] !== undefined;
+    const count = hasDice ? parseInt(match[1] || '1', 10) : 1;
+    const sides = hasDice ? parseInt(match[2], 10) : 20;
+    const modifier = match[3] ? (match[3] === '-' ? -1 : 1) * parseInt(match[4], 10) : 0;
+    if (count < 1 || count > DICE_MAX_COUNT || sides < 2 || sides > DICE_MAX_SIDES) {
+        return { error: `Dice go from 1 to ${DICE_MAX_COUNT} dice with 2 to ${DICE_MAX_SIDES} sides, e.g. /roll 2d6+3.` };
+    }
+    return { count, sides, modifier, text: (match[5] || '').trim() };
+}
+
+function diceRandom() {
+    const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+    if (cryptoApi?.getRandomValues) return cryptoApi.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+    return Math.random();
+}
+
+function rollDice(spec, random = diceRandom) {
+    const rolls = Array.from({ length: spec.count }, () => 1 + Math.floor(random() * spec.sides));
+    return { rolls, total: rolls.reduce((sum, roll) => sum + roll, 0) + spec.modifier };
+}
+
+function formatDiceResult(spec, result) {
+    const sign = spec.modifier > 0 ? '+' : '-';
+    const notation = `${spec.count}d${spec.sides}${spec.modifier ? `${sign}${Math.abs(spec.modifier)}` : ''}`;
+    const parts = spec.count > 1 || spec.modifier
+        ? ` (${result.rolls.join(' + ')}${spec.modifier ? ` ${sign} ${Math.abs(spec.modifier)}` : ''})`
+        : '';
+    let flourish = '';
+    if (spec.count === 1 && spec.sides === 20) {
+        if (result.rolls[0] === 20) flourish = ' - natural 20!';
+        else if (result.rolls[0] === 1) flourish = ' - natural 1!';
+    }
+    return `🎲 Rolled ${notation}: ${result.total}${parts}${flourish}`;
+}
+
+/* ===========================================================================
+ * MILESTONES
+ * ======================================================================== */
+
+const MESSAGE_MILESTONES = [25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+const WORD_MILESTONES = [10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+
+// Milestone keys ('m100', 'w50000') reached by the given counts, lowest first.
+function reachedMilestones(messageCount, wordCount) {
+    return [
+        ...MESSAGE_MILESTONES.filter(n => messageCount >= n).map(n => `m${n}`),
+        ...WORD_MILESTONES.filter(n => wordCount >= n).map(n => `w${n}`)
+    ];
+}
+
+function countWords(text) {
+    const trimmed = String(text || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
 // Pacing for the chat request retries. A rate limit is waited out with a
@@ -1745,6 +1832,15 @@ async function resetAppSettings() {
             case 'imageGenModel':
                 imageGenModel = value || defaultSettings.imageGenModel;
                 break;
+            case 'autoSummarize':
+                autoSummarizeEnabled = (value === 'true' || value === true);
+                break;
+            case 'autoAtmosphere': {
+                const wasEnabled = autoAtmosphereEnabled;
+                autoAtmosphereEnabled = (value === 'true' || value === true);
+                if (wasEnabled !== autoAtmosphereEnabled) onAutoAtmosphereToggled();
+                break;
+            }
         }
     }
 
@@ -1802,6 +1898,8 @@ async function resetAppSettings() {
         imageGenEnabled: document.getElementById('image-gen-toggle'),
         imageGenProvider: document.getElementById('image-gen-provider-select'),
         imageGenModel: document.getElementById('image-gen-model-input'),
+        autoSummarize: document.getElementById('auto-summarize-toggle'),
+        autoAtmosphere: document.getElementById('auto-atmosphere-toggle'),
     };
 
     for (const key in defaultSettings) {
@@ -1977,6 +2075,11 @@ function getOtherSpeakerNames(chat, selfId) {
 }
 
     function handleTextareaEnter(event) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        storyBtn.click();
+        return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         const mainCharacter = characters[currentCharacterId];
@@ -2722,6 +2825,7 @@ if (dashboardAvatarUrl) {
         const chatName = characters[charId].chats[chatId].name;
         if (await showCustomConfirm(`Are you sure you want to delete the chat "${chatName}"?`, true)) {
             delete characters[charId].chats[chatId];
+            try { localStorage.removeItem(chatDraftKey(charId, chatId)); } catch (_) {}
             await saveSingleCharacterToDB(characters[charId]);
             showChatList(charId);
         }
@@ -2739,7 +2843,7 @@ if (dashboardAvatarUrl) {
         contextText += personas[chat.activePersonaId].description || '';
     }
     contextText += getChatMemories(chat);
-    chat.history.forEach(msg => {
+    historyForPrompt(chat.history).forEach(msg => {
         contextText += msg.sender === 'user' ? msg.main : msg.variations[msg.activeVariant].main;
     });
     let totalTokens = Math.round(contextText.length / 4);
@@ -2764,7 +2868,12 @@ if (dashboardAvatarUrl) {
 
     totalTokens += 2000;
 
-    tokenTooltip.textContent = `Estimated Tokens in Context: ~${totalTokens}`;
+    const lines = [`Estimated Tokens in Context: ~${totalTokens}`];
+    const chatCost = Number(chat.costUsd) || 0;
+    if (chatCost > 0 || sessionCostUsd > 0) {
+        lines.push(`Cost: ${formatUsd(chatCost)} this chat · ${formatUsd(sessionCostUsd)} this session`);
+    }
+    tokenTooltip.textContent = lines.join('\n');
 }
 
 
@@ -2826,10 +2935,15 @@ function updatePersonaEditorTokenCount() {
 
 
 
+    // Set when "Auto-summarize Chat" fills the box, and only acted on if the
+    // box is then saved.
+    let pendingManualSummary = null;
+
     function closeChatMemoriesModal() {
         if (chatMemoriesModal) {
             chatMemoriesModal.classList.add('hidden');
         }
+        pendingManualSummary = null;
     }
 
 
@@ -2857,6 +2971,13 @@ function updatePersonaEditorTokenCount() {
         chat.memories = (chatMemoriesTextarea?.value || '').trim();
         delete chat.storyLine;
         delete chat.plan;
+        // A manual summary that was kept covers the same ground the automatic
+        // one would, so the automatic one starts after it.
+        if (pendingManualSummary && pendingManualSummary.chat === chat
+            && chat.history.some(m => m.id === pendingManualSummary.upToId)) {
+            chat.summarizedUpToId = pendingManualSummary.upToId;
+        }
+        pendingManualSummary = null;
         await saveSingleCharacterToDB(characters[currentCharacterId]);
         updateChatMemoriesButtonState();
         updateTokenCount();
@@ -3353,6 +3474,8 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
     // message, switching a variant, etc.) must keep the current selection.
     if (charId !== currentCharacterId || chatId !== currentChatId) {
         clearActiveGroupParticipant();
+        // Each chat keeps its own unsent message.
+        loadChatDraft(charId, chatId);
     }
     cancelReplyOptions();
     starsContainer.classList.remove('visible');
@@ -3438,7 +3561,8 @@ if (headerAvatarUrl) {
     updateTokenCount();
     updateMoodButton();
     updateParticleButton();
-    startParticles(character.particleEffect || 'none', fxSavedLevels(character));
+    startParticles(getEffectiveParticleEffect(character, chat), fxSavedLevels(character));
+    refreshChatSearchAfterRender();
     const musicUrlInputEl = document.getElementById('music-url-input');
     if (musicUrlInputEl) {
         const savedUserUrl = localStorage.getItem(`userMusicUrl:${currentCharacterId}`);
@@ -4109,6 +4233,16 @@ messageWrapper.appendChild(avatarContainer);
         imageBtn.addEventListener('click', () => handleGenerateImage(message.id, imageBtn));
         actionGroup.appendChild(imageBtn);
     }
+    // Copy, bookmark, hide and branch live behind one button, so the row of
+    // actions on every message does not grow.
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'message-more-btn message-action-btn';
+    moreBtn.title = 'More';
+    moreBtn.setAttribute('aria-label', 'More message actions');
+    moreBtn.setAttribute('aria-haspopup', 'true');
+    moreBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="13" cy="8" r="1.6"/></svg>`;
+    actionGroup.appendChild(moreBtn);
     messageElement.appendChild(actionGroup);
 
     if (message.sender === 'ai') {
@@ -4154,13 +4288,48 @@ messageWrapper.appendChild(avatarContainer);
         if(message.sender === 'ai') messageWrapper.appendChild(messageElement);
     }
 
+    if (message.dice) messageElement.classList.add('dice-message');
+    applyMessageFlags(messageElement, message);
+
     chatWindow.appendChild(messageWrapper);
     return messageWrapper;
 }
 
+// The small marks a message carries for the user: a star when bookmarked, and
+// a faded bubble with a note when it is hidden from the AI.
+function applyMessageFlags(messageElement, message) {
+    if (!messageElement || !message) return;
+    const bookmarked = message.bookmarked === true;
+    const hidden = isHiddenFromAI(message);
+    messageElement.classList.toggle('is-bookmarked', bookmarked);
+    messageElement.classList.toggle('is-hidden-from-ai', hidden);
+
+    let star = messageElement.querySelector(':scope > .message-bookmark-flag');
+    if (bookmarked && !star) {
+        star = document.createElement('span');
+        star.className = 'message-bookmark-flag';
+        star.title = 'Bookmarked';
+        star.textContent = '★';
+        messageElement.appendChild(star);
+    } else if (!bookmarked && star) {
+        star.remove();
+    }
+
+    let note = messageElement.querySelector(':scope > .message-hidden-note');
+    if (hidden && !note) {
+        note = document.createElement('div');
+        note.className = 'message-hidden-note';
+        note.textContent = 'Hidden from the AI';
+        const anchor = messageElement.querySelector(':scope > .message-action-group');
+        messageElement.insertBefore(note, anchor);
+    } else if (!hidden && note) {
+        note.remove();
+    }
+}
 
 
-async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = false) {
+
+async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = false, extra = null) {
     const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const ownerCharacter = characters[currentCharacterId];
     const chat = ownerCharacter?.chats?.[currentChatId];
@@ -4169,7 +4338,7 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
     let messageObject;
 
     if (sender === 'user') {
-        messageObject = { id: messageId, sender: 'user', main: rawMessage };
+        messageObject = { id: messageId, sender: 'user', main: rawMessage, ...(extra || {}) };
     } else { 
         const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
         const thinkMatch = rawMessage.match(thinkRegex);
@@ -4206,7 +4375,31 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
 
 
-async function handleChatSubmit(type) {
+// `autoTurn` is one turn of "Let Them Talk": no user message, the box and
+// whatever is typed in it are left alone, and the tagged character answers the
+// last reply.
+async function handleChatSubmit(type, { autoTurn = false } = {}) {
+    if (!autoTurn) {
+        const dice = parseDiceCommand(messageInput.value);
+        if (dice) {
+            if (dice.error) { showCustomAlert(dice.error); return; }
+            const rollLine = formatDiceResult(dice, rollDice(dice));
+            if (!dice.text) {
+                // A bare roll is only posted. The user decides what to do
+                // with it, or sends an empty message to let the AI react.
+                messageInput.value = '';
+                clearChatDraft();
+                autoResizeTextarea({ target: messageInput });
+                hideUndoDeleteFab();
+                cancelReplyOptions();
+                await addNewMessage(rollLine, 'user', 'dialog', true, { dice: true });
+                updateTokenCount();
+                checkChatMilestones(characters[currentCharacterId], characters[currentCharacterId]?.chats?.[currentChatId]);
+                return;
+            }
+            messageInput.value = `${rollLine}\n${dice.text}`;
+        }
+    }
     // Set before the message box is focused below, since that focus fires the
     // handler that requests reply suggestions.
     chatTurnInProgress = true;
@@ -4215,10 +4408,14 @@ async function handleChatSubmit(type) {
     // round in flight matters as much as hiding the bar: its answer used to
     // arrive mid-stream and reopen the bar over the reply being written.
     cancelReplyOptions();
-    const userMessageRaw = messageInput.value.trim();
-    messageInput.value = '';
-    autoResizeTextarea({ target: messageInput });
-    messageInput.focus();
+    const userMessageRaw = autoTurn ? '' : messageInput.value.trim();
+    if (!autoTurn) {
+        messageInput.value = '';
+        clearChatDraft();
+        stopVoiceInput({ discard: true });
+        autoResizeTextarea({ target: messageInput });
+        messageInput.focus();
+    }
     let mainCharacter = characters[currentCharacterId];
     let chat = mainCharacter.chats[currentChatId];
     const selectedTargetCharId = getValidActiveGroupParticipantId(chat);
@@ -4272,7 +4469,18 @@ async function handleChatSubmit(type) {
         const lastMainText = lastMessage.main || (lastVariant ? lastVariant.main : '');
         const trimmedLastMain = (lastMainText || '').trim();
         messageForAPI = trimmedLastMain || "Continue the scene plausibly based on the latest turn.";
-        if (lastMessage.sender === 'ai') {
+        if (autoTurn && lastMessage.sender === 'ai') {
+            // Someone else usually spoke last, so the line is handed over with
+            // its speaker's name and the turn is passed on explicitly.
+            const lastSpeakerId = lastMessage.speakerId || currentCharacterId;
+            const lastSpeaker = lastMessage.type === 'story' ? null : characters[lastSpeakerId];
+            const spokenBy = lastSpeaker && lastSpeaker.type !== 'world' && lastSpeakerId !== targetCharId
+                ? `${lastSpeaker.chatName || lastSpeaker.name}: `
+                : '';
+            const turnTaker = characters[targetCharId];
+            const turnTakerName = turnTaker?.chatName || turnTaker?.name || 'the character';
+            messageForAPI = `${spokenBy}${messageForAPI}\n\n(It is now ${turnTakerName}'s turn. React in character to what just happened and move the conversation forward with something new. Do not repeat earlier lines.)`;
+        } else if (lastMessage.sender === 'ai') {
             messageForAPI += "\n\n(Continue the scene from your previous reply with new content. Do not repeat earlier sentences and drive the scene actively forward.)";
         }
         const isMultiChar = chat.participants && chat.participants.length > 1;
@@ -4583,6 +4791,7 @@ const response = await fetch(fetchUrl, {
             // A provider that fails after the stream has started reports it as
             // an error object inside the 200 response.
             if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+            if (parsed.usage) recordUsageCost(parsed.usage, chat);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -4816,6 +5025,9 @@ const response = await fetch(fetchUrl, {
     // Not after a stop, and not after a failure either: the bubble then holds
     // the "did not respond" notice, and suggesting replies to that is noise.
     if (!streamAbortedByUser && hasAnyReplyContent) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && hasAnyReplyContent && !isChatNoticeVariant(aiMessageObject.variations[0])) {
+        afterAIReply(mainCharacter, chat);
+    }
 }
 
 
@@ -5187,6 +5399,7 @@ const response = await fetch(fetchUrl, {
         try {
             const parsed = JSON.parse(dataContent);
             if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+            if (parsed.usage) recordUsageCost(parsed.usage, chat);
             const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
             const reasoningDelta = extractReasoningDelta(delta);
             if (delta?.content) {
@@ -5431,7 +5644,10 @@ const response = await fetch(fetchUrl, {
     chatTurnInProgress = false;
     // newVariant is only set once a reply actually arrived; without it the
     // variant holds an error notice, which is nothing to suggest replies to.
-    if (!streamAbortedByUser && newVariant) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && newVariant) {
+        generateReplyOptionsInBackground();
+        afterAIReply(ownerCharacter, chat);
+    }
     await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
 }
@@ -5776,6 +5992,7 @@ const response = await fetch(fetchUrl, {
                     try {
                         const parsed = JSON.parse(dataContent);
                         if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+                        if (parsed.usage) recordUsageCost(parsed.usage, chat);
                         const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
                         const reasoningDelta = extractReasoningDelta(delta);
 
@@ -5956,7 +6173,10 @@ if (!finalThink) {
     storyBtn.disabled = false;
     if (currentStreamController === streamController) currentStreamController = null;
     chatTurnInProgress = false;
-    if (!streamAbortedByUser && !continueErrorText) generateReplyOptionsInBackground();
+    if (!streamAbortedByUser && !continueErrorText) {
+        generateReplyOptionsInBackground();
+        afterAIReply(ownerCharacter, chat);
+    }
     await saveSingleCharacterToDB(ownerCharacter);
     updateSingleMessageView(messageId);
     // Shown after the redraw above, which used to paint over it at once, so a
@@ -8706,9 +8926,11 @@ personaEditorAvatarImg.onerror = () => {
     const PARTICLE_EMOJIS = { none:'✨', snow:'❄️', rain:'🌧️', sparks:'🔥', fireflies:'🟢', sakura:'🌸', fog:'🌫️', steam:'♨️', aurora:'🌌', leaves:'🍂', darkness:'🌑' };
     function updateParticleButton() {
         if (!particleBtn) return;
-        const effect = characters[currentCharacterId]?.particleEffect || 'none';
+        const character = characters[currentCharacterId];
+        const effect = getEffectiveParticleEffect(character, character?.chats?.[currentChatId]);
         particleBtn.textContent = PARTICLE_EMOJIS[effect] || '✨';
-        particleBtn.title = effect !== 'none' ? `Effect: ${effect.charAt(0).toUpperCase()+effect.slice(1)}` : 'Ambient Effects';
+        const autoNote = autoAtmosphereEnabled ? ' (automatic)' : '';
+        particleBtn.title = effect !== 'none' ? `Effect: ${effect.charAt(0).toUpperCase()+effect.slice(1)}${autoNote}` : `Ambient Effects${autoNote}`;
         particleBtn.classList.toggle('particle-active', effect !== 'none');
     }
 
@@ -9580,7 +9802,7 @@ personaEditorAvatarImg.onerror = () => {
             e.stopPropagation();
             const character = characters[currentCharacterId];
             if (particlePickerModal) {
-                const currentEffect = character?.particleEffect || 'none';
+                const currentEffect = getEffectiveParticleEffect(character, character?.chats?.[currentChatId]);
                 particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => {
                     b.classList.toggle('active', b.dataset.effect === currentEffect);
                 });
@@ -9625,6 +9847,10 @@ personaEditorAvatarImg.onerror = () => {
             const character = characters[currentCharacterId];
             if (!character) return;
             character.particleEffect = effect;
+            // A hand-picked effect replaces whatever the automatic atmosphere
+            // chose for this chat, until the next reply picks again.
+            const openChat = character.chats?.[currentChatId];
+            if (openChat) delete openChat.sceneEffect;
             particlePickerModal.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
             if (particleSettingsRow) particleSettingsRow.classList.toggle('hidden', effect === 'none');
             await saveSingleCharacterToDB(character);
@@ -10015,7 +10241,8 @@ personaEditorAvatarImg.onerror = () => {
     // `reasoningEffort` defaults to 'auto', which sends no reasoning field and
     // lets a thinking model deliberate as it normally would. Short mechanical
     // jobs can pass 'none' to skip that, where the model supports it.
-    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto') {
+    // `chat`, when given, is the chat whose running cost this request adds to.
+    async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto', { chat = null } = {}) {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
         const lookupId = modelId.replace(/:online$/, '');
         const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
@@ -10063,6 +10290,7 @@ personaEditorAvatarImg.onerror = () => {
                 try {
                     const parsed = JSON.parse(dataContent);
                     if (parsed.error) streamError = parsed.error.message || JSON.stringify(parsed.error);
+                    if (parsed.usage) recordUsageCost(parsed.usage, chat);
                     const delta = parsed.choices?.[0]?.delta;
                     if (delta?.content) fullText += delta.content;
                     reasoningText += extractReasoningDelta(delta);
@@ -10323,7 +10551,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             // this, a thinking model set as the Suggestions Model spends time
             // and tokens deliberating before writing a single line.
             const distilled = await callAISimple(
-                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none'
+                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none', { chat: getCurrentChat() }
             );
             const cleaned = String(distilled || '').replace(/\s+/g, ' ').trim();
             return cleaned || fallback;
@@ -10520,6 +10748,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             if (typeof imageRecord.cost === 'number') {
                 console.info(`[image] generated via ${imageRecord.provider} for $${imageRecord.cost.toFixed(5)}`);
+                recordUsageCost({ cost: imageRecord.cost }, chat);
             }
         } catch (err) {
             if (err?.name === 'AbortError') {
@@ -10905,7 +11134,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                 // Suggestions appear while the user is deciding what to type, so
                 // speed matters more than deliberation. Reasoning is switched off
                 // where the model allows it, as with the image prompt builder.
-                raw = await callAISimple(attempt.system, attempt.user, modelId, controller.signal, 'none');
+                raw = await callAISimple(attempt.system, attempt.user, modelId, controller.signal, 'none', { chat: getCurrentChat() });
             } catch (err) {
                 if (timedOut) {
                     throw new ReplyOptionsError(`No answer within ${Math.round(REPLY_OPTION_TIMEOUT_MS / 1000)} seconds. A faster Suggestions Model in App Settings will do better.`);
@@ -10934,6 +11163,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
     // screen are named in the prompt and ruled out.
     async function generateReplyOptionsInBackground({ avoid = null } = {}) {
         if (!replyOptionsEnabled) return;
+        // Characters talking among themselves need no suggestions after every
+        // turn; the round is asked for once when they stop.
+        if (autoPlayState.running) return;
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat || !chat.history || chat.history.length === 0) return;
 
@@ -11221,21 +11453,15 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
         btn.innerHTML = '<span class="btn-spinner"></span> Summarizing…';
         btn.disabled = true;
         try {
-            const historyText = historyForPrompt(chat.history).slice(-40).map(msg => {
-                if (msg.sender === 'user') return `User: ${msg.main || ''}`;
-                const text = msg.variations?.[msg.activeVariant]?.main || '';
-                if (msg.type === 'story') return `Narrator: ${text}`;
-                const charName = characters[msg.speakerId || currentCharacterId]?.chatName || 'Character';
-                return `${charName}: ${text}`;
-            }).join('\n\n');
-            const systemPrompt = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 5-10 bullet points. No intro, no outro, no markdown headers.`;
-            const userMessage = `Summarize the key events and facts from this roleplay conversation:\n\n${historyText}`;
-            const summary = await callAISimple(systemPrompt, userMessage, selectedModelId);
+            const lastMessageId = chat.history[chat.history.length - 1]?.id;
+            const historyText = buildSummaryTranscript(historyForPrompt(chat.history).slice(-40), currentCharacterId);
+            const summary = await callAISimple(SUMMARY_SYSTEM_PROMPT, `Summarize the key events and facts from this roleplay conversation:\n\n${historyText}`, selectedModelId, null, 'auto', { chat });
             const existing = chatMemoriesTextarea.value.trim();
             chatMemoriesTextarea.value = existing
                 ? `${existing}\n\n--- Summary (${new Date().toLocaleDateString()}) ---\n${summary}`
                 : summary;
             autoResizeTextarea({ target: chatMemoriesTextarea });
+            pendingManualSummary = lastMessageId ? { chat, upToId: lastMessageId } : null;
         } catch (err) {
             showCustomAlert(`Summarization failed: ${err.message}`);
         } finally {
@@ -12545,6 +12771,1172 @@ editorTextareasToResize.forEach(id => {
 
 
 
+    // =============================================================
+    // CHAT TOOLS
+    // The message menu (copy, bookmark, hide from AI, branch), the chat menu,
+    // search, chat stats with milestones and cost, automatic summaries,
+    // "Let Them Talk", automatic atmosphere, voice input, unsent drafts,
+    // keyboard shortcuts and the install button.
+    // =============================================================
+
+    function getCurrentChat() {
+        return characters[currentCharacterId]?.chats?.[currentChatId] || null;
+    }
+
+    function getMessageText(message) {
+        if (!message) return '';
+        if (message.sender === 'user') return message.main || '';
+        return message.variations?.[message.activeVariant]?.main || '';
+    }
+
+    function isChatScreenActive() {
+        return !chatScreen.classList.contains('is-inactive');
+    }
+
+    function getCharacterDisplayName(character) {
+        if (!character) return 'the character';
+        return character.type === 'world' ? (character.name || 'this world') : (character.chatName || character.name || 'the character');
+    }
+
+    // ── Toast: one short line at the bottom that fades out by itself ──
+    let chatToastTimer = null;
+    function showChatToast(text) {
+        let toast = document.getElementById('chat-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'chat-toast';
+            toast.setAttribute('role', 'status');
+            document.body.appendChild(toast);
+        }
+        toast.textContent = text;
+        toast.classList.remove('visible');
+        void toast.offsetWidth; // restarts the fade when a second toast follows at once
+        toast.classList.add('visible');
+        clearTimeout(chatToastTimer);
+        chatToastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+    }
+
+    // ── Cost ──
+    function formatUsd(value) {
+        const amount = Number(value) || 0;
+        if (amount === 0) return '$0.00';
+        if (amount < 0.01) return `$${amount.toFixed(4)}`;
+        return `$${amount.toFixed(2)}`;
+    }
+
+    // OpenRouter reports the price of every request in the `usage` object at
+    // the end of its answer. Other providers send no cost, and add nothing.
+    function recordUsageCost(usage, chat) {
+        const cost = Number(usage?.cost);
+        if (!Number.isFinite(cost) || cost <= 0) return;
+        sessionCostUsd += cost;
+        if (chat) chat.costUsd = (Number(chat.costUsd) || 0) + cost;
+        updateTokenCount();
+    }
+
+    // ── Message menu ──
+    const messageMenu = document.getElementById('message-menu');
+    let messageMenuMessageId = null;
+
+    function closeMessageMenu() {
+        if (!messageMenu || messageMenu.classList.contains('hidden')) return;
+        messageMenu.classList.add('hidden');
+        messageMenuMessageId = null;
+    }
+
+    function openMessageMenu(messageId, anchor) {
+        const message = getCurrentChat()?.history?.find(m => m.id === messageId);
+        if (!messageMenu || !message || !anchor) return;
+        closeChatMenu();
+        messageMenuMessageId = messageId;
+        const streaming = !!message.isStreaming;
+        const hidden = isHiddenFromAI(message);
+        const setItem = (action, icon, label, disabled = false) => {
+            const item = messageMenu.querySelector(`[data-action="${action}"]`);
+            if (!item) return;
+            item.querySelector('.message-menu-icon').textContent = icon;
+            item.querySelector('.message-menu-label').textContent = label;
+            item.disabled = disabled;
+        };
+        setItem('copy', '📋', 'Copy Text', streaming);
+        setItem('bookmark', message.bookmarked ? '☆' : '★', message.bookmarked ? 'Remove Bookmark' : 'Bookmark');
+        setItem('hide', hidden ? '👁️' : '🙈', hidden ? 'Show to AI Again' : 'Hide from AI', streaming);
+        setItem('branch', '🌿', 'Branch from Here', streaming || chatTurnInProgress || !!currentStreamController);
+
+        messageMenu.classList.remove('hidden');
+        // Beside the button, and kept on screen near an edge.
+        const rect = anchor.getBoundingClientRect();
+        const margin = 8;
+        const menuWidth = messageMenu.offsetWidth;
+        const menuHeight = messageMenu.offsetHeight;
+        let left = Math.min(rect.left, window.innerWidth - menuWidth - margin);
+        left = Math.max(margin, left);
+        let top = rect.bottom + 6;
+        if (top + menuHeight > window.innerHeight - margin) top = Math.max(margin, rect.top - menuHeight - 6);
+        messageMenu.style.left = `${left}px`;
+        messageMenu.style.top = `${top}px`;
+        messageMenu.querySelector('.message-menu-item:not(:disabled)')?.focus({ preventScroll: true });
+    }
+
+    async function copyMessageText(messageId) {
+        const text = getMessageText(getCurrentChat()?.history?.find(m => m.id === messageId));
+        if (!text) return;
+        let copied = false;
+        try {
+            await navigator.clipboard.writeText(text);
+            copied = true;
+        } catch (_) {
+            // The clipboard API is missing on file:// in some browsers.
+            const scratch = document.createElement('textarea');
+            scratch.value = text;
+            scratch.setAttribute('readonly', '');
+            scratch.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+            document.body.appendChild(scratch);
+            scratch.select();
+            try { copied = document.execCommand('copy'); } catch (_) {}
+            scratch.remove();
+        }
+        showChatToast(copied ? '📋 Copied to the clipboard.' : 'Your browser did not allow copying.');
+    }
+
+    async function toggleMessageFlag(messageId, flag) {
+        const character = characters[currentCharacterId];
+        const message = getCurrentChat()?.history?.find(m => m.id === messageId);
+        if (!character || !message) return;
+        if (message[flag] === true) delete message[flag];
+        else message[flag] = true;
+        applyMessageFlags(chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`), message);
+        await saveSingleCharacterToDB(character);
+        if (flag === 'hiddenFromAI') {
+            updateTokenCount();
+            showChatToast(message.hiddenFromAI
+                ? '🙈 Hidden from the AI. It stays in the chat for you.'
+                : '👁️ The AI can see this message again.');
+        } else if (chatSearch.open && chatSearch.bookmarksOnly) {
+            runChatSearch();
+        }
+    }
+
+    // A new chat holding everything up to and including this message, so a
+    // different path can be tried without losing the original one.
+    async function branchChatFrom(messageId) {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat) return;
+        const index = chat.history.findIndex(m => m.id === messageId);
+        if (index === -1) return;
+        if (chatTurnInProgress || currentStreamController) {
+            showChatToast('Wait until the current reply has finished.');
+            return;
+        }
+        const copyOf = value => (typeof structuredClone === 'function'
+            ? structuredClone(value)
+            : JSON.parse(JSON.stringify(value)));
+        const history = copyOf(chat.history.slice(0, index + 1));
+        history.forEach(m => { delete m.isStreaming; delete m.streamingVariant; });
+        const newChatId = 'chat-' + Date.now();
+        const baseName = String(chat.name || 'Chat').replace(/\s*\(branch\)$/i, '');
+        character.chats[newChatId] = {
+            id: newChatId,
+            name: `${baseName} (branch)`,
+            history,
+            memories: getChatMemories(chat),
+            participants: [...(chat.participants || [currentCharacterId])],
+            activePersonaId: chat.activePersonaId ?? null,
+            mood: normalizeMood(chat.mood),
+            groupId: chat.groupId ?? null,
+            // Milestones already celebrated in the original are not repeated.
+            milestones: Array.isArray(chat.milestones) ? [...chat.milestones] : undefined,
+            summarizedUpToId: history.some(m => m.id === chat.summarizedUpToId) ? chat.summarizedUpToId : history[history.length - 1]?.id,
+            sceneEffect: chat.sceneEffect,
+            branchedFrom: { chatId: chat.id, messageId }
+        };
+        await saveSingleCharacterToDB(character);
+        closeChatSearch();
+        window.__scrollToBottomNextStartChat = true;
+        await startChat(currentCharacterId, newChatId);
+        showChatToast('🌿 New branch created. The original chat is unchanged.');
+    }
+
+    chatWindow.addEventListener('click', (event) => {
+        const moreBtn = event.target.closest('.message-more-btn');
+        if (!moreBtn) return;
+        event.stopPropagation();
+        const messageId = moreBtn.closest('.message')?.dataset.messageId;
+        if (!messageId) return;
+        if (messageMenuMessageId === messageId && !messageMenu.classList.contains('hidden')) {
+            closeMessageMenu();
+        } else {
+            openMessageMenu(messageId, moreBtn);
+        }
+    });
+
+    messageMenu?.addEventListener('click', async (event) => {
+        const item = event.target.closest('.message-menu-item');
+        if (!item || item.disabled) return;
+        const messageId = messageMenuMessageId;
+        closeMessageMenu();
+        if (!messageId) return;
+        switch (item.dataset.action) {
+            case 'copy': await copyMessageText(messageId); break;
+            case 'bookmark': await toggleMessageFlag(messageId, 'bookmarked'); break;
+            case 'hide': await toggleMessageFlag(messageId, 'hiddenFromAI'); break;
+            case 'branch': await branchChatFrom(messageId); break;
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (messageMenu && !messageMenu.contains(event.target) && !event.target.closest('.message-more-btn')) {
+            closeMessageMenu();
+        }
+    });
+    chatWindow.addEventListener('scroll', closeMessageMenu, { passive: true });
+    window.addEventListener('resize', closeMessageMenu);
+
+    // ── Chat menu (⋯ in the header) ──
+    const chatMenuBtn = document.getElementById('chat-menu-btn');
+    const chatMenu = document.getElementById('chat-menu');
+    const chatMenuBookmarkCount = document.getElementById('chat-menu-bookmark-count');
+    const chatMenuAutoPlay = document.getElementById('chat-menu-autoplay');
+
+    function closeChatMenu() {
+        if (!chatMenu || chatMenu.classList.contains('hidden')) return;
+        chatMenu.classList.add('hidden');
+        chatMenuBtn?.setAttribute('aria-expanded', 'false');
+    }
+
+    function updateChatMenuItems() {
+        const chat = getCurrentChat();
+        const bookmarks = (chat?.history || []).filter(m => m.bookmarked === true).length;
+        if (chatMenuBookmarkCount) chatMenuBookmarkCount.textContent = bookmarks ? String(bookmarks) : '';
+        if (chatMenuAutoPlay) {
+            chatMenuAutoPlay.classList.toggle('hidden', getSpeakingParticipants(chat).length < 2);
+            chatMenuAutoPlay.querySelector('.chat-menu-icon').textContent = autoPlayState.running ? '⏹️' : '▶️';
+            chatMenuAutoPlay.querySelector('.chat-menu-label').textContent = autoPlayState.running ? 'Stop Talking' : 'Let Them Talk';
+        }
+    }
+
+    chatMenuBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!chatMenu) return;
+        if (!chatMenu.classList.contains('hidden')) { closeChatMenu(); return; }
+        // The other header popovers stop their clicks from reaching the
+        // document, so they are closed here rather than by an outside click.
+        document.getElementById('mood-picker')?.classList.add('hidden');
+        document.getElementById('music-panel')?.classList.add('hidden');
+        closeMessageMenu();
+        updateChatMenuItems();
+        chatMenu.classList.remove('hidden');
+        chatMenuBtn.setAttribute('aria-expanded', 'true');
+    });
+
+    ['mood-btn', 'music-btn', 'particle-btn', 'settings-btn', 'quick-swap-btn'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', closeChatMenu);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (chatMenu && !chatMenu.contains(event.target) && !chatMenuBtn?.contains(event.target)) closeChatMenu();
+    });
+
+    chatMenu?.addEventListener('click', (event) => {
+        const item = event.target.closest('.chat-menu-item[data-action]');
+        if (!item) return;
+        closeChatMenu();
+        switch (item.dataset.action) {
+            case 'search': openChatSearch(); break;
+            case 'bookmarks': openChatSearch({ bookmarksOnly: true }); break;
+            case 'stats': openChatStats(); break;
+            case 'autoplay': if (autoPlayState.running) stopAutoPlay(); else startAutoPlay(); break;
+            case 'dice': prefillDiceRoll(); break;
+            case 'shortcuts': openShortcuts(); break;
+        }
+    });
+
+    function prefillDiceRoll() {
+        const typed = messageInput.value.trim();
+        if (!/^\/roll\b/i.test(typed)) {
+            messageInput.value = typed ? `/roll 1d20 ${typed}` : '/roll 1d20 ';
+        }
+        autoResizeTextarea({ target: messageInput });
+        scheduleChatDraftSave();
+        messageInput.focus();
+        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+        showChatToast('🎲 Press Enter to roll. Change it to e.g. /roll 2d6+3, or add your action after it.');
+    }
+
+    // ── Search ──
+    const chatSearchBar = document.getElementById('chat-search-bar');
+    const chatSearchInput = document.getElementById('chat-search-input');
+    const chatSearchCount = document.getElementById('chat-search-count');
+    const chatSearchResults = document.getElementById('chat-search-results');
+    const chatSearchScopeBtn = document.getElementById('chat-search-scope-btn');
+    const chatSearchBookmarksBtn = document.getElementById('chat-search-bookmarks-btn');
+    const chatSearchPrevBtn = document.getElementById('chat-search-prev-btn');
+    const chatSearchNextBtn = document.getElementById('chat-search-next-btn');
+    // matches: message ids in this chat, oldest first. index: the one in focus.
+    const chatSearch = { open: false, allChats: false, bookmarksOnly: false, matches: [], index: -1 };
+    let chatSearchTimer = null;
+
+    function openChatSearch({ bookmarksOnly = false } = {}) {
+        if (!chatSearchBar || !getCurrentChat()) return;
+        chatSearch.open = true;
+        chatSearch.allChats = false;
+        chatSearch.bookmarksOnly = bookmarksOnly;
+        chatSearchBar.classList.remove('hidden');
+        syncChatSearchControls();
+        runChatSearch({ jump: true });
+        chatSearchInput.focus();
+        chatSearchInput.select();
+    }
+
+    function closeChatSearch() {
+        if (!chatSearch.open) return;
+        chatSearch.open = false;
+        chatSearch.matches = [];
+        chatSearch.index = -1;
+        clearTimeout(chatSearchTimer);
+        clearSearchMarks();
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        chatSearchBar?.classList.add('hidden');
+        if (chatSearchResults) {
+            chatSearchResults.classList.add('hidden');
+            chatSearchResults.innerHTML = '';
+        }
+    }
+
+    function syncChatSearchControls() {
+        chatSearchScopeBtn?.setAttribute('aria-pressed', String(chatSearch.allChats));
+        chatSearchBookmarksBtn?.setAttribute('aria-pressed', String(chatSearch.bookmarksOnly));
+        if (chatSearchInput) {
+            chatSearchInput.placeholder = chatSearch.allChats
+                ? (chatSearch.bookmarksOnly ? '🔎 Bookmarks in all chats...' : '🔎 Search all chats...')
+                : (chatSearch.bookmarksOnly ? '🔎 Bookmarks in this chat...' : '🔎 Search this chat...');
+        }
+        // Stepping through matches only makes sense inside the open chat.
+        chatSearchPrevBtn?.classList.toggle('hidden', chatSearch.allChats);
+        chatSearchNextBtn?.classList.toggle('hidden', chatSearch.allChats);
+    }
+
+    function chatSearchQuery() {
+        return (chatSearchInput?.value || '').trim().toLowerCase();
+    }
+
+    function messageMatchesSearch(message, query) {
+        if (!message || isChatNoticeMessage(message)) return false;
+        if (chatSearch.bookmarksOnly && message.bookmarked !== true) return false;
+        if (!query) return chatSearch.bookmarksOnly;
+        return getMessageText(message).toLowerCase().includes(query);
+    }
+
+    function collectChatMatches(query) {
+        const chat = getCurrentChat();
+        chatSearch.matches = (chat?.history || []).filter(m => messageMatchesSearch(m, query)).map(m => m.id);
+        chatSearch.matches.forEach(id => markSearchHits(id, query));
+    }
+
+    function runChatSearch({ jump = false } = {}) {
+        if (!chatSearch.open) return;
+        clearSearchMarks();
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        const query = chatSearchQuery();
+        if (chatSearch.allChats) {
+            renderAllChatsResults(query);
+            return;
+        }
+        chatSearchResults?.classList.add('hidden');
+        collectChatMatches(query);
+        // The newest match first: that is where the user usually is.
+        chatSearch.index = chatSearch.matches.length - 1;
+        updateChatSearchCount(query);
+        focusSearchMatch({ scroll: jump });
+    }
+
+    // After the chat is redrawn (an edit, a deleted message, another chat):
+    // the marks are put back without moving the view.
+    function refreshChatSearchAfterRender() {
+        if (!chatSearch.open || chatSearch.allChats) return;
+        const focusedId = chatSearch.matches[chatSearch.index];
+        const query = chatSearchQuery();
+        collectChatMatches(query);
+        const kept = chatSearch.matches.indexOf(focusedId);
+        chatSearch.index = kept !== -1 ? kept : chatSearch.matches.length - 1;
+        updateChatSearchCount(query);
+        focusSearchMatch({ scroll: false });
+    }
+
+    function updateChatSearchCount(query) {
+        if (!chatSearchCount) return;
+        const total = chatSearch.matches.length;
+        chatSearchCount.textContent = total
+            ? `${chatSearch.index + 1}/${total}`
+            : ((query || chatSearch.bookmarksOnly) ? 'No results' : '');
+    }
+
+    // direction -1 = older, +1 = newer; wraps around at either end.
+    function stepChatSearch(direction) {
+        if (chatSearch.allChats) return;
+        const total = chatSearch.matches.length;
+        if (!total) return;
+        chatSearch.index = (chatSearch.index + direction + total) % total;
+        updateChatSearchCount(chatSearchQuery());
+        focusSearchMatch({ scroll: true });
+    }
+
+    function focusSearchMatch({ scroll = true, smooth = true } = {}) {
+        chatWindow.querySelectorAll('.message.search-current').forEach(el => el.classList.remove('search-current'));
+        const messageId = chatSearch.matches[chatSearch.index];
+        if (!messageId) return;
+        const el = chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`);
+        if (!el) return;
+        el.classList.add('search-current');
+        if (scroll) el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+    }
+
+    // Wraps each occurrence in the message's text nodes in a <mark>, leaving
+    // the formatting (dialogue colour, italics, links) around it intact.
+    function markSearchHits(messageId, query) {
+        if (!query) return;
+        const content = chatWindow.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"] > .main-content`);
+        if (!content) return;
+        const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        for (const node of textNodes) {
+            const text = node.nodeValue;
+            const lower = text.toLowerCase();
+            let at = lower.indexOf(query);
+            if (at === -1) continue;
+            const fragment = document.createDocumentFragment();
+            let from = 0;
+            while (at !== -1) {
+                fragment.appendChild(document.createTextNode(text.slice(from, at)));
+                const mark = document.createElement('mark');
+                mark.className = 'chat-search-hit';
+                mark.textContent = text.slice(at, at + query.length);
+                fragment.appendChild(mark);
+                from = at + query.length;
+                at = lower.indexOf(query, from);
+            }
+            fragment.appendChild(document.createTextNode(text.slice(from)));
+            node.parentNode.replaceChild(fragment, node);
+        }
+    }
+
+    function clearSearchMarks() {
+        chatWindow.querySelectorAll('mark.chat-search-hit').forEach(mark => {
+            const parent = mark.parentNode;
+            if (!parent) return;
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize();
+        });
+    }
+
+    function searchSnippetHtml(text, query) {
+        const clean = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!query) return escapeHtml(clean.length > 140 ? `${clean.slice(0, 140)}…` : clean);
+        const at = clean.toLowerCase().indexOf(query);
+        if (at === -1) return escapeHtml(clean.slice(0, 140));
+        const start = Math.max(0, at - 50);
+        const end = Math.min(clean.length, at + query.length + 90);
+        return `${start > 0 ? '…' : ''}${escapeHtml(clean.slice(start, at))}<mark>${escapeHtml(clean.slice(at, at + query.length))}</mark>${escapeHtml(clean.slice(at + query.length, end))}${end < clean.length ? '…' : ''}`;
+    }
+
+    function speakerLabel(message, ownerId) {
+        if (message.sender === 'user') return 'You';
+        if (message.type === 'story') return 'Narrator';
+        return getCharacterDisplayName(characters[message.speakerId || ownerId]);
+    }
+
+    const CHAT_SEARCH_RESULT_LIMIT = 200;
+
+    function renderAllChatsResults(query) {
+        chatSearch.matches = [];
+        chatSearch.index = -1;
+        if (!chatSearchResults) return;
+        chatSearchResults.innerHTML = '';
+        const character = characters[currentCharacterId];
+        if (!character || (!query && !chatSearch.bookmarksOnly)) {
+            chatSearchResults.classList.add('hidden');
+            if (chatSearchCount) chatSearchCount.textContent = '';
+            return;
+        }
+        // Newest chats first, and the newest messages first inside each.
+        const results = [];
+        Object.values(character.chats || {})
+            .sort((a, b) => String(b.id).localeCompare(String(a.id)))
+            .forEach(chat => {
+                const history = chat.history || [];
+                for (let i = history.length - 1; i >= 0; i--) {
+                    if (messageMatchesSearch(history[i], query)) results.push({ chat, message: history[i] });
+                }
+            });
+        if (chatSearchCount) chatSearchCount.textContent = results.length ? `${results.length} found` : 'No results';
+        if (!results.length) {
+            chatSearchResults.classList.add('hidden');
+            return;
+        }
+        results.slice(0, CHAT_SEARCH_RESULT_LIMIT).forEach(({ chat, message }) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'chat-search-result';
+            item.dataset.chatId = chat.id;
+            item.dataset.messageId = message.id;
+            item.innerHTML = `<span class="chat-search-result-meta">${escapeHtml(chat.name || 'Chat')} · ${escapeHtml(speakerLabel(message, currentCharacterId))}${message.bookmarked ? ' ★' : ''}</span>`
+                + `<span class="chat-search-result-snippet">${searchSnippetHtml(getMessageText(message), query)}</span>`;
+            chatSearchResults.appendChild(item);
+        });
+        if (results.length > CHAT_SEARCH_RESULT_LIMIT) {
+            const more = document.createElement('div');
+            more.className = 'chat-search-results-more';
+            more.textContent = `Showing the first ${CHAT_SEARCH_RESULT_LIMIT} matches. Type more to narrow them down.`;
+            chatSearchResults.appendChild(more);
+        }
+        chatSearchResults.scrollTop = 0;
+        chatSearchResults.classList.remove('hidden');
+    }
+
+    async function openSearchResult(chatId, messageId) {
+        if (!characters[currentCharacterId]?.chats?.[chatId]) return;
+        if (chatId !== currentChatId) await startChat(currentCharacterId, chatId);
+        // From here on the search continues inside the chat that was opened.
+        chatSearch.allChats = false;
+        syncChatSearchControls();
+        chatSearchResults?.classList.add('hidden');
+        clearSearchMarks();
+        const query = chatSearchQuery();
+        collectChatMatches(query);
+        chatSearch.index = Math.max(0, chatSearch.matches.indexOf(messageId));
+        updateChatSearchCount(query);
+        // After startChat has put back the saved scroll position.
+        setTimeout(() => focusSearchMatch({ scroll: true, smooth: false }), 60);
+    }
+
+    chatSearchInput?.addEventListener('input', () => {
+        clearTimeout(chatSearchTimer);
+        chatSearchTimer = setTimeout(() => runChatSearch({ jump: true }), 160);
+    });
+    chatSearchInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeChatSearch();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (chatSearch.allChats) {
+                chatSearchResults?.querySelector('.chat-search-result')?.click();
+            } else {
+                stepChatSearch(event.shiftKey ? 1 : -1);
+            }
+        }
+    });
+    chatSearchScopeBtn?.addEventListener('click', () => {
+        chatSearch.allChats = !chatSearch.allChats;
+        syncChatSearchControls();
+        runChatSearch({ jump: !chatSearch.allChats });
+        chatSearchInput?.focus();
+    });
+    chatSearchBookmarksBtn?.addEventListener('click', () => {
+        chatSearch.bookmarksOnly = !chatSearch.bookmarksOnly;
+        syncChatSearchControls();
+        runChatSearch({ jump: true });
+        chatSearchInput?.focus();
+    });
+    chatSearchPrevBtn?.addEventListener('click', () => stepChatSearch(-1));
+    chatSearchNextBtn?.addEventListener('click', () => stepChatSearch(1));
+    document.getElementById('chat-search-close-btn')?.addEventListener('click', closeChatSearch);
+    chatSearchResults?.addEventListener('click', (event) => {
+        const result = event.target.closest('.chat-search-result');
+        if (result) openSearchResult(result.dataset.chatId, result.dataset.messageId);
+    });
+
+    // ── Chat stats & milestones ──
+    const chatStatsModal = document.getElementById('chat-stats-modal');
+
+    function computeChatStats(chat) {
+        const stats = { messages: 0, userMessages: 0, aiMessages: 0, words: 0, userWords: 0, aiWords: 0, images: 0, bookmarks: 0, hidden: 0 };
+        for (const message of chat?.history || []) {
+            if (isChatNoticeMessage(message)) continue;
+            if (message.bookmarked === true) stats.bookmarks++;
+            if (isHiddenFromAI(message)) stats.hidden++;
+            const words = countWords(getMessageText(message));
+            if (message.sender === 'user') {
+                stats.userMessages++;
+                stats.userWords += words;
+            } else {
+                stats.aiMessages++;
+                stats.aiWords += words;
+                stats.images += (message.variations || []).reduce((sum, v) => sum + (Array.isArray(v?.images) ? v.images.length : 0), 0);
+            }
+        }
+        stats.messages = stats.userMessages + stats.aiMessages;
+        stats.words = stats.userWords + stats.aiWords;
+        // Chat ids are "chat-" plus the time the chat was started.
+        const startedAt = parseInt(String(chat?.id || '').replace(/^chat-/, ''), 10);
+        stats.startedAt = Number.isFinite(startedAt) && startedAt > 1e12 ? startedAt : null;
+        stats.cost = Number(chat?.costUsd) || 0;
+        return stats;
+    }
+
+    function formatCompactNumber(n) {
+        if (n >= 1000000) return `${n / 1000000}M`;
+        if (n >= 1000) return `${n / 1000}k`;
+        return String(n);
+    }
+
+    function milestoneLabel(key) {
+        const n = parseInt(key.slice(1), 10);
+        return key[0] === 'm' ? `💬 ${formatCompactNumber(n)} messages` : `✍️ ${formatCompactNumber(n)} words`;
+    }
+
+    function daysAgoLabel(timestamp) {
+        const days = Math.floor((Date.now() - timestamp) / 86400000);
+        if (days <= 0) return 'today';
+        return days === 1 ? '1 day ago' : `${days.toLocaleString('en-US')} days ago`;
+    }
+
+    function openChatStats() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || !chatStatsModal) return;
+        const stats = computeChatStats(chat);
+        const fmt = n => n.toLocaleString('en-US');
+        document.getElementById('chat-stats-subtitle').textContent = `${chat.name || 'This chat'} · with ${getCharacterDisplayName(character)}`;
+
+        const tiles = [
+            ['💬', 'Messages', fmt(stats.messages), `You ${fmt(stats.userMessages)} · AI ${fmt(stats.aiMessages)}`],
+            ['✍️', 'Words', fmt(stats.words), `You ${fmt(stats.userWords)} · AI ${fmt(stats.aiWords)}`],
+            ['📅', 'Started', stats.startedAt ? new Date(stats.startedAt).toLocaleDateString() : '-', stats.startedAt ? daysAgoLabel(stats.startedAt) : ''],
+            ['★', 'Bookmarks', fmt(stats.bookmarks), stats.hidden ? `${fmt(stats.hidden)} hidden from AI` : ''],
+            ['🎨', 'Images', fmt(stats.images), ''],
+            ['💲', 'Cost', stats.cost > 0 ? formatUsd(stats.cost) : '-',
+                (stats.cost > 0 || sessionCostUsd > 0) ? `${formatUsd(sessionCostUsd)} this session` : 'Shown for OpenRouter models']
+        ];
+        document.getElementById('chat-stats-grid').innerHTML = tiles.map(([icon, label, value, sub]) => `
+            <div class="chat-stat-tile">
+                <span class="chat-stat-label"><span aria-hidden="true">${icon}</span> ${escapeHtml(label)}</span>
+                <span class="chat-stat-value">${escapeHtml(value)}</span>
+                ${sub ? `<span class="chat-stat-sub">${escapeHtml(sub)}</span>` : ''}
+            </div>`).join('');
+
+        const reached = reachedMilestones(stats.messages, stats.words);
+        const nextMessages = MESSAGE_MILESTONES.find(n => n > stats.messages);
+        const previousMessages = [...MESSAGE_MILESTONES].reverse().find(n => n <= stats.messages) || 0;
+        const progress = nextMessages ? Math.round(((stats.messages - previousMessages) / (nextMessages - previousMessages)) * 100) : 100;
+        document.getElementById('chat-stats-milestones').innerHTML = `
+            <div class="milestones-title">🏆 Milestones</div>
+            ${reached.length
+                ? `<div class="milestone-badges">${reached.map(key => `<span class="milestone-badge">${milestoneLabel(key)}</span>`).join('')}</div>`
+                : '<p class="milestones-empty">None yet. The first one is waiting at 25 messages.</p>'}
+            ${nextMessages ? `
+            <div class="milestone-next">
+                <span>Next: ${fmt(nextMessages)} messages <span class="milestone-next-count">(${fmt(stats.messages)}/${fmt(nextMessages)})</span></span>
+                <div class="milestone-bar"><div class="milestone-bar-fill" style="width:${progress}%"></div></div>
+            </div>` : ''}`;
+        chatStatsModal.classList.remove('hidden');
+        document.getElementById('close-chat-stats-btn')?.focus();
+    }
+
+    function closeChatStats() {
+        chatStatsModal?.classList.add('hidden');
+    }
+
+    document.getElementById('close-chat-stats-btn')?.addEventListener('click', closeChatStats);
+    chatStatsModal?.addEventListener('click', (event) => { if (event.target === chatStatsModal) closeChatStats(); });
+
+    function checkChatMilestones(character, chat) {
+        if (!character || !chat) return;
+        const stats = computeChatStats(chat);
+        const reached = reachedMilestones(stats.messages, stats.words);
+        if (!Array.isArray(chat.milestones)) {
+            // A chat from before milestones existed has what it already
+            // reached recorded quietly, instead of celebrated all at once.
+            chat.milestones = reached;
+            return;
+        }
+        const fresh = reached.filter(key => !chat.milestones.includes(key));
+        if (!fresh.length) return;
+        chat.milestones.push(...fresh);
+        saveSingleCharacterToDB(character).catch(err => console.error('Could not save the milestone:', err));
+        if (chat !== getCurrentChat()) return;
+        const key = fresh[fresh.length - 1];
+        const n = parseInt(key.slice(1), 10).toLocaleString('en-US');
+        const name = getCharacterDisplayName(character);
+        showChatToast(key[0] === 'm'
+            ? `🎉 ${n} messages with ${name}!`
+            : `📚 ${n} words written together with ${name}!`);
+    }
+
+    // Everything that follows a finished reply, whichever way it was asked for.
+    function afterAIReply(character, chat) {
+        if (!character || !chat) return;
+        checkChatMilestones(character, chat);
+        maybeAutoSummarize(character, chat);
+        maybeAutoAtmosphere(character, chat);
+    }
+
+    // ── Automatic summaries ──
+    const SUMMARY_SYSTEM_PROMPT = `You are a concise summarization assistant. Summarize the key story events, facts, and character developments from a roleplay chat. Output only 5-10 bullet points. No intro, no outro, no markdown headers.`;
+    // A round starts once this many messages are waiting beyond the newest few,
+    const AUTO_SUMMARY_CHUNK = 40;
+    // which are left for the next round while the scene is still unfolding.
+    const AUTO_SUMMARY_KEEP_RECENT = 10;
+    // Switched on in a long chat, only its latest stretch is summarized.
+    const AUTO_SUMMARY_MAX_WINDOW = 80;
+    let autoSummaryRunning = false;
+
+    function buildSummaryTranscript(messages, ownerId) {
+        return messages.map(msg => {
+            if (msg.sender === 'user') return `User: ${msg.main || ''}`;
+            const text = msg.variations?.[msg.activeVariant]?.main || '';
+            if (msg.type === 'story') return `Narrator: ${text}`;
+            const charName = characters[msg.speakerId || ownerId]?.chatName || 'Character';
+            return `${charName}: ${text}`;
+        }).join('\n\n');
+    }
+
+    async function maybeAutoSummarize(character, chat) {
+        if (!autoSummarizeEnabled || autoSummaryRunning || !character || !Array.isArray(chat?.history)) return;
+        const end = chat.history.length - AUTO_SUMMARY_KEEP_RECENT;
+        let start;
+        if (chat.summarizedUpToId) {
+            const index = chat.history.findIndex(m => m.id === chat.summarizedUpToId);
+            // Gone means the chat was cut back past it: all that is left was covered.
+            start = index === -1 ? chat.history.length : index + 1;
+        } else {
+            start = Math.max(0, end - AUTO_SUMMARY_MAX_WINDOW);
+        }
+        if (end - start < AUTO_SUMMARY_CHUNK) return;
+        const upToId = chat.history[end - 1].id;
+        const messages = historyForPrompt(chat.history.slice(start, end));
+        autoSummaryRunning = true;
+        try {
+            if (messages.length >= 6) {
+                const ownerId = Object.keys(characters).find(id => characters[id] === character) || currentCharacterId;
+                const summary = String(await callAISimple(
+                    SUMMARY_SYSTEM_PROMPT,
+                    `Summarize the key events and facts from this part of a roleplay conversation:\n\n${buildSummaryTranscript(messages, ownerId)}`,
+                    suggestionModelId || modelSelect?.value || defaultSettings.model,
+                    null,
+                    'none',
+                    { chat }
+                ) || '').trim();
+                if (!summary) return;
+                const existing = getChatMemories(chat);
+                const block = `--- Auto-summary (${new Date().toLocaleDateString()}) ---\n${summary}`;
+                chat.memories = existing ? `${existing}\n\n${block}` : block;
+                delete chat.storyLine;
+                delete chat.plan;
+            }
+            chat.summarizedUpToId = upToId;
+            await saveSingleCharacterToDB(character);
+            if (chat === getCurrentChat()) {
+                updateChatMemoriesButtonState();
+                updateTokenCount();
+                if (messages.length >= 6) showChatToast('🧠 Older messages were summarized into Chat Memories.');
+            }
+        } catch (err) {
+            console.warn('Auto-summary failed:', err);
+        } finally {
+            autoSummaryRunning = false;
+        }
+    }
+
+    const autoSummarizeToggle = document.getElementById('auto-summarize-toggle');
+    if (autoSummarizeToggle) addSettingListener(autoSummarizeToggle, 'autoSummarize', 'change');
+
+    // ── Let Them Talk ──
+    const autoPlayStatus = document.getElementById('autoplay-status');
+    const autoPlayStatusText = document.getElementById('autoplay-status-text');
+
+    // The characters who can take a turn: everyone but the world card.
+    function getSpeakingParticipants(chat) {
+        return (chat?.participants || []).filter(pid => characters[pid] && characters[pid].type !== 'world');
+    }
+
+    function renderAutoPlayStatus(turn, total, speakerId) {
+        if (!autoPlayStatus) return;
+        if (!autoPlayState.running) {
+            autoPlayStatus.classList.add('hidden');
+            return;
+        }
+        const speaker = characters[speakerId];
+        autoPlayStatusText.textContent = `Turn ${turn} of ${total}${speaker ? ` · ${getCharacterDisplayName(speaker)} is replying` : ''}`;
+        autoPlayStatus.classList.remove('hidden');
+    }
+
+    async function startAutoPlay() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || autoPlayState.running) return;
+        if (chatTurnInProgress || currentStreamController) {
+            showChatToast('Wait until the current reply has finished.');
+            return;
+        }
+        if (getSpeakingParticipants(chat).length < 2) {
+            showCustomAlert('Add at least two characters to this chat with 👥 to let them talk to each other.');
+            return;
+        }
+        const turns = await showChoiceDialog('Let the characters talk among themselves. How many turns?', [
+            { label: 'Cancel', value: 0 },
+            { label: '4 turns', value: 4 },
+            { label: '8 turns', value: 8, primary: true },
+            { label: '12 turns', value: 12 }
+        ]);
+        if (!turns || getCurrentChat() !== chat) return;
+
+        const charId = currentCharacterId;
+        const chatId = currentChatId;
+        const previousTag = activeGroupParticipantId;
+        autoPlayState.running = true;
+        autoPlayState.stopRequested = false;
+        autoPlayState.chatId = chatId;
+        cancelReplyOptions();
+        const lastReply = [...chat.history].reverse().find(m => m.sender === 'ai' && m.type !== 'story');
+        let lastSpeakerId = lastReply ? (lastReply.speakerId || charId) : null;
+        try {
+            for (let turn = 1; turn <= turns; turn++) {
+                if (autoPlayState.stopRequested || currentCharacterId !== charId || currentChatId !== chatId) break;
+                const speakers = getSpeakingParticipants(chat);
+                if (speakers.length < 2) break;
+                const candidates = speakers.filter(id => id !== lastSpeakerId);
+                const nextId = candidates[Math.floor(diceRandom() * candidates.length)];
+                renderAutoPlayStatus(turn, turns, nextId);
+                activeGroupParticipantId = nextId;
+                await handleChatSubmit('dialog', { autoTurn: true });
+                const last = chat.history[chat.history.length - 1];
+                if (!last || last.sender !== 'ai' || isChatNoticeMessage(last)) break;
+                lastSpeakerId = last.speakerId || nextId;
+            }
+        } finally {
+            autoPlayState.running = false;
+            autoPlayState.stopRequested = false;
+            autoPlayState.chatId = null;
+            renderAutoPlayStatus();
+            if (currentCharacterId === charId && currentChatId === chatId) {
+                // The user's own tag, if they had one, is theirs again.
+                activeGroupParticipantId = previousTag && chat.participants?.includes(previousTag) ? previousTag : null;
+                updateChatReplyControls();
+                generateReplyOptionsInBackground();
+            }
+        }
+    }
+
+    function stopAutoPlay() {
+        if (!autoPlayState.running) return;
+        autoPlayState.stopRequested = true;
+        if (autoPlayStatusText) autoPlayStatusText.textContent = 'Stopping…';
+        if (currentStreamController) stopStreamBtn.click();
+    }
+
+    document.getElementById('autoplay-stop-btn')?.addEventListener('click', stopAutoPlay);
+    stopStreamBtn.addEventListener('click', () => {
+        if (autoPlayState.running) autoPlayState.stopRequested = true;
+    });
+
+    // ── Automatic atmosphere ──
+    let atmosphereRequestId = 0;
+
+    // The effect a chat shows: the scene's own pick while the automatic
+    // atmosphere is on, otherwise the one chosen for the character.
+    function getEffectiveParticleEffect(character, chat) {
+        if (autoAtmosphereEnabled && typeof chat?.sceneEffect === 'string' && PARTICLE_EMOJIS[chat.sceneEffect]) {
+            return chat.sceneEffect;
+        }
+        return character?.particleEffect || 'none';
+    }
+
+    async function maybeAutoAtmosphere(character, chat) {
+        if (!autoAtmosphereEnabled || !character || !chat) return;
+        const lastReply = [...historyForPrompt(chat.history)].reverse().find(m => m.sender === 'ai');
+        const scene = getMessageText(lastReply).trim();
+        if (!scene) return;
+        const requestId = ++atmosphereRequestId;
+        const subject = character.type === 'world' ? 'the scene' : getCharacterDisplayName(character);
+        const effects = Object.keys(PARTICLE_EMOJIS);
+        const moods = Object.keys(CCC_MOOD_DEFINITIONS);
+        const system = `You set the ambience of a roleplay chat from its latest scene. Choose:
+- "effect": exactly one of ${effects.join(', ')}. Pick what the scene's place and moment suggest: rain in a storm, snow in winter, fireflies on a summer night, sparks near fire or battle, darkness for dread, fog for mystery, sakura for spring romance. Use "none" when nothing fits, such as an ordinary indoor conversation.
+- "mood": exactly one of ${moods.join(', ')}, or "none". It is the current emotional state of ${subject}.
+Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
+        try {
+            const raw = await callAISimple(
+                system,
+                `Latest scene:\n${scene.slice(-1500)}`,
+                suggestionModelId || modelSelect?.value || defaultSettings.model,
+                null,
+                'none',
+                { chat }
+            );
+            if (requestId !== atmosphereRequestId || !autoAtmosphereEnabled) return;
+            const json = String(raw || '').match(/\{[\s\S]*?\}/);
+            if (!json) return;
+            const picked = JSON.parse(json[0]);
+            const effect = typeof picked.effect === 'string' ? picked.effect.trim().toLowerCase() : '';
+            const moodText = typeof picked.mood === 'string' ? picked.mood.trim() : '';
+            let effectChanged = false;
+            let moodChanged = false;
+            if (PARTICLE_EMOJIS[effect] && chat.sceneEffect !== effect) {
+                chat.sceneEffect = effect;
+                effectChanged = true;
+            }
+            const mood = moodText.toLowerCase() === 'none' ? null : normalizeMood(moodText);
+            if ((mood || moodText.toLowerCase() === 'none') && mood !== normalizeMood(chat.mood)) {
+                chat.mood = mood;
+                moodChanged = true;
+            }
+            if (!effectChanged && !moodChanged) return;
+            await saveSingleCharacterToDB(character);
+            if (chat !== getCurrentChat() || !isChatScreenActive()) return;
+            if (effectChanged) startParticles(getEffectiveParticleEffect(character, chat), fxSavedLevels(character));
+            updateParticleButton();
+            updateMoodButton();
+        } catch (err) {
+            console.warn('Automatic atmosphere failed:', err);
+        }
+    }
+
+    // Called by applySetting whenever the setting actually changes.
+    function onAutoAtmosphereToggled() {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat || !isChatScreenActive()) return;
+        const effect = getEffectiveParticleEffect(character, chat);
+        startParticles(effect, fxSavedLevels(character));
+        updateParticleButton();
+        particlePickerModal?.querySelectorAll('.particle-option-btn').forEach(b => b.classList.toggle('active', b.dataset.effect === effect));
+        particleSettingsRow?.classList.toggle('hidden', effect === 'none');
+        if (autoAtmosphereEnabled) maybeAutoAtmosphere(character, chat);
+    }
+
+    const autoAtmosphereToggle = document.getElementById('auto-atmosphere-toggle');
+    if (autoAtmosphereToggle) addSettingListener(autoAtmosphereToggle, 'autoAtmosphere', 'change');
+
+    // ── Unsent drafts ──
+    function chatDraftKey(charId, chatId) {
+        return `chatDraft:${charId}:${chatId}`;
+    }
+    let chatDraftTimer = null;
+    // The chat the pending save belongs to, fixed when the typing happened.
+    let chatDraftOwner = null;
+
+    function saveChatDraftNow() {
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = null;
+        if (!chatDraftOwner) return;
+        const key = chatDraftKey(chatDraftOwner.charId, chatDraftOwner.chatId);
+        chatDraftOwner = null;
+        const value = messageInput.value;
+        try {
+            if (value.trim()) localStorage.setItem(key, value);
+            else localStorage.removeItem(key);
+        } catch (_) {}
+    }
+
+    function scheduleChatDraftSave() {
+        if (!currentCharacterId || !currentChatId) return;
+        chatDraftOwner = { charId: currentCharacterId, chatId: currentChatId };
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = setTimeout(saveChatDraftNow, 400);
+    }
+
+    function loadChatDraft(charId, chatId) {
+        saveChatDraftNow();
+        stopVoiceInput({ discard: true });
+        let draft = '';
+        try { draft = localStorage.getItem(chatDraftKey(charId, chatId)) || ''; } catch (_) {}
+        messageInput.value = draft;
+        autoResizeTextarea({ target: messageInput });
+    }
+
+    function clearChatDraft() {
+        clearTimeout(chatDraftTimer);
+        chatDraftTimer = null;
+        chatDraftOwner = null;
+        if (!currentCharacterId || !currentChatId) return;
+        try { localStorage.removeItem(chatDraftKey(currentCharacterId, currentChatId)); } catch (_) {}
+    }
+
+    messageInput.addEventListener('input', scheduleChatDraftSave);
+    window.addEventListener('pagehide', saveChatDraftNow);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) saveChatDraftNow(); });
+
+    // ── Voice input ──
+    const voiceInputBtn = document.getElementById('voice-input-btn');
+    const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    const messageInputPlaceholder = messageInput.placeholder;
+    let voiceRecognition = null;
+    // Firefox has no speech recognition, so the button only appears where it works.
+    if (SpeechRecognitionApi && voiceInputBtn) voiceInputBtn.classList.remove('hidden');
+
+    function setVoiceListening(listening) {
+        if (!voiceInputBtn) return;
+        voiceInputBtn.classList.toggle('is-listening', listening);
+        voiceInputBtn.setAttribute('aria-pressed', String(listening));
+        voiceInputBtn.title = listening ? 'Stop voice input' : 'Voice input';
+        voiceInputBtn.setAttribute('aria-label', listening ? 'Stop voice input' : 'Start voice input');
+        messageInput.placeholder = listening ? 'Listening... speak now' : messageInputPlaceholder;
+    }
+
+    // `discard` drops what the browser has not delivered yet: after a send
+    // or a chat switch, late words would otherwise land in the emptied box.
+    // A plain stop keeps them - that is the user finishing a sentence.
+    function stopVoiceInput({ discard = false } = {}) {
+        if (!voiceRecognition) return;
+        const recognition = voiceRecognition;
+        voiceRecognition = null;
+        if (discard) {
+            recognition.onresult = null;
+            try { recognition.abort(); } catch (_) {}
+        } else {
+            try { recognition.stop(); } catch (_) {}
+        }
+        setVoiceListening(false);
+    }
+
+    function startVoiceInput() {
+        if (!SpeechRecognitionApi || voiceRecognition) return;
+        const recognition = new SpeechRecognitionApi();
+        recognition.lang = navigator.language || 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+        // Speech is added after what is already typed, and rewritten as the
+        // browser firms up its guesses.
+        const typedBefore = messageInput.value.replace(/\s+$/, '');
+        recognition.onresult = (event) => {
+            let spoken = '';
+            for (let i = 0; i < event.results.length; i++) spoken += event.results[i][0].transcript;
+            spoken = spoken.trim();
+            messageInput.value = typedBefore && spoken ? `${typedBefore} ${spoken}` : (typedBefore || spoken);
+            autoResizeTextarea({ target: messageInput });
+            scheduleChatDraftSave();
+        };
+        recognition.onerror = (event) => {
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                showChatToast('🎤 Microphone access is blocked. Allow it for this site to use voice input.');
+            } else if (event.error === 'network') {
+                showChatToast('🎤 Voice input needs an internet connection in this browser.');
+            } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                showChatToast(`🎤 Voice input stopped (${event.error}).`);
+            }
+        };
+        recognition.onend = () => {
+            if (voiceRecognition !== recognition) return;
+            voiceRecognition = null;
+            setVoiceListening(false);
+        };
+        try {
+            recognition.start();
+        } catch (_) {
+            showChatToast('🎤 Voice input could not start.');
+            return;
+        }
+        voiceRecognition = recognition;
+        setVoiceListening(true);
+    }
+
+    voiceInputBtn?.addEventListener('click', () => {
+        if (voiceRecognition) stopVoiceInput();
+        else startVoiceInput();
+    });
+
+    // ── Leaving the chat ──
+    backToSelectionBtn.addEventListener('click', () => {
+        stopAutoPlay();
+        stopVoiceInput({ discard: true });
+        saveChatDraftNow();
+        closeChatSearch();
+        closeChatMenu();
+        closeMessageMenu();
+    });
+
+    // ── Keyboard shortcuts ──
+    const shortcutsModal = document.getElementById('shortcuts-modal');
+
+    function openShortcuts() {
+        shortcutsModal?.classList.remove('hidden');
+        document.getElementById('close-shortcuts-btn')?.focus();
+    }
+
+    function closeShortcuts() {
+        shortcutsModal?.classList.add('hidden');
+    }
+
+    document.getElementById('close-shortcuts-btn')?.addEventListener('click', closeShortcuts);
+    shortcutsModal?.addEventListener('click', (event) => { if (event.target === shortcutsModal) closeShortcuts(); });
+
+    const DIALOG_IDS = [
+        'character-editor-modal', 'message-editor-modal', 'chat-memories-modal', 'scenario-selection-modal',
+        'participant-selection-modal', 'persona-selection-modal', 'quick-swap-modal', 'move-chat-modal',
+        'particle-picker-modal', 'persona-list-modal', 'persona-editor-modal', 'app-settings-modal',
+        'image-crop-modal', 'gallery-action-modal', 'chat-stats-modal', 'shortcuts-modal'
+    ];
+
+    function isAnyDialogOpen() {
+        if (document.querySelector('.custom-alert-overlay')) return true;
+        if (document.getElementById('tutorial-backdrop')?.classList.contains('tutorial-active')) return true;
+        return DIALOG_IDS.some(id => {
+            const el = document.getElementById(id);
+            return !!el && !el.classList.contains('hidden');
+        });
+    }
+
+    // Registered for the capture phase, so it sees a key before the dialog it
+    // belongs to closes itself - Escape in a dialog must never also stop a reply.
+    document.addEventListener('keydown', (event) => {
+        if (typeof event.key !== 'string') return;
+        if (event.key === 'Escape') {
+            if (messageMenu && !messageMenu.classList.contains('hidden')) { closeMessageMenu(); return; }
+            if (chatMenu && !chatMenu.classList.contains('hidden')) { closeChatMenu(); chatMenuBtn?.focus(); return; }
+            if (shortcutsModal && !shortcutsModal.classList.contains('hidden')) { closeShortcuts(); return; }
+            if (chatStatsModal && !chatStatsModal.classList.contains('hidden')) { closeChatStats(); return; }
+            if (!isChatScreenActive() || isAnyDialogOpen()) return;
+            if (chatSearch.open) {
+                event.preventDefault();
+                closeChatSearch();
+                return;
+            }
+            if (currentStreamController || autoPlayState.running) {
+                event.preventDefault();
+                stopAutoPlay();
+                stopStreamBtn.click();
+            }
+            return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!isChatScreenActive() || isKeyboardInputFocused() || isAnyDialogOpen()) return;
+        if (event.key === '?') {
+            event.preventDefault();
+            openShortcuts();
+        } else if (event.key === '/') {
+            event.preventDefault();
+            openChatSearch();
+        }
+    }, true);
+
+    // ── Install as an app ──
+    // Browsers that can install the app announce it with this event; the
+    // button only appears then. The address bar's own install icon still works.
+    const installAppBtn = document.getElementById('install-app-btn');
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installAppBtn?.classList.remove('hidden');
+    });
+    installAppBtn?.addEventListener('click', async () => {
+        const installPrompt = deferredInstallPrompt;
+        if (!installPrompt) return;
+        deferredInstallPrompt = null;
+        installAppBtn.classList.add('hidden');
+        try {
+            await installPrompt.prompt();
+            await installPrompt.userChoice;
+        } catch (_) {}
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        installAppBtn?.classList.add('hidden');
+    });
+
     // --- INITIALIZATION ---
 
 
@@ -12882,7 +14274,7 @@ const tutorialTours = {
                 targetId: 'settings-container',
                 position: 'bottom',
                 title: 'Your chat control panel',
-                text: 'This row is per-chat: mood, ambient effects, music, memories and story plan, group chat, and your persona.',
+                text: 'This row is per-chat: the ⋯ menu (search, bookmarks, stats, dice and more), mood, ambient effects, music, memories and story plan, group chat, and your persona.',
             },
             {
                 targetId: 'settings-btn',
