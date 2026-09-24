@@ -427,6 +427,7 @@ const defaultSettings = {
         aiBubbleOpacity: '0.7',
         messageSpacing: '50',
         soundEnabled: 'true',
+        mutedSounds: '',
         reasoningEffort: 'low',
         replyOptionsEnabled: 'true',
         blur: '5',
@@ -450,6 +451,8 @@ const defaultSettings = {
     // "Let Them Talk": characters taking turns without the user.
     const autoPlayState = { running: false, stopRequested: false, chatId: null };
     let soundEnabled = true;
+    // Ids of single sound effects the user switched off.
+    let mutedSounds = new Set();
     let reasoningEffort = 'low';
     let replyOptionsEnabled = true;
     let imageGenEnabled = true;
@@ -782,6 +785,12 @@ function unfreezeLayout() {
 }
 
 
+
+// An alert about something that went wrong, with the error sound.
+function showErrorAlert(message) {
+    playSound('error');
+    showCustomAlert(message);
+}
 
 function showCustomAlert(message) {
     const alertOverlay = document.createElement('div');
@@ -1699,24 +1708,113 @@ async function resetAppSettings() {
 
 
 
-    function playNotificationSound() {
-        if (!soundEnabled) return;
-        if (!audioCtx) return;
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+    /* ===========================================================================
+     * SOUND EFFECTS
+     * ===========================================================================
+     * Made in the Sound Design Tool (its "Chat App" presets) and shipped as MP3s
+     * in sounds/. A standalone file cannot fetch files beside it, so its build
+     * puts the same MP3s inline as data URLs in window.CCC_SOUND_DATA.
+     * "Sound Effects" in Settings > Features switches them all off, and the
+     * list under it switches single ones off.
+     * ======================================================================== */
+    const SOUND_EFFECTS = [
+        { id: 'reply', label: 'Reply arrives' },
+        { id: 'send', label: 'Message sent' },
+        { id: 'dice-nat20', label: 'Natural 20 roll' },
+        { id: 'milestone', label: 'Milestone reached' },
+        { id: 'bookmark', label: 'Bookmark added' },
+        { id: 'memory', label: 'Memory saved' },
+        { id: 'branch', label: 'New branch' },
+        { id: 'swap', label: 'Character swap or join' },
+        { id: 'error', label: 'Error' },
+        { id: 'delete', label: 'Message deleted' },
+    ];
+    // id -> promise of the decoded AudioBuffer, or of null when it could not load.
+    const soundBuffers = new Map();
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+    function ensureAudioContext() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        return audioCtx;
+    }
 
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(659.26, audioCtx.currentTime); 
+    function loadSound(id) {
+        if (!audioCtx) return Promise.resolve(null);
+        if (!soundBuffers.has(id)) {
+            const src = window.CCC_SOUND_DATA?.[id] || `sounds/${id}.mp3`;
+            soundBuffers.set(id, fetch(src)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.arrayBuffer();
+                })
+                // The callback form, because older Safari has no promise version.
+                .then(data => new Promise((resolve, reject) => audioCtx.decodeAudioData(data, resolve, reject)))
+                .catch(err => {
+                    console.warn(`Sound "${id}" could not be loaded:`, err);
+                    soundBuffers.delete(id); // tried again the next time it plays
+                    return null;
+                }));
+        }
+        return soundBuffers.get(id);
+    }
 
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+    function preloadSounds() {
+        if (!audioCtx || !soundEnabled) return;
+        SOUND_EFFECTS.forEach(sound => { if (!mutedSounds.has(sound.id)) loadSound(sound.id); });
+    }
 
-        oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.5);
+    // delayMs starts the sound later on the audio clock, to meet an animation.
+    // preview plays it even when it is switched off (the ▶ buttons in Settings).
+    async function playSound(id, { delayMs = 0, preview = false } = {}) {
+        if (!preview && (!soundEnabled || mutedSounds.has(id))) return;
+        // Browsers allow audio only after the user has interacted with the page.
+        const ctx = preview ? ensureAudioContext() : audioCtx;
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const startAt = ctx.currentTime + delayMs / 1000;
+        const buffer = await loadSound(id);
+        if (!buffer) return;
+        // On a very slow first load the moment has passed; better silent than late.
+        if (ctx.currentTime - startAt > 1.5) return;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(Math.max(ctx.currentTime, startAt));
+    }
+
+    function syncSoundPicker() {
+        document.querySelectorAll('#sound-picker-list input[data-sound]').forEach(box => {
+            box.checked = !mutedSounds.has(box.dataset.sound);
+        });
+        document.getElementById('sound-picker')?.classList.toggle('is-off', !soundEnabled);
+    }
+
+    const soundPickerList = document.getElementById('sound-picker-list');
+    if (soundPickerList) {
+        soundPickerList.innerHTML = SOUND_EFFECTS.map(sound => `
+            <div class="sound-picker-row">
+                <label><input type="checkbox" data-sound="${sound.id}" checked><span>${sound.label}</span></label>
+                <button type="button" class="sound-preview-btn" data-sound="${sound.id}" aria-label="Play ${sound.label}" title="Play">▶</button>
+            </div>`).join('');
+        soundPickerList.addEventListener('change', event => {
+            const box = event.target.closest('input[data-sound]');
+            if (!box) return;
+            const muted = [...soundPickerList.querySelectorAll('input[data-sound]')]
+                .filter(input => !input.checked)
+                .map(input => input.dataset.sound)
+                .join(',');
+            applySetting('mutedSounds', muted);
+            saveSettingToDB('mutedSounds', muted).catch(err => console.error('Could not save setting mutedSounds:', err));
+            if (box.checked) playSound(box.dataset.sound, { preview: true });
+        });
+        soundPickerList.addEventListener('click', event => {
+            const button = event.target.closest('.sound-preview-btn');
+            if (button) playSound(button.dataset.sound, { preview: true });
+        });
     }
     
 
@@ -1769,6 +1867,12 @@ async function resetAppSettings() {
                 break;
             case 'soundEnabled':
                 soundEnabled = (value === 'true' || value === true);
+                syncSoundPicker();
+                preloadSounds();
+                break;
+            case 'mutedSounds':
+                mutedSounds = new Set(String(value || '').split(',').filter(Boolean));
+                syncSoundPicker();
                 break;
             case 'reasoningEffort': {
                 const supportedEfforts = ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
@@ -2280,7 +2384,7 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
                     showCustomAlert("This PNG file does not seem to contain any character data.");
                 }
             } catch (error) {
-                showCustomAlert("Error processing the PNG file: " + error.message);
+                showErrorAlert("Error processing the PNG file: " + error.message);
             }
         };
         reader.readAsArrayBuffer(file);
@@ -2320,7 +2424,7 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
                     showCustomAlert("Unknown or unsupported JSON format.");
                 }
             } catch (error) {
-                showCustomAlert("Error reading the JSON file: " + error.message);
+                showErrorAlert("Error reading the JSON file: " + error.message);
             }
         };
         reader.readAsText(file);
@@ -2968,6 +3072,7 @@ function updatePersonaEditorTokenCount() {
         const chat = characters[currentCharacterId]?.chats?.[currentChatId];
         if (!chat) return;
 
+        const previousMemories = getChatMemories(chat);
         chat.memories = (chatMemoriesTextarea?.value || '').trim();
         delete chat.storyLine;
         delete chat.plan;
@@ -2982,6 +3087,7 @@ function updatePersonaEditorTokenCount() {
         updateChatMemoriesButtonState();
         updateTokenCount();
         closeChatMemoriesModal();
+        if (chat.memories && chat.memories !== previousMemories) playSound('memory');
     }
 
 
@@ -3375,7 +3481,7 @@ async function performBulkCharacterDelete() {
     for (const owner of changedOwners) await saveSingleCharacterToDB(owner);
     renderCharacterList();
   } catch (e) {
-    showCustomAlert('Error while deleting: ' + (e?.message || e));
+    showErrorAlert('Error while deleting: ' + (e?.message || e));
   }
 
   const modal = document.getElementById('bulkCharDeleteModal');
@@ -4378,12 +4484,155 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 // `autoTurn` is one turn of "Let Them Talk": no user message, the box and
 // whatever is typed in it are left alone, and the tagged character answers the
 // last reply.
+/* ===========================================================================
+ * DICE ROLL ANIMATION
+ * ===========================================================================
+ * A short scene in front of the chat: the screen dims, the dice tumble in and
+ * land on the result, then it all fades away. The promise resolves as the dice
+ * land, so the roll is posted at that moment. A click or Escape skips ahead.
+ * ======================================================================== */
+
+// Matches the dice-tumble animation in style.css.
+const DICE_LAND_MS = 760;
+const DICE_STAGGER_MS = 70;
+const DICE_HOLD_MS = 1000;
+// The Natural 20 sound's rising notes begin 0.34 s in. Started this much
+// before the landing, they ring out just as the die comes to rest.
+const DICE_NAT20_SOUND_LEAD_MS = 340;
+let diceRollShowing = false;
+
+function diceFaceSvg(sides) {
+    if (sides === 6) {
+        return `<svg viewBox="0 0 100 100" aria-hidden="true">
+            <rect class="dice-face-darker" x="14" y="14" width="78" height="78" rx="16"/>
+            <rect class="dice-face-front" x="6" y="6" width="78" height="78" rx="16"/>
+        </svg>`;
+    }
+    // A d20 seen face-on: the front triangle and the nine faces around it.
+    const faces = [
+        ['front', '50,21 79,69 21,69'],
+        ['light', '50,3 9,26.5 50,21'],
+        ['light', '50,3 50,21 91,26.5'],
+        ['mid', '9,26.5 21,69 50,21'],
+        ['mid', '91,26.5 50,21 79,69'],
+        ['dark', '9,26.5 9,73.5 21,69'],
+        ['dark', '91,26.5 79,69 91,73.5'],
+        ['darker', '9,73.5 50,97 21,69'],
+        ['darker', '91,73.5 79,69 50,97'],
+        ['dark', '21,69 79,69 50,97'],
+    ];
+    return `<svg viewBox="0 0 100 100" aria-hidden="true">${faces
+        .map(([shade, points]) => `<polygon class="dice-face-${shade}" points="${points}"/>`).join('')}</svg>`;
+}
+
+function showDiceRoll(spec, result) {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Up to four dice each show their own roll; more than that, one die shows the total.
+    const showEach = spec.count <= 4;
+    const values = showEach ? result.rolls : [result.total];
+    const isD20 = spec.count === 1 && spec.sides === 20;
+    const nat20 = isD20 && result.rolls[0] === 20;
+    const nat1 = isD20 && result.rolls[0] === 1;
+    const sign = spec.modifier > 0 ? '+' : '-';
+    const notation = `${spec.count}d${spec.sides}${spec.modifier ? `${sign}${Math.abs(spec.modifier)}` : ''}`;
+    const totalLine = nat20 ? 'Natural 20!'
+        : nat1 ? 'Natural 1'
+        : showEach && (spec.count > 1 || spec.modifier) ? `Total ${result.total}` : '';
+    const landAt = reduced ? 0 : DICE_LAND_MS + (values.length - 1) * DICE_STAGGER_MS;
+    // Stand-in numbers while the dice tumble, from the range they can show.
+    const low = showEach ? 1 : spec.count + spec.modifier;
+    const high = showEach ? spec.sides : spec.count * spec.sides + spec.modifier;
+    const randomFace = () => low + Math.floor(Math.random() * (high - low + 1));
+    const between = (a, b) => Math.round(a + Math.random() * (b - a));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'dice-roll-overlay';
+    // The roll itself is posted to the chat; this is only the show.
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+        <div class="dice-roll-stage" style="--dice-count:${values.length}">
+            ${values.map((_, i) => `
+            <div class="dice-roll-die${showEach && spec.sides === 6 ? ' is-d6' : ''}" style="--delay:${i * DICE_STAGGER_MS}ms; --from-x:${between(60, 170) * (Math.random() < 0.5 ? -1 : 1)}px; --from-y:${between(-150, -70)}px; --spin:${between(360, 720) * (Math.random() < 0.5 ? -1 : 1)}deg">
+                ${diceFaceSvg(showEach ? spec.sides : 20)}
+                <span class="dice-roll-value"></span>
+            </div>`).join('')}
+            ${nat20 ? `<div class="dice-roll-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg"></i>`).join('')}</div>` : ''}
+        </div>
+        <div class="dice-roll-caption">
+            <span class="dice-roll-notation">${notation}</span>
+            ${totalLine ? `<span class="dice-roll-total">${totalLine}</span>` : ''}
+        </div>`;
+
+    const dieEls = [...overlay.querySelectorAll('.dice-roll-die')];
+    const landed = values.map(() => false);
+    const setValue = (i, value) => {
+        const el = dieEls[i].querySelector('.dice-roll-value');
+        el.textContent = value;
+        el.dataset.digits = String(value).length;
+    };
+    values.forEach((value, i) => setValue(i, reduced ? value : randomFace()));
+    document.body.appendChild(overlay);
+    diceRollShowing = true;
+    if (nat20) playSound('dice-nat20', { delayMs: Math.max(0, landAt - DICE_NAT20_SOUND_LEAD_MS) });
+
+    let resolveLanded;
+    const landedPromise = new Promise(resolve => { resolveLanded = resolve; });
+    const timers = [];
+    const cycle = reduced ? null : setInterval(() => {
+        landed.forEach((done, i) => { if (!done) setValue(i, randomFace()); });
+    }, 60);
+    const landDie = i => {
+        landed[i] = true;
+        setValue(i, values[i]);
+        dieEls[i].classList.add('landed');
+    };
+    const reveal = () => {
+        if (overlay.classList.contains('revealed')) return;
+        clearInterval(cycle);
+        landed.forEach((done, i) => { if (!done) landDie(i); });
+        overlay.classList.add('revealed');
+        if (nat20) overlay.classList.add('is-crit');
+        if (nat1) overlay.classList.add('is-fumble');
+        diceRollShowing = false;
+        resolveLanded();
+    };
+    let finished = false;
+    const onKey = event => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        finish();
+    };
+    const finish = () => {
+        if (finished) return;
+        finished = true;
+        timers.forEach(clearTimeout);
+        reveal();
+        document.removeEventListener('keydown', onKey, true);
+        overlay.classList.add('leaving');
+        setTimeout(() => overlay.remove(), 280);
+    };
+    document.addEventListener('keydown', onKey, true);
+    overlay.addEventListener('click', finish);
+    if (!reduced) values.forEach((_, i) => timers.push(setTimeout(() => landDie(i), DICE_LAND_MS + i * DICE_STAGGER_MS)));
+    timers.push(setTimeout(reveal, landAt));
+    timers.push(setTimeout(finish, landAt + DICE_HOLD_MS));
+    return landedPromise;
+}
+
 async function handleChatSubmit(type, { autoTurn = false } = {}) {
+    let rolledDice = false;
     if (!autoTurn) {
         const dice = parseDiceCommand(messageInput.value);
         if (dice) {
-            if (dice.error) { showCustomAlert(dice.error); return; }
-            const rollLine = formatDiceResult(dice, rollDice(dice));
+            if (dice.error) { showErrorAlert(dice.error); return; }
+            // The box still holds the command while the dice tumble, and a
+            // second Enter must not roll again.
+            if (diceRollShowing) return;
+            const result = rollDice(dice);
+            const rollLine = formatDiceResult(dice, result);
+            await showDiceRoll(dice, result);
+            rolledDice = true;
             if (!dice.text) {
                 // A bare roll is only posted. The user decides what to do
                 // with it, or sends an empty message to let the AI react.
@@ -4440,6 +4689,7 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
     let lastMessageInChat = chat.history && chat.history.length > 0 ? chat.history[chat.history.length - 1] : null;
 
     if (finalUserMessage) {
+        if (!rolledDice) playSound('send');
         await addNewMessage(finalUserMessage, 'user', type, true);
         messageForAPI = finalUserMessage;
         const isMultiChar = chat.participants && chat.participants.length > 1;
@@ -4915,7 +5165,7 @@ const response = await fetch(fetchUrl, {
                     }
                 }
 
-                playNotificationSound();
+                playSound('reply');
                 updateTokenCount();
                 if (!streamAbortedByUser && ttsEnabled && finalMainText) {
                     speakText(finalMainText, newMessageId);
@@ -4963,6 +5213,7 @@ const response = await fetch(fetchUrl, {
         }
         errorMsg = withProviderDetail(errorMsg, error);
         aiMessageObject.variations[0] = { main: errorMsg, think: null, notice: true };
+        playSound('error');
         const freshSendEl = document.querySelector(`[data-message-id="${CSS.escape(newMessageId)}"] .main-content`);
         if(freshSendEl) freshSendEl.innerHTML = formatSubString(errorMsg);
         else if(mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
@@ -4994,6 +5245,7 @@ const response = await fetch(fetchUrl, {
 • In some cases your API provider might have a temporary problem. Try another provider/API key to see if your priveder was the problem.
 • Check the FAQ section (help button on main screen) for further details to this error.`;
         aiMessageObject.variations[0] = { main: errorMsg, think: null, notice: true };
+        playSound('error');
         if (mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
     } else if (keptPartialReply) {
         updateSingleMessageView(newMessageId);
@@ -5563,6 +5815,7 @@ const response = await fetch(fetchUrl, {
         errorMsg = withProviderDetail(errorMsg, error);
         if(mainContentEl) mainContentEl.innerHTML = formatSubString(errorMsg);
         message.variations[regenVariantIndex] = { main: errorMsg, think: null, notice: true };
+        playSound('error');
         regenFailed = true;
         break;
     }
@@ -5575,6 +5828,7 @@ const response = await fetch(fetchUrl, {
     // Every attempt came back empty: say so instead of leaving a blank variant.
     if (!streamAbortedByUser && !newVariant && !regenFailed) {
         message.variations[regenVariantIndex] = { main: REGENERATE_NO_RESPONSE_NOTICE, think: null, notice: true };
+        playSound('error');
     }
     if (streamAbortedByUser && !newVariant) {
         // Aborted before any content arrived — revert the empty new variant
@@ -5586,7 +5840,7 @@ const response = await fetch(fetchUrl, {
         message.variations[message.variations.length - 1] = newVariant;
         message.activeVariant = message.variations.length - 1;
         if (!streamAbortedByUser) {
-            playNotificationSound();
+            playSound('reply');
             updateTokenCount();
         }
     }
@@ -6126,7 +6380,7 @@ if (!finalThink) {
                 // Same as regeneration: finish the typewriter first, or the sound announces a
                 // reply whose bubble is still visibly typing.
                 mainTypewriter.flush(activeVariant.main || '', t => { if (mainContentEl) mainContentEl.innerHTML = formatSubString(t); });
-                playNotificationSound();
+                playSound('reply');
                 updateTokenCount();
                 break;
             } else {
@@ -6183,6 +6437,7 @@ if (!finalThink) {
     // failed continue looked like nothing had happened. It is not saved into
     // the message: the text being continued is left exactly as it was.
     if (continueErrorText) {
+        playSound('error');
         const errorContentEl = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"] .main-content`);
         if (errorContentEl) {
             const sanitizedError = sanitizeModelOutput(`${activeVariant.main}\n\n[--- ERROR: ${continueErrorText} ---]`);
@@ -7046,6 +7301,7 @@ async function addParticipantToChat(participantId) {
     updateTokenCount();
     renderParticipantIcons(); 
     participantSelectionModal.classList.add('hidden');
+    playSound('swap');
 }
 
 
@@ -7122,7 +7378,7 @@ function openPersonaEditor(personaId = null) {
       personaEditorAvatarPlaceholder.classList.toggle('hidden', !!avatarUrl);
       personaEditorAvatarImg.classList.toggle('hidden', !avatarUrl);
     } else {
-      showCustomAlert('Error: Persona with ID ' + personaId + ' could not be found.');
+      showErrorAlert('Error: Persona with ID ' + personaId + ' could not be found.');
       return;
     }
   } else {
@@ -7290,7 +7546,7 @@ const avatarHtml = `
 
   } catch (e) {
     console.error("An unexpected ERROR has occurred in 'openPersonaSelectionModal':", e);
-    showCustomAlert("A JavaScript error has occurred. Please check the console (F12).");
+    showErrorAlert("A JavaScript error has occurred. Please check the console (F12).");
   }
 }
 
@@ -8210,7 +8466,7 @@ const openImageAdjuster = (() => {
         } catch (error) {
             console.error('Error cropping image:', error);
             finish(null);
-            showCustomAlert('There was an error processing the image file.');
+            showErrorAlert('There was an error processing the image file.');
         } finally {
             applyBtn.disabled = false;
         }
@@ -8419,7 +8675,7 @@ imageUploader.addEventListener('change', async (event) => {
         applyAdjustedCardImage(targetId, adjusted);
     } catch (error) {
         console.error("Error converting file to Data URL:", error);
-        showCustomAlert("There was an error processing the image file.");
+        showErrorAlert("There was an error processing the image file.");
     }
 });
 
@@ -8526,7 +8782,7 @@ if (galleryAddBtn && galleryUploader) {
         }
 
         if (failed > 0) {
-            showCustomAlert(failed === 1
+            showErrorAlert(failed === 1
                 ? 'One image could not be processed and was skipped.'
                 : `${failed} images could not be processed and were skipped.`);
         }
@@ -8583,7 +8839,7 @@ async function assignGalleryImageTo(targetId) {
         applyAdjustedCardImage(targetId, adjusted);
     } catch (error) {
         console.error('Error using the gallery image:', error);
-        showCustomAlert('There was an error processing the image file.');
+        showErrorAlert('There was an error processing the image file.');
     }
 }
 
@@ -8628,7 +8884,7 @@ async function downloadGalleryImage() {
         if (/^https?:/i.test(src)) {
             window.open(src, '_blank', 'noopener');
         } else {
-            showCustomAlert('There was an error preparing the image for download.');
+            showErrorAlert('There was an error preparing the image for download.');
         }
         return;
     }
@@ -8721,11 +8977,15 @@ personaEditorAvatarImg.onerror = () => {
     container.style.backgroundImage = 'none';
 };
 
-    document.body.addEventListener('click', () => {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-    }, { once: true });
+    // Audio may only start once the user has interacted with the page. The
+    // first click or key press creates the audio context and loads the sounds;
+    // later ones wake it if the browser has suspended it since.
+    const unlockAudio = () => {
+        const firstTime = !audioCtx;
+        if (ensureAudioContext() && firstTime) preloadSounds();
+    };
+    document.addEventListener('click', unlockAudio, true);
+    document.addEventListener('keydown', unlockAudio, true);
     // A slider fires 'input' on every step of a drag. The setting is applied on
     // each one, but written to the database once the value settles - or at
     // once when the control reports its final value with 'change'.
@@ -8810,6 +9070,7 @@ personaEditorAvatarImg.onerror = () => {
         await saveSingleCharacterToDB(oldChar);
         await saveSingleCharacterToDB(newChar);
         await startChat(newCharId, currentChatId);
+        playSound('swap');
     }
 
     if (quickSwapBtn) {
@@ -10734,7 +10995,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                 variation.images.pop();
                 const quotaHit = saveErr?.name === 'QuotaExceededError'
                     || /quota/i.test(saveErr?.message || '');
-                showCustomAlert(quotaHit
+                showErrorAlert(quotaHit
                     ? 'Out of browser storage, so the image was not saved. Remove some images or gallery pictures and try again.'
                     : `The image could not be saved: ${saveErr?.message || saveErr}`);
                 return;
@@ -10757,7 +11018,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                 // Already a full, plain-language explanation.
                 showCustomAlert(err.message);
             } else {
-                showCustomAlert(`Image generation failed: ${err?.message || err}`);
+                showErrorAlert(`Image generation failed: ${err?.message || err}`);
             }
         } finally {
             if (pendingBlock) pendingBlock.remove();
@@ -11426,7 +11687,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
                 scenarioList.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         } catch (err) {
-            showCustomAlert(_formatAIError(err, 'Scenario generation'));
+            showErrorAlert(_formatAIError(err, 'Scenario generation'));
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
@@ -11463,7 +11724,7 @@ Output ONLY the scenario paragraph. No title, no labels, no extra commentary.`;
             autoResizeTextarea({ target: chatMemoriesTextarea });
             pendingManualSummary = lastMessageId ? { chat, upToId: lastMessageId } : null;
         } catch (err) {
-            showCustomAlert(`Summarization failed: ${err.message}`);
+            showErrorAlert(`Summarization failed: ${err.message}`);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
@@ -11751,7 +12012,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
             if (refFailed) showCustomAlert(`⚠️ The reference URL could not be read (the page may block bots or require login). The ${isWorld ? 'world' : 'character'} was generated without it — you can edit the fields manually.`);
         } catch (err) {
             if (err?.name === 'AbortError') return;
-            showCustomAlert(_formatAIError(err, isWorld ? 'World generation' : 'Character generation'));
+            showErrorAlert(_formatAIError(err, isWorld ? 'World generation' : 'Character generation'));
         } finally {
             charGenAbortController = null;
             btn.textContent = originalText;
@@ -12594,6 +12855,7 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
             startChat(currentCharacterId, currentChatId);
             chatWindow.scrollTop = currentScroll;
             showUndoDeleteFab();
+            playSound('delete');
             generateReplyOptionsInBackground();
                 }
              }
@@ -12956,6 +13218,7 @@ editorTextareasToResize.forEach(id => {
         window.__scrollToBottomNextStartChat = true;
         await startChat(currentCharacterId, newChatId);
         showChatToast('🌿 New branch created. The original chat is unchanged.');
+        playSound('branch');
     }
 
     chatWindow.addEventListener('click', (event) => {
@@ -12979,7 +13242,10 @@ editorTextareasToResize.forEach(id => {
         if (!messageId) return;
         switch (item.dataset.action) {
             case 'copy': await copyMessageText(messageId); break;
-            case 'bookmark': await toggleMessageFlag(messageId, 'bookmarked'); break;
+            case 'bookmark':
+                await toggleMessageFlag(messageId, 'bookmarked');
+                if (getCurrentChat()?.history?.find(m => m.id === messageId)?.bookmarked === true) playSound('bookmark');
+                break;
             case 'hide': await toggleMessageFlag(messageId, 'hiddenFromAI'); break;
             case 'branch': await branchChatFrom(messageId); break;
         }
@@ -13003,7 +13269,22 @@ editorTextareasToResize.forEach(id => {
         if (!chatMenu || chatMenu.classList.contains('hidden')) return;
         chatMenu.classList.add('hidden');
         chatMenuBtn?.setAttribute('aria-expanded', 'false');
+        setDiceInfoOpen(false);
     }
+
+    // The "?" beside Roll Dice folds its explanation open and shut, and the
+    // menu stays open meanwhile. It is folded again whenever the menu closes.
+    function setDiceInfoOpen(open) {
+        const info = document.getElementById('dice-info');
+        const btn = document.getElementById('dice-info-btn');
+        if (!info || !btn) return;
+        info.classList.toggle('hidden', !open);
+        btn.setAttribute('aria-expanded', String(open));
+    }
+
+    document.getElementById('dice-info-btn')?.addEventListener('click', () => {
+        setDiceInfoOpen(document.getElementById('dice-info')?.classList.contains('hidden'));
+    });
 
     function updateChatMenuItems() {
         const chat = getCurrentChat();
@@ -13463,6 +13744,8 @@ editorTextareasToResize.forEach(id => {
         showChatToast(key[0] === 'm'
             ? `🎉 ${n} messages with ${name}!`
             : `📚 ${n} words written together with ${name}!`);
+        // A beat after the reply sound, so the two do not blur together.
+        playSound('milestone', { delayMs: 450 });
     }
 
     // Everything that follows a finished reply, whichever way it was asked for.
@@ -13531,7 +13814,10 @@ editorTextareasToResize.forEach(id => {
             if (chat === getCurrentChat()) {
                 updateChatMemoriesButtonState();
                 updateTokenCount();
-                if (messages.length >= 6) showChatToast('🧠 Older messages were summarized into Chat Memories.');
+                if (messages.length >= 6) {
+                    showChatToast('🧠 Older messages were summarized into Chat Memories.');
+                    playSound('memory');
+                }
             }
         } catch (err) {
             console.warn('Auto-summary failed:', err);

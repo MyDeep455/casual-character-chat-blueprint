@@ -8132,6 +8132,93 @@ body.image-gen-off .generate-image-btn {
     color: rgba(255, 255, 255, 0.5);
 }
 
+/* A menu item with a "?" beside it that unfolds a short explanation. */
+.chat-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.chat-menu-row .chat-menu-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-menu-info-btn {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.chat-menu-info-btn:hover,
+.chat-menu-info-btn:focus-visible,
+.chat-menu-info-btn[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+    outline: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .chat-menu-info-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+}
+
+/* width: 0 + min-width: 100% lets the text wrap to the menu's width instead of widening it. */
+.chat-menu-info {
+    width: 0;
+    min-width: 100%;
+    box-sizing: border-box;
+    margin: 1px 0 4px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.78);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.chat-menu-info p {
+    margin: 0;
+}
+
+.chat-menu-info ul {
+    margin: 6px 0;
+    padding-left: 16px;
+}
+
+.chat-menu-info li + li {
+    margin-top: 3px;
+}
+
+.chat-menu-info code {
+    font-size: 0.74rem;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    white-space: nowrap;
+}
+
 .chat-menu-count {
     font-size: 0.72rem;
     font-weight: 600;
@@ -8742,5 +8829,369 @@ mark.chat-search-hit,
     .autoplay-pulse,
     #chat-form #voice-input-btn.is-listening {
         animation: none;
+    }
+}
+
+/* ── Sound effects: the list of single sounds under the Sound Effects switch ── */
+.sound-picker {
+    font-size: 0.8em;
+}
+
+.sound-picker summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    list-style: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    user-select: none;
+}
+
+.sound-picker summary::-webkit-details-marker {
+    display: none;
+}
+
+.sound-picker summary::before {
+    content: '▸';
+    display: inline-block;
+    transition: transform 0.15s ease;
+}
+
+.sound-picker[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.sound-picker summary:hover,
+.sound-picker summary:focus-visible {
+    color: #fff;
+    outline: none;
+}
+
+.sound-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 8px;
+    padding: 4px 6px 4px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.04);
+    transition: opacity 0.2s ease;
+}
+
+/* With every sound switched off the list is only a preview of what comes back. */
+.sound-picker.is-off .sound-picker-list {
+    opacity: 0.45;
+}
+
+.sound-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting .sound-picker-row label {
+    flex: 1;
+    justify-content: flex-start;
+    gap: 9px;
+    padding: 5px 0;
+    font-size: 1em;
+    cursor: pointer;
+}
+
+.sound-picker-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: #5b9bd5;
+    cursor: pointer;
+}
+
+.sound-preview-btn {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0 0 0 2px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.62rem;
+    cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .sound-preview-btn {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+.sound-preview-btn:hover,
+.sound-preview-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    outline: none;
+}
+
+/* ── Dice roll: the dice tumble in front of the dimmed chat and land on the result ── */
+.dice-roll-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    background: rgba(3, 5, 14, 0.62);
+    cursor: pointer;
+    animation: dice-overlay-in 0.16s ease-out both;
+}
+
+.dice-roll-overlay.leaving {
+    animation: dice-overlay-out 0.28s ease-in both;
+}
+
+@keyframes dice-overlay-in {
+    from { opacity: 0; }
+}
+
+@keyframes dice-overlay-out {
+    to { opacity: 0; }
+}
+
+.dice-roll-stage {
+    --die-size: min(104px, calc((100vw - 48px - (var(--dice-count) - 1) * 14px) / var(--dice-count)));
+    position: relative;
+    display: flex;
+    gap: 14px;
+}
+
+.dice-roll-die {
+    --face-front: #9a82ff;
+    --face-light: #b3a1ff;
+    --face-mid: #7058e6;
+    --face-dark: #5139b8;
+    --face-darker: #3a2886;
+    --die-edge: rgba(255, 255, 255, 0.3);
+    --die-glow: rgba(139, 108, 240, 0.6);
+    --die-number: #fff;
+    position: relative;
+    width: var(--die-size);
+    height: var(--die-size);
+    /* The duration is DICE_LAND_MS in script.js: the result shows as this ends. */
+    animation: dice-tumble 0.76s ease-out var(--delay, 0ms) both;
+}
+
+.dice-roll-die svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+    transition: filter 0.3s ease;
+}
+
+.dice-roll-die polygon,
+.dice-roll-die rect {
+    stroke: var(--die-edge);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    transition: fill 0.25s ease;
+}
+
+.dice-face-front { fill: var(--face-front); }
+.dice-face-light { fill: var(--face-light); }
+.dice-face-mid { fill: var(--face-mid); }
+.dice-face-dark { fill: var(--face-dark); }
+.dice-face-darker { fill: var(--face-darker); }
+
+.dice-roll-value {
+    position: absolute;
+    left: 50%;
+    top: 55%;
+    transform: translate(-50%, -50%);
+    color: var(--die-number);
+    font-family: 'Inter', sans-serif;
+    font-size: calc(var(--die-size) * 0.26);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    transition: color 0.25s ease;
+}
+
+.dice-roll-value[data-digits="3"] { font-size: calc(var(--die-size) * 0.2); }
+.dice-roll-value[data-digits="4"],
+.dice-roll-value[data-digits="5"] { font-size: calc(var(--die-size) * 0.15); }
+
+.dice-roll-die.is-d6 .dice-roll-value {
+    left: 46%;
+    top: 46%;
+}
+
+@keyframes dice-tumble {
+    0% { transform: translate(var(--from-x), var(--from-y)) rotate(var(--spin)) scale(0.5); opacity: 0; }
+    12% { opacity: 1; }
+    40% { transform: translate(calc(var(--from-x) * -0.18), 14px) rotate(calc(var(--spin) * 0.35)) scale(1.04); }
+    58% { transform: translate(calc(var(--from-x) * 0.08), -22px) rotate(calc(var(--spin) * 0.12)) scale(0.98); }
+    74% { transform: translate(0, 4px) rotate(calc(var(--spin) * -0.03)) scale(1.03, 0.96); }
+    87% { transform: translate(0, -5px) rotate(calc(var(--spin) * 0.01)) scale(1); }
+    100% { transform: none; opacity: 1; }
+}
+
+.dice-roll-die.landed {
+    animation: dice-land 0.3s ease-out both;
+}
+
+.dice-roll-die.landed svg {
+    filter: drop-shadow(0 0 16px var(--die-glow)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes dice-land {
+    35% { transform: scale(1.12); }
+}
+
+/* A natural 20 turns gold with a burst; a natural 1 goes dull and wobbles. */
+.is-crit .dice-roll-die {
+    --face-front: #ffd66b;
+    --face-light: #ffe6a3;
+    --face-mid: #e3ac3c;
+    --face-dark: #b98220;
+    --face-darker: #8c5e12;
+    --die-edge: rgba(255, 250, 225, 0.55);
+    --die-glow: rgba(255, 200, 80, 0.85);
+    --die-number: #4a2f00;
+}
+
+.is-crit .dice-roll-value {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.is-fumble .dice-roll-die {
+    --face-front: #85708f;
+    --face-light: #978399;
+    --face-mid: #64526f;
+    --face-dark: #4b3d56;
+    --face-darker: #372c40;
+    --die-glow: rgba(235, 90, 90, 0.5);
+    animation: dice-fumble 0.5s ease-out both;
+}
+
+@keyframes dice-fumble {
+    20% { transform: rotate(-7deg); }
+    40% { transform: rotate(5deg); }
+    60% { transform: rotate(-3deg) translateY(3px); }
+    80% { transform: rotate(1deg) translateY(4px); }
+    100% { transform: translateY(4px); }
+}
+
+.dice-roll-burst {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.dice-roll-burst::before {
+    content: '';
+    position: absolute;
+    left: -60px;
+    top: -60px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 214, 107, 0.85);
+    opacity: 0;
+}
+
+.dice-roll-burst i {
+    position: absolute;
+    left: -3px;
+    top: -3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffe49a;
+    box-shadow: 0 0 8px rgba(255, 210, 100, 0.9);
+    opacity: 0;
+}
+
+.is-crit .dice-roll-burst::before {
+    animation: dice-ring 0.6s ease-out both;
+}
+
+.is-crit .dice-roll-burst i {
+    animation: dice-spark 0.75s ease-out both;
+}
+
+@keyframes dice-ring {
+    from { transform: scale(0.4); opacity: 0.9; }
+    to { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes dice-spark {
+    from { transform: rotate(var(--a)) translateY(-30px) scale(1); opacity: 1; }
+    to { transform: rotate(var(--a)) translateY(-125px) scale(0.2); opacity: 0; }
+}
+
+.dice-roll-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-height: 3.2em;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    pointer-events: none;
+}
+
+.dice-roll-notation {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.dice-roll-total {
+    font-size: 1.35rem;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.revealed .dice-roll-total {
+    opacity: 1;
+    transform: none;
+}
+
+.is-crit .dice-roll-total {
+    color: #ffd66b;
+    text-shadow: 0 0 18px rgba(255, 200, 80, 0.6);
+}
+
+.is-fumble .dice-roll-total {
+    color: #ff9f9f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dice-roll-die,
+    .dice-roll-die.landed,
+    .is-fumble .dice-roll-die {
+        animation: none;
+    }
+
+    .dice-roll-burst {
+        display: none;
     }
 }

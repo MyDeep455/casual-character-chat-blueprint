@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Casual Character Chat</title>
-    <link rel="icon" href="data:image/svg+xml,
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-  <text y='.9em' font-size='90'>🔒</text> 
-</svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='t' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232a2163'/%3E%3Cstop offset='1' stop-color='%23080b1c'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a48cff'/%3E%3Cstop offset='1' stop-color='%236a4ee0'/%3E%3C/linearGradient%3E%3ClinearGradient id='f' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f6f2ff'/%3E%3Cstop offset='1' stop-color='%23c6b8f6'/%3E%3C/linearGradient%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffe597'/%3E%3Cstop offset='1' stop-color='%23d99a2b'/%3E%3C/linearGradient%3E%3Cfilter id='glow' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeGaussianBlur stdDeviation='2.4'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23t)'/%3E%3Cpath d='M16 22h20a9 9 0 0 1 9 9v10a9 9 0 0 1-9 9H24l-9 8v-8.3A9 9 0 0 1 7 41V31a9 9 0 0 1 9-9z' fill='%23b7a3ff' opacity='.55' filter='url(%23glow)'/%3E%3Cpath d='M29 12h19a8 8 0 0 1 8 8v10a8 8 0 0 1-8 8h-1v6l-7-6H29a8 8 0 0 1-8-8V20a8 8 0 0 1 8-8z' fill='url(%23b)'/%3E%3Cpath d='M16 22h20a9 9 0 0 1 9 9v10a9 9 0 0 1-9 9H24l-9 8v-8.3A9 9 0 0 1 7 41V31a9 9 0 0 1 9-9z' fill='url(%23f)' stroke='%230c0f24' stroke-width='1.5'/%3E%3Cg fill='%235a43d0'%3E%3Ccircle cx='17' cy='36' r='2.9'/%3E%3Ccircle cx='26' cy='36' r='2.9'/%3E%3Ccircle cx='35' cy='36' r='2.9'/%3E%3C/g%3E%3Cg transform='translate(54 16.5) scale(.8) translate(-51 -19)'%3E%3Cpath d='M45.5 16v-4.5a5.5 5.5 0 0 1 11 0V16' fill='none' stroke='%230c0f24' stroke-width='7' stroke-linecap='round'/%3E%3Crect x='40.5' y='14.5' width='21' height='17' rx='4' fill='%230c0f24'/%3E%3Cpath d='M45.5 16v-4.5a5.5 5.5 0 0 1 11 0V16' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='42.5' y='16.5' width='17' height='13' rx='3' fill='url(%23g)'/%3E%3Ccircle cx='51' cy='21.6' r='2' fill='%235a3d0c'/%3E%3Crect x='50.1' y='22' width='1.8' height='4.2' rx='.9' fill='%235a3d0c'/%3E%3C/g%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Fetched without holding up the first paint. While a stylesheet in <head>
@@ -159,7 +156,19 @@
             <button type="button" class="chat-menu-item" data-action="bookmarks" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">★</span><span class="chat-menu-label">Bookmarks</span><span class="chat-menu-count" id="chat-menu-bookmark-count"></span></button>
             <button type="button" class="chat-menu-item" data-action="stats" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">📊</span><span class="chat-menu-label">Chat Stats</span></button>
             <button type="button" class="chat-menu-item hidden" data-action="autoplay" id="chat-menu-autoplay" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">▶️</span><span class="chat-menu-label">Let Them Talk</span></button>
-            <button type="button" class="chat-menu-item" data-action="dice" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🎲</span><span class="chat-menu-label">Roll Dice</span></button>
+            <div class="chat-menu-row" role="none">
+                <button type="button" class="chat-menu-item" data-action="dice" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🎲</span><span class="chat-menu-label">Roll Dice</span></button>
+                <button type="button" class="chat-menu-info-btn" id="dice-info-btn" aria-label="What does Roll Dice do?" title="What does this do?" aria-expanded="false" aria-controls="dice-info">?</button>
+            </div>
+            <div id="dice-info" class="chat-menu-info hidden" role="note">
+                <p>Rolls real dice in the app. The AI doesn't choose the number, so luck decides how things go.</p>
+                <ul>
+                    <li><code>/roll</code> rolls one 20-sided die</li>
+                    <li><code>/roll 2d6+3</code> rolls two 6-sided dice and adds 3</li>
+                    <li><code>/roll 1d20 I pick the lock</code>: the character plays out how well it goes</li>
+                </ul>
+                <p>Rolled without an action, the result is only posted. Send an empty message to let the character react. On a d20, a 20 is a critical success and a 1 a fumble.</p>
+            </div>
             <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
             <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
         </div>
@@ -315,9 +324,13 @@
                     <div class="accordion-inner">
                         <div class="setting">
                             <label for="sound-toggle">
-                                <span>Notification Sound:</span>
+                                <span>Sound Effects:</span>
                                 <input type="checkbox" id="sound-toggle" class="toggle-switch">
                             </label>
+                            <details class="sound-picker" id="sound-picker">
+                                <summary>Choose sounds</summary>
+                                <div class="sound-picker-list" id="sound-picker-list"></div>
+                            </details>
                         </div>
                         <div class="setting">
                             <label for="tts-voice-select">TTS Voice (EN / JP / your language):</label>
