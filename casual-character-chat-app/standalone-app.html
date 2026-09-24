@@ -33499,6 +33499,117 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
         installAppBtn?.classList.add('hidden');
     });
 
+    // ── The phone's Back button ──
+    // Android's Back (button or swipe) walks the page's history, and an
+    // installed app has none of its own, so Back used to close the app from
+    // any screen. One spare history entry is now kept on top: Back spends it,
+    // the app does what its own close, cancel or back button would, and the
+    // entry is put back for the next press. Only on the main screen, with
+    // nothing open, does Back go on to close the app.
+    //
+    // Installed app only. In a browser tab, Back keeps meaning "leave the page".
+    // Chrome skips history entries that a page adds before the user has touched
+    // it, so the spare entry is only ever added after a tap or a key press.
+    const BACK_GUARD_KEY = 'cccBackGuard';
+    const backGuardEnabled = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches
+        || navigator.standalone === true;
+    let backGuardArmed = history.state?.[BACK_GUARD_KEY] === true;
+
+    function armBackGuard() {
+        if (backGuardArmed) return;
+        history.pushState({ [BACK_GUARD_KEY]: true }, '');
+        backGuardArmed = true;
+    }
+
+    function isShown(el) {
+        return !!el && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none';
+    }
+
+    // Topmost first, so Back closes the dialog that was opened last.
+    const BACK_CLOSES_DIALOG = [
+        ['gallery-action-modal', 'gallery-action-cancel-btn'],
+        ['image-crop-modal', 'image-crop-cancel-btn'],
+        ['worldCharPickerModal', 'worldCharPickerCancelBtn'],
+        ['bulkCharDeleteModal', 'cancel-bulk-delete-btn'],
+        ['persona-editor-modal', 'cancel-persona-edit-btn'],
+        ['persona-list-modal', 'close-persona-list-btn'],
+        ['persona-selection-modal', 'cancel-persona-select-btn'],
+        ['participant-selection-modal', 'cancel-participant-selection-btn'],
+        ['scenario-selection-modal', 'cancel-scenario-selection-btn'],
+        ['quick-swap-modal', 'cancel-quick-swap-btn'],
+        ['move-chat-modal', 'cancel-move-chat-btn'],
+        ['particle-picker-modal', 'close-particle-picker-btn'],
+        ['chat-stats-modal', 'close-chat-stats-btn'],
+        ['shortcuts-modal', 'close-shortcuts-btn'],
+        ['message-editor-modal', 'cancel-message-edit-btn'],
+        ['chat-memories-modal', 'cancel-memories-edit-btn'],
+        ['app-settings-modal', 'cancel-app-settings-btn'],
+        ['character-editor-modal', 'cancel-edit-btn-top']
+    ];
+
+    // Does one step of going back. Returns false only on the main screen with
+    // nothing open, where there is nothing left in the app to go back from.
+    function goBackInApp() {
+        if (document.getElementById('tutorial-backdrop')?.classList.contains('tutorial-active')) {
+            document.getElementById('tutorial-skip-btn')?.click();
+            return true;
+        }
+        // Alerts, confirms and prompts: Cancel, or the only button there is.
+        // A choice with no Cancel stays open until it is answered.
+        const overlays = document.querySelectorAll('.custom-alert-overlay');
+        if (overlays.length) {
+            const buttons = [...overlays[overlays.length - 1].querySelectorAll('button')];
+            const cancel = buttons.find(b => b.textContent.trim() === 'Cancel') || (buttons.length === 1 ? buttons[0] : null);
+            cancel?.click();
+            return true;
+        }
+        const dice = document.querySelector('.dice-roll-overlay:not(.leaving)');
+        if (dice) { dice.click(); return true; }
+
+        for (const [dialogId, buttonId] of BACK_CLOSES_DIALOG) {
+            if (isShown(document.getElementById(dialogId))) {
+                document.getElementById(buttonId)?.click();
+                return true;
+            }
+        }
+
+        if (isShown(messageMenu)) { closeMessageMenu(); return true; }
+        if (isShown(chatMenu)) { closeChatMenu(); return true; }
+        const moodPicker = document.getElementById('mood-picker');
+        if (isShown(moodPicker)) {
+            moodPicker.classList.add('hidden');
+            document.getElementById('mood-btn')?.setAttribute('aria-expanded', 'false');
+            return true;
+        }
+        const musicPanel = document.getElementById('music-panel');
+        if (isShown(musicPanel)) { musicPanel.classList.add('hidden'); return true; }
+        if (isShown(settingsPanel)) { settingsPanel.classList.add('hidden'); return true; }
+        if (isChatScreenActive() && chatSearch.open) { closeChatSearch(); return true; }
+
+        if (isChatScreenActive()) { backToSelectionBtn.click(); return true; }
+        if (!chatListScreen.classList.contains('is-inactive')) {
+            if (isShown(document.getElementById('chat-group-bar'))) exitChatGroupBtn?.click();
+            else backToMainBtn.click();
+            return true;
+        }
+        return false;
+    }
+
+    if (backGuardEnabled) {
+        // Only real input counts; the buttons goBackInApp clicks are not.
+        const armOnInput = (event) => { if (event.isTrusted) armBackGuard(); };
+        document.addEventListener('click', armOnInput, true);
+        document.addEventListener('keydown', armOnInput, true);
+        window.addEventListener('popstate', (event) => {
+            // Forward onto the spare entry again, not Back.
+            if (event.state?.[BACK_GUARD_KEY]) { backGuardArmed = true; return; }
+            backGuardArmed = false;
+            if (goBackInApp()) armBackGuard();
+            else showChatToast('Press Back again to close the app.');
+        });
+    }
+
     // --- INITIALIZATION ---
 
 
