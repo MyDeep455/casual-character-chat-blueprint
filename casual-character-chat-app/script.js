@@ -1449,11 +1449,12 @@ function historyForPrompt(history) {
 /* ===========================================================================
  * DICE ROLLS
  * ===========================================================================
- * "/roll" at the start of a message rolls one 20-sided dice: a number from 1
- * to 20, said in plain words so both the user and the model can read it. The
- * result is sent as the user's message and the character reacts to it. Text
- * after "/roll" is the user's action, sent with the result in front of it so
- * the model plays out how it goes.
+ * Roll Dice in the ⋯ menu, or "/roll" at the start of a message, rolls one
+ * 20-sided dice. The result is sent as the user's message in plain words -
+ * how good the roll was and that whatever happens next goes that well - and
+ * the model decides what that next thing is: the moment at hand, or something
+ * new. Text typed after "/roll" is not advertised, but it is sent on under the
+ * result rather than lost.
  * ======================================================================== */
 
 function parseDiceCommand(input) {
@@ -1476,17 +1477,19 @@ function rollDice(random = diceRandom) {
     return 1 + Math.floor(random() * 20);
 }
 
-// How good a roll is, in words: the same bands for the chat and the animation.
+// How good a roll is and how the next thing goes, in words: the same bands
+// for the chat, the model and the animation.
 function describeDiceRoll(roll) {
-    if (roll === 20) return 'a perfect roll!';
-    if (roll === 1) return 'the worst possible roll!';
-    if (roll >= 14) return 'a good roll';
-    if (roll >= 8) return 'an average roll';
-    return 'a bad roll';
+    if (roll === 20) return { verdict: 'a perfect roll!', outcome: 'goes brilliantly' };
+    if (roll === 1) return { verdict: 'the worst possible roll!', outcome: 'goes terribly' };
+    if (roll >= 14) return { verdict: 'a good roll.', outcome: 'goes well' };
+    if (roll >= 8) return { verdict: 'an average roll.', outcome: 'goes partly well, partly badly' };
+    return { verdict: 'a bad roll.', outcome: 'goes badly' };
 }
 
 function formatDiceResult(roll) {
-    return `🎲 Rolled ${roll} out of 20 — ${describeDiceRoll(roll)}`;
+    const { verdict, outcome } = describeDiceRoll(roll);
+    return `🎲 Rolled ${roll} out of 20 — ${verdict} What happens next ${outcome}.`;
 }
 
 /* ===========================================================================
@@ -4501,7 +4504,7 @@ function showDiceRoll(roll) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const nat20 = roll === 20;
     const nat1 = roll === 1;
-    const verdict = describeDiceRoll(roll).replace(/^(a|an|the) /, '');
+    const verdict = describeDiceRoll(roll).verdict.replace(/^(a|an|the) /, '').replace(/\.$/, '');
     const totalLine = verdict.charAt(0).toUpperCase() + verdict.slice(1);
     const landAt = reduced ? 0 : DICE_LAND_MS;
     // Stand-in numbers while the dice tumbles.
@@ -4582,10 +4585,13 @@ function showDiceRoll(roll) {
     return landedPromise;
 }
 
-async function handleChatSubmit(type, { autoTurn = false } = {}) {
+// diceOnly: Roll Dice in the menu. It sends just the roll and leaves whatever
+// is typed in the message box where it is.
+async function handleChatSubmit(type, { autoTurn = false, diceOnly = false } = {}) {
     let rolledDice = false;
+    let diceMessage = null;
     if (!autoTurn) {
-        const dice = parseDiceCommand(messageInput.value);
+        const dice = diceOnly ? { text: '' } : parseDiceCommand(messageInput.value);
         if (dice) {
             // The box still holds the command while the dice tumble, and a
             // second Enter must not roll again.
@@ -4594,7 +4600,7 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
             const rollLine = formatDiceResult(roll);
             await showDiceRoll(roll);
             rolledDice = true;
-            messageInput.value = dice.text ? `${rollLine}\n${dice.text}` : rollLine;
+            diceMessage = dice.text ? `${rollLine}\n${dice.text}` : rollLine;
         }
     }
     // Set before the message box is focused below, since that focus fires the
@@ -4605,8 +4611,8 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
     // round in flight matters as much as hiding the bar: its answer used to
     // arrive mid-stream and reopen the bar over the reply being written.
     cancelReplyOptions();
-    const userMessageRaw = autoTurn ? '' : messageInput.value.trim();
-    if (!autoTurn) {
+    const userMessageRaw = autoTurn ? '' : (diceMessage ?? messageInput.value.trim());
+    if (!autoTurn && !diceOnly) {
         messageInput.value = '';
         clearChatDraft();
         stopVoiceInput({ discard: true });
@@ -13863,21 +13869,18 @@ editorTextareasToResize.forEach(id => {
             case 'bookmarks': openChatSearch({ bookmarksOnly: true }); break;
             case 'stats': openChatStats(); break;
             case 'autoplay': if (autoPlayState.running) stopAutoPlay(); else startAutoPlay(); break;
-            case 'dice': prefillDiceRoll(); break;
+            case 'dice': rollDiceFromMenu(); break;
             case 'shortcuts': openShortcuts(); break;
         }
     });
 
-    function prefillDiceRoll() {
-        const typed = messageInput.value.trim();
-        if (!/^\/roll\b/i.test(typed)) {
-            messageInput.value = typed ? `/roll ${typed}` : '/roll ';
+    function rollDiceFromMenu() {
+        if (diceRollShowing) return;
+        if (chatTurnInProgress || currentStreamController || autoPlayState.running) {
+            showChatToast('🎲 Wait until the reply is finished, then roll.');
+            return;
         }
-        autoResizeTextarea({ target: messageInput });
-        scheduleChatDraftSave();
-        messageInput.focus();
-        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
-        showChatToast('🎲 Press Enter to roll a number from 1 to 20, or first add what you try to do. The character reacts to the result.');
+        handleChatSubmit('dialog', { diceOnly: true });
     }
 
     // ── Search ──

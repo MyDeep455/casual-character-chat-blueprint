@@ -9803,12 +9803,8 @@ mark.highlight.current-match {
                 <button type="button" class="chat-menu-info-btn" id="dice-info-btn" aria-label="What does Roll Dice do?" title="What does this do?" aria-expanded="false" aria-controls="dice-info">?</button>
             </div>
             <div id="dice-info" class="chat-menu-info hidden" role="note">
-                <p>Rolls a 20-sided dice: a number from 1 to 20. The AI doesn't choose it, so luck decides how things go. The higher, the better: 20 is a perfect roll, 1 the worst.</p>
-                <ul>
-                    <li><code>/roll</code> just rolls</li>
-                    <li><code>/roll I pick the lock</code>: the character plays out how well it goes</li>
-                </ul>
-                <p>The result is sent to the chat right away and the character reacts to it.</p>
+                <p>Rolls a 20-sided dice. The higher the number, the better whatever happens next goes. The character decides what that is.</p>
+                <p>You can also type <code>/roll</code> in the message box.</p>
             </div>
             <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
             <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
@@ -10395,7 +10391,7 @@ mark.highlight.current-match {
             <div class="shortcut-row"><span class="shortcut-keys"><kbd>F</kbd></span><span>Fullscreen</span></div>
             <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span>Show this list</span></div>
         </div>
-        <p class="shortcuts-hint">🎲 Type <code>/roll</code> to roll a number from 1 to 20. Add text after it to act on the roll.</p>
+        <p class="shortcuts-hint">🎲 Type <code>/roll</code> to roll a 20-sided dice.</p>
         <div class="form-buttons">
             <button type="button" id="close-shortcuts-btn">Close</button>
         </div>
@@ -20945,11 +20941,12 @@ function historyForPrompt(history) {
 /* ===========================================================================
  * DICE ROLLS
  * ===========================================================================
- * "/roll" at the start of a message rolls one 20-sided dice: a number from 1
- * to 20, said in plain words so both the user and the model can read it. The
- * result is sent as the user's message and the character reacts to it. Text
- * after "/roll" is the user's action, sent with the result in front of it so
- * the model plays out how it goes.
+ * Roll Dice in the ⋯ menu, or "/roll" at the start of a message, rolls one
+ * 20-sided dice. The result is sent as the user's message in plain words -
+ * how good the roll was and that whatever happens next goes that well - and
+ * the model decides what that next thing is: the moment at hand, or something
+ * new. Text typed after "/roll" is not advertised, but it is sent on under the
+ * result rather than lost.
  * ======================================================================== */
 
 function parseDiceCommand(input) {
@@ -20972,17 +20969,19 @@ function rollDice(random = diceRandom) {
     return 1 + Math.floor(random() * 20);
 }
 
-// How good a roll is, in words: the same bands for the chat and the animation.
+// How good a roll is and how the next thing goes, in words: the same bands
+// for the chat, the model and the animation.
 function describeDiceRoll(roll) {
-    if (roll === 20) return 'a perfect roll!';
-    if (roll === 1) return 'the worst possible roll!';
-    if (roll >= 14) return 'a good roll';
-    if (roll >= 8) return 'an average roll';
-    return 'a bad roll';
+    if (roll === 20) return { verdict: 'a perfect roll!', outcome: 'goes brilliantly' };
+    if (roll === 1) return { verdict: 'the worst possible roll!', outcome: 'goes terribly' };
+    if (roll >= 14) return { verdict: 'a good roll.', outcome: 'goes well' };
+    if (roll >= 8) return { verdict: 'an average roll.', outcome: 'goes partly well, partly badly' };
+    return { verdict: 'a bad roll.', outcome: 'goes badly' };
 }
 
 function formatDiceResult(roll) {
-    return `🎲 Rolled ${roll} out of 20 — ${describeDiceRoll(roll)}`;
+    const { verdict, outcome } = describeDiceRoll(roll);
+    return `🎲 Rolled ${roll} out of 20 — ${verdict} What happens next ${outcome}.`;
 }
 
 /* ===========================================================================
@@ -23997,7 +23996,7 @@ function showDiceRoll(roll) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const nat20 = roll === 20;
     const nat1 = roll === 1;
-    const verdict = describeDiceRoll(roll).replace(/^(a|an|the) /, '');
+    const verdict = describeDiceRoll(roll).verdict.replace(/^(a|an|the) /, '').replace(/\.$/, '');
     const totalLine = verdict.charAt(0).toUpperCase() + verdict.slice(1);
     const landAt = reduced ? 0 : DICE_LAND_MS;
     // Stand-in numbers while the dice tumbles.
@@ -24078,10 +24077,13 @@ function showDiceRoll(roll) {
     return landedPromise;
 }
 
-async function handleChatSubmit(type, { autoTurn = false } = {}) {
+// diceOnly: Roll Dice in the menu. It sends just the roll and leaves whatever
+// is typed in the message box where it is.
+async function handleChatSubmit(type, { autoTurn = false, diceOnly = false } = {}) {
     let rolledDice = false;
+    let diceMessage = null;
     if (!autoTurn) {
-        const dice = parseDiceCommand(messageInput.value);
+        const dice = diceOnly ? { text: '' } : parseDiceCommand(messageInput.value);
         if (dice) {
             // The box still holds the command while the dice tumble, and a
             // second Enter must not roll again.
@@ -24090,7 +24092,7 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
             const rollLine = formatDiceResult(roll);
             await showDiceRoll(roll);
             rolledDice = true;
-            messageInput.value = dice.text ? `${rollLine}\n${dice.text}` : rollLine;
+            diceMessage = dice.text ? `${rollLine}\n${dice.text}` : rollLine;
         }
     }
     // Set before the message box is focused below, since that focus fires the
@@ -24101,8 +24103,8 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
     // round in flight matters as much as hiding the bar: its answer used to
     // arrive mid-stream and reopen the bar over the reply being written.
     cancelReplyOptions();
-    const userMessageRaw = autoTurn ? '' : messageInput.value.trim();
-    if (!autoTurn) {
+    const userMessageRaw = autoTurn ? '' : (diceMessage ?? messageInput.value.trim());
+    if (!autoTurn && !diceOnly) {
         messageInput.value = '';
         clearChatDraft();
         stopVoiceInput({ discard: true });
@@ -33359,21 +33361,18 @@ editorTextareasToResize.forEach(id => {
             case 'bookmarks': openChatSearch({ bookmarksOnly: true }); break;
             case 'stats': openChatStats(); break;
             case 'autoplay': if (autoPlayState.running) stopAutoPlay(); else startAutoPlay(); break;
-            case 'dice': prefillDiceRoll(); break;
+            case 'dice': rollDiceFromMenu(); break;
             case 'shortcuts': openShortcuts(); break;
         }
     });
 
-    function prefillDiceRoll() {
-        const typed = messageInput.value.trim();
-        if (!/^\/roll\b/i.test(typed)) {
-            messageInput.value = typed ? `/roll ${typed}` : '/roll ';
+    function rollDiceFromMenu() {
+        if (diceRollShowing) return;
+        if (chatTurnInProgress || currentStreamController || autoPlayState.running) {
+            showChatToast('🎲 Wait until the reply is finished, then roll.');
+            return;
         }
-        autoResizeTextarea({ target: messageInput });
-        scheduleChatDraftSave();
-        messageInput.focus();
-        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
-        showChatToast('🎲 Press Enter to roll a number from 1 to 20, or first add what you try to do. The character reacts to the result.');
+        handleChatSubmit('dialog', { diceOnly: true });
     }
 
     // ── Search ──
@@ -35364,7 +35363,7 @@ No one else, including the developer, can access your characters or conversation
                 <li><strong>★ Bookmarks:</strong> Opens the search bar showing only your bookmarked messages. The number next to it is how many this chat has.</li>
                 <li><strong>📊 Chat Stats:</strong> Messages and words (yours and the AI's), when the chat started, bookmarks, generated images, the cost so far, and your milestones.</li>
                 <li><strong>▶️ Let Them Talk:</strong> Only appears in chats with at least two characters. See <em>Letting the Characters Talk</em> in the Group Chats section.</li>
-                <li><strong>🎲 Roll Dice:</strong> Puts <code>/roll</code> into the message box for you. See <em>Rolling Dice</em> below.</li>
+                <li><strong>🎲 Roll Dice:</strong> Rolls a 20-sided dice right away. See <em>Rolling Dice</em> below.</li>
                 <li><strong>🔃 Quick-Swap Character:</strong> Opens a searchable list of all your other characters. Clicking one instantly moves the entire current chat session — including its full message history — to that character, then opens the chat with them immediately. This is useful when you want to re-assign an ongoing story to a different character without going back to the main screen and recreating the chat manually.</li>
                 <li><strong>⌨️ Keyboard Shortcuts:</strong> Lists every shortcut (computer only).</li>
             </ul>
@@ -35443,12 +35442,7 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Stopping a Response:</strong> While the AI is generating a new message, a red stop button (🟥) will appear in the text input area. Clicking this immediately cancels the request, which is useful if the AI seems to be taking too long or you change your mind. On a computer, <code>Esc</code> does the same.</li>
         <li><strong>🎤 Voice Input:</strong> The microphone in the corner of the message box lets you speak instead of type. Click it, allow microphone access the first time, and talk — your words appear in the box as you speak, after anything you had already typed. Click it again to stop, then check the text and send it as usual. It uses your browser's own speech recognition in your browser's language, so it only appears in browsers that have one (such as Chrome, Edge and Safari; Firefox has none).</li>
         <li><strong>Unsent Messages Are Kept:</strong> Whatever you type but don't send stays in that chat's message box — even when you switch to another chat, close the tab or reload. Each chat keeps its own.</li>
-        <li><strong>🎲 Rolling Dice:</strong> Start a message with <code>/roll</code> to roll a 20-sided dice. You get a random number from 1 to 20 — the higher, the better — and the result appears in the chat in plain words, e.g. <em>🎲 Rolled 14 out of 20 — a good roll</em>. A 20 is a perfect roll and a 1 the worst possible one. The AI reads the same line, so it knows how well things went.
-            <ul>
-                <li>The result is sent as your message right away, and the character answers it — you see the roll and then how things turn out.</li>
-                <li>Add your action after it (<code>/roll I try to pick the lock</code>) and the result is sent with your action behind it, so the AI plays out how well it goes.</li>
-            </ul>
-        </li>
+        <li><strong>🎲 Rolling Dice:</strong> Choose <strong>🎲 Roll Dice</strong> in the <strong>⋯</strong> menu, or type <code>/roll</code> and send it. A 20-sided dice is rolled and the result is sent to the chat, e.g. <em>🎲 Rolled 14 out of 20 — a good roll. What happens next goes well.</em> The higher the number, the better things go. The character then decides what happens: it may carry on with the moment at hand or bring in something new.</li>
     </ul>
 
     <h3>🔍 Searching Your Chats</h3>
