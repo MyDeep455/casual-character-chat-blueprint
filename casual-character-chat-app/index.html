@@ -161,13 +161,12 @@
                 <button type="button" class="chat-menu-info-btn" id="dice-info-btn" aria-label="What does Roll Dice do?" title="What does this do?" aria-expanded="false" aria-controls="dice-info">?</button>
             </div>
             <div id="dice-info" class="chat-menu-info hidden" role="note">
-                <p>Rolls real dice in the app. The AI doesn't choose the number, so luck decides how things go.</p>
+                <p>Rolls a 20-sided dice: a number from 1 to 20. The AI doesn't choose it, so luck decides how things go. The higher, the better: 20 is a perfect roll, 1 the worst.</p>
                 <ul>
-                    <li><code>/roll</code> rolls one 20-sided die</li>
-                    <li><code>/roll 2d6+3</code> rolls two 6-sided dice and adds 3</li>
-                    <li><code>/roll 1d20 I pick the lock</code>: the character plays out how well it goes</li>
+                    <li><code>/roll</code> just rolls</li>
+                    <li><code>/roll I pick the lock</code>: the character plays out how well it goes</li>
                 </ul>
-                <p>Rolled without an action, the result is only posted. Send an empty message to let the character react. On a d20, a 20 is a critical success and a 1 a fumble.</p>
+                <p>The result is sent to the chat right away and the character reacts to it.</p>
             </div>
             <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
             <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
@@ -754,7 +753,7 @@
             <div class="shortcut-row"><span class="shortcut-keys"><kbd>F</kbd></span><span>Fullscreen</span></div>
             <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span>Show this list</span></div>
         </div>
-        <p class="shortcuts-hint">🎲 Type <code>/roll 1d20</code> or <code>/roll 2d6+3</code> to roll dice. Add text after it to act on the roll.</p>
+        <p class="shortcuts-hint">🎲 Type <code>/roll</code> to roll a number from 1 to 20. Add text after it to act on the roll.</p>
         <div class="form-buttons">
             <button type="button" id="close-shortcuts-btn">Close</button>
         </div>

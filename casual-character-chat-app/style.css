@@ -9235,11 +9235,6 @@ mark.chat-search-hit,
 .dice-roll-value[data-digits="4"],
 .dice-roll-value[data-digits="5"] { font-size: calc(var(--die-size) * 0.15); }
 
-.dice-roll-die.is-d6 .dice-roll-value {
-    left: 46%;
-    top: 46%;
-}
-
 @keyframes dice-tumble {
     0% { transform: translate(var(--from-x), var(--from-y)) rotate(var(--spin)) scale(0.5); opacity: 0; }
     12% { opacity: 1; }

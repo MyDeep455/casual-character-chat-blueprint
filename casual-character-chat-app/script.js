@@ -1449,27 +1449,21 @@ function historyForPrompt(history) {
 /* ===========================================================================
  * DICE ROLLS
  * ===========================================================================
- * "/roll" at the start of a message rolls real dice: "/roll" alone is a d20,
- * "/roll 2d6+3" anything else. Text after the dice is sent on as the user's
- * action, with the result in front of it so the model plays the outcome. A
- * bare roll is only posted, so the user can decide what to do with it.
+ * "/roll" at the start of a message rolls one 20-sided dice: a number from 1
+ * to 20, said in plain words so both the user and the model can read it. The
+ * result is sent as the user's message and the character reacts to it. Text
+ * after "/roll" is the user's action, sent with the result in front of it so
+ * the model plays out how it goes.
  * ======================================================================== */
 
-const DICE_MAX_COUNT = 100;
-const DICE_MAX_SIDES = 1000;
-
 function parseDiceCommand(input) {
-    const match = String(input || '').trim()
-        .match(/^\/roll\b(?:\s+(\d{0,3})d(\d{1,4})(?:\s*([+-])\s*(\d{1,5}))?(?=\s|$))?\s*([\s\S]*)$/i);
+    const match = String(input || '').trim().match(/^\/roll\b\s*([\s\S]*)$/i);
     if (!match) return null;
-    const hasDice = match[2] !== undefined;
-    const count = hasDice ? parseInt(match[1] || '1', 10) : 1;
-    const sides = hasDice ? parseInt(match[2], 10) : 20;
-    const modifier = match[3] ? (match[3] === '-' ? -1 : 1) * parseInt(match[4], 10) : 0;
-    if (count < 1 || count > DICE_MAX_COUNT || sides < 2 || sides > DICE_MAX_SIDES) {
-        return { error: `Dice go from 1 to ${DICE_MAX_COUNT} dice with 2 to ${DICE_MAX_SIDES} sides, e.g. /roll 2d6+3.` };
-    }
-    return { count, sides, modifier, text: (match[5] || '').trim() };
+    // Dice formulas ("1d20", "2d6+3") were once how a roll was written. They
+    // may still be typed from habit or sit in a saved draft; it is always one
+    // 20-sided dice now, so they are dropped rather than sent on as the action.
+    const text = match[1].replace(/^\d{0,3}d\d{1,4}(?:\s*[+-]\s*\d{1,5})?(?=\s|$)/i, '').trim();
+    return { text };
 }
 
 function diceRandom() {
@@ -1478,23 +1472,21 @@ function diceRandom() {
     return Math.random();
 }
 
-function rollDice(spec, random = diceRandom) {
-    const rolls = Array.from({ length: spec.count }, () => 1 + Math.floor(random() * spec.sides));
-    return { rolls, total: rolls.reduce((sum, roll) => sum + roll, 0) + spec.modifier };
+function rollDice(random = diceRandom) {
+    return 1 + Math.floor(random() * 20);
 }
 
-function formatDiceResult(spec, result) {
-    const sign = spec.modifier > 0 ? '+' : '-';
-    const notation = `${spec.count}d${spec.sides}${spec.modifier ? `${sign}${Math.abs(spec.modifier)}` : ''}`;
-    const parts = spec.count > 1 || spec.modifier
-        ? ` (${result.rolls.join(' + ')}${spec.modifier ? ` ${sign} ${Math.abs(spec.modifier)}` : ''})`
-        : '';
-    let flourish = '';
-    if (spec.count === 1 && spec.sides === 20) {
-        if (result.rolls[0] === 20) flourish = ' - natural 20!';
-        else if (result.rolls[0] === 1) flourish = ' - natural 1!';
-    }
-    return `🎲 Rolled ${notation}: ${result.total}${parts}${flourish}`;
+// How good a roll is, in words: the same bands for the chat and the animation.
+function describeDiceRoll(roll) {
+    if (roll === 20) return 'a perfect roll!';
+    if (roll === 1) return 'the worst possible roll!';
+    if (roll >= 14) return 'a good roll';
+    if (roll >= 8) return 'an average roll';
+    return 'a bad roll';
+}
+
+function formatDiceResult(roll) {
+    return `🎲 Rolled ${roll} out of 20 — ${describeDiceRoll(roll)}`;
 }
 
 /* ===========================================================================
@@ -1720,7 +1712,7 @@ async function resetAppSettings() {
     const SOUND_EFFECTS = [
         { id: 'reply', label: 'Reply arrives' },
         { id: 'send', label: 'Message sent' },
-        { id: 'dice-nat20', label: 'Natural 20 roll' },
+        { id: 'dice-nat20', label: 'Perfect dice roll (20)' },
         { id: 'milestone', label: 'Milestone reached' },
         { id: 'bookmark', label: 'Bookmark added' },
         { id: 'memory', label: 'Memory saved' },
@@ -4481,20 +4473,13 @@ async function addNewMessage(rawMessage, sender, type = 'dialog', forceScroll = 
 
 // Matches the dice-tumble animation in style.css.
 const DICE_LAND_MS = 760;
-const DICE_STAGGER_MS = 70;
 const DICE_HOLD_MS = 1000;
 // The Natural 20 sound's rising notes begin 0.34 s in. Started this much
 // before the landing, they ring out just as the die comes to rest.
 const DICE_NAT20_SOUND_LEAD_MS = 340;
 let diceRollShowing = false;
 
-function diceFaceSvg(sides) {
-    if (sides === 6) {
-        return `<svg viewBox="0 0 100 100" aria-hidden="true">
-            <rect class="dice-face-darker" x="14" y="14" width="78" height="78" rx="16"/>
-            <rect class="dice-face-front" x="6" y="6" width="78" height="78" rx="16"/>
-        </svg>`;
-    }
+function diceFaceSvg() {
     // A d20 seen face-on: the front triangle and the nine faces around it.
     const faces = [
         ['front', '50,21 79,69 21,69'],
@@ -4512,24 +4497,15 @@ function diceFaceSvg(sides) {
         .map(([shade, points]) => `<polygon class="dice-face-${shade}" points="${points}"/>`).join('')}</svg>`;
 }
 
-function showDiceRoll(spec, result) {
+function showDiceRoll(roll) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // Up to four dice each show their own roll; more than that, one die shows the total.
-    const showEach = spec.count <= 4;
-    const values = showEach ? result.rolls : [result.total];
-    const isD20 = spec.count === 1 && spec.sides === 20;
-    const nat20 = isD20 && result.rolls[0] === 20;
-    const nat1 = isD20 && result.rolls[0] === 1;
-    const sign = spec.modifier > 0 ? '+' : '-';
-    const notation = `${spec.count}d${spec.sides}${spec.modifier ? `${sign}${Math.abs(spec.modifier)}` : ''}`;
-    const totalLine = nat20 ? 'Natural 20!'
-        : nat1 ? 'Natural 1'
-        : showEach && (spec.count > 1 || spec.modifier) ? `Total ${result.total}` : '';
-    const landAt = reduced ? 0 : DICE_LAND_MS + (values.length - 1) * DICE_STAGGER_MS;
-    // Stand-in numbers while the dice tumble, from the range they can show.
-    const low = showEach ? 1 : spec.count + spec.modifier;
-    const high = showEach ? spec.sides : spec.count * spec.sides + spec.modifier;
-    const randomFace = () => low + Math.floor(Math.random() * (high - low + 1));
+    const nat20 = roll === 20;
+    const nat1 = roll === 1;
+    const verdict = describeDiceRoll(roll).replace(/^(a|an|the) /, '');
+    const totalLine = verdict.charAt(0).toUpperCase() + verdict.slice(1);
+    const landAt = reduced ? 0 : DICE_LAND_MS;
+    // Stand-in numbers while the dice tumbles.
+    const randomFace = () => 1 + Math.floor(Math.random() * 20);
     const between = (a, b) => Math.round(a + Math.random() * (b - a));
 
     const overlay = document.createElement('div');
@@ -4537,27 +4513,26 @@ function showDiceRoll(spec, result) {
     // The roll itself is posted to the chat; this is only the show.
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML = `
-        <div class="dice-roll-stage" style="--dice-count:${values.length}">
-            ${values.map((_, i) => `
-            <div class="dice-roll-die${showEach && spec.sides === 6 ? ' is-d6' : ''}" style="--delay:${i * DICE_STAGGER_MS}ms; --from-x:${between(60, 170) * (Math.random() < 0.5 ? -1 : 1)}px; --from-y:${between(-150, -70)}px; --spin:${between(360, 720) * (Math.random() < 0.5 ? -1 : 1)}deg">
-                ${diceFaceSvg(showEach ? spec.sides : 20)}
+        <div class="dice-roll-stage" style="--dice-count:1">
+            <div class="dice-roll-die" style="--delay:0ms; --from-x:${between(60, 170) * (Math.random() < 0.5 ? -1 : 1)}px; --from-y:${between(-150, -70)}px; --spin:${between(360, 720) * (Math.random() < 0.5 ? -1 : 1)}deg">
+                ${diceFaceSvg()}
                 <span class="dice-roll-value"></span>
-            </div>`).join('')}
+            </div>
             ${nat20 ? `<div class="dice-roll-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg"></i>`).join('')}</div>` : ''}
         </div>
         <div class="dice-roll-caption">
-            <span class="dice-roll-notation">${notation}</span>
-            ${totalLine ? `<span class="dice-roll-total">${totalLine}</span>` : ''}
+            <span class="dice-roll-notation">20-sided dice</span>
+            <span class="dice-roll-total">${totalLine}</span>
         </div>`;
 
-    const dieEls = [...overlay.querySelectorAll('.dice-roll-die')];
-    const landed = values.map(() => false);
-    const setValue = (i, value) => {
-        const el = dieEls[i].querySelector('.dice-roll-value');
-        el.textContent = value;
-        el.dataset.digits = String(value).length;
+    const dieEl = overlay.querySelector('.dice-roll-die');
+    const valueEl = dieEl.querySelector('.dice-roll-value');
+    let landed = false;
+    const setValue = value => {
+        valueEl.textContent = value;
+        valueEl.dataset.digits = String(value).length;
     };
-    values.forEach((value, i) => setValue(i, reduced ? value : randomFace()));
+    setValue(reduced ? roll : randomFace());
     document.body.appendChild(overlay);
     diceRollShowing = true;
     if (nat20) playSound('dice-nat20', { delayMs: Math.max(0, landAt - DICE_NAT20_SOUND_LEAD_MS) });
@@ -4566,17 +4541,17 @@ function showDiceRoll(spec, result) {
     const landedPromise = new Promise(resolve => { resolveLanded = resolve; });
     const timers = [];
     const cycle = reduced ? null : setInterval(() => {
-        landed.forEach((done, i) => { if (!done) setValue(i, randomFace()); });
+        if (!landed) setValue(randomFace());
     }, 60);
-    const landDie = i => {
-        landed[i] = true;
-        setValue(i, values[i]);
-        dieEls[i].classList.add('landed');
+    const landDie = () => {
+        landed = true;
+        setValue(roll);
+        dieEl.classList.add('landed');
     };
     const reveal = () => {
         if (overlay.classList.contains('revealed')) return;
         clearInterval(cycle);
-        landed.forEach((done, i) => { if (!done) landDie(i); });
+        if (!landed) landDie();
         overlay.classList.add('revealed');
         if (nat20) overlay.classList.add('is-crit');
         if (nat1) overlay.classList.add('is-fumble');
@@ -4601,7 +4576,7 @@ function showDiceRoll(spec, result) {
     };
     document.addEventListener('keydown', onKey, true);
     overlay.addEventListener('click', finish);
-    if (!reduced) values.forEach((_, i) => timers.push(setTimeout(() => landDie(i), DICE_LAND_MS + i * DICE_STAGGER_MS)));
+    if (!reduced) timers.push(setTimeout(landDie, DICE_LAND_MS));
     timers.push(setTimeout(reveal, landAt));
     timers.push(setTimeout(finish, landAt + DICE_HOLD_MS));
     return landedPromise;
@@ -4612,28 +4587,14 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
     if (!autoTurn) {
         const dice = parseDiceCommand(messageInput.value);
         if (dice) {
-            if (dice.error) { showErrorAlert(dice.error); return; }
             // The box still holds the command while the dice tumble, and a
             // second Enter must not roll again.
             if (diceRollShowing) return;
-            const result = rollDice(dice);
-            const rollLine = formatDiceResult(dice, result);
-            await showDiceRoll(dice, result);
+            const roll = rollDice();
+            const rollLine = formatDiceResult(roll);
+            await showDiceRoll(roll);
             rolledDice = true;
-            if (!dice.text) {
-                // A bare roll is only posted. The user decides what to do
-                // with it, or sends an empty message to let the AI react.
-                messageInput.value = '';
-                clearChatDraft();
-                autoResizeTextarea({ target: messageInput });
-                hideUndoDeleteFab();
-                cancelReplyOptions();
-                await addNewMessage(rollLine, 'user', 'dialog', true, { dice: true });
-                updateTokenCount();
-                checkChatMilestones(characters[currentCharacterId], characters[currentCharacterId]?.chats?.[currentChatId]);
-                return;
-            }
-            messageInput.value = `${rollLine}\n${dice.text}`;
+            messageInput.value = dice.text ? `${rollLine}\n${dice.text}` : rollLine;
         }
     }
     // Set before the message box is focused below, since that focus fires the
@@ -4677,7 +4638,7 @@ async function handleChatSubmit(type, { autoTurn = false } = {}) {
 
     if (finalUserMessage) {
         if (!rolledDice) playSound('send');
-        await addNewMessage(finalUserMessage, 'user', type, true);
+        await addNewMessage(finalUserMessage, 'user', type, true, rolledDice ? { dice: true } : null);
         messageForAPI = finalUserMessage;
         const isMultiChar = chat.participants && chat.participants.length > 1;
         historyForAPI = historyForPrompt(chat.history.slice(0, -1)).map(msg => {
@@ -13910,13 +13871,13 @@ editorTextareasToResize.forEach(id => {
     function prefillDiceRoll() {
         const typed = messageInput.value.trim();
         if (!/^\/roll\b/i.test(typed)) {
-            messageInput.value = typed ? `/roll 1d20 ${typed}` : '/roll 1d20 ';
+            messageInput.value = typed ? `/roll ${typed}` : '/roll ';
         }
         autoResizeTextarea({ target: messageInput });
         scheduleChatDraftSave();
         messageInput.focus();
         messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
-        showChatToast('🎲 Press Enter to roll. Change it to e.g. /roll 2d6+3, or add your action after it.');
+        showChatToast('🎲 Press Enter to roll a number from 1 to 20, or first add what you try to do. The character reacts to the result.');
     }
 
     // ── Search ──
