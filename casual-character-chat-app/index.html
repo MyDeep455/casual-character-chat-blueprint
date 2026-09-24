@@ -187,15 +187,37 @@
             <button class="mood-option mood-option-clear" data-mood="">✕ No Mood</button>
         </div>
         <button id="particle-btn" title="Ambient Effects">✨</button>
-        <button id="music-btn" title="Background Music">🎵</button>
-        <div id="music-panel" class="hidden">
-            <div class="music-panel-row">
-                <label>Music / Ambience URL:</label>
-                <input type="text" id="music-url-input" placeholder="YouTube or direct audio URL...">
+        <button id="music-btn" title="Background Music" aria-haspopup="dialog" aria-expanded="false">🎵</button>
+        <div id="music-panel" class="hidden" role="dialog" aria-label="Music player">
+            <div class="music-now">
+                <div id="music-now-title" class="music-now-title">Nothing playing</div>
+                <div id="music-now-sub" class="music-now-sub">Add a track below to start.</div>
             </div>
-            <div class="music-panel-row music-panel-btns">
-                <button type="button" id="music-play-btn">▶ Play</button>
-                <button type="button" id="music-stop-btn">⏹ Stop</button>
+            <div class="music-timeline">
+                <span id="music-time-current" class="music-time">0:00</span>
+                <input type="range" id="music-seek" class="music-range" min="0" max="0" step="1" value="0" aria-label="Position in track" disabled>
+                <span id="music-time-total" class="music-time">0:00</span>
+            </div>
+            <div class="music-transport">
+                <button type="button" id="music-shuffle-btn" class="music-icon-btn music-toggle" title="Shuffle: off" aria-label="Shuffle" aria-pressed="false">🔀</button>
+                <button type="button" id="music-prev-btn" class="music-icon-btn" title="Previous track" aria-label="Previous track">⏮</button>
+                <button type="button" id="music-play-btn" class="music-icon-btn music-play-main" title="Play" aria-label="Play">▶</button>
+                <button type="button" id="music-next-btn" class="music-icon-btn" title="Next track" aria-label="Next track">⏭</button>
+                <button type="button" id="music-repeat-btn" class="music-icon-btn music-toggle" title="Repeat: whole playlist" aria-label="Repeat: whole playlist">🔁</button>
+            </div>
+            <div class="music-volume-row">
+                <button type="button" id="music-stop-btn" class="music-icon-btn music-small" title="Stop" aria-label="Stop">⏹</button>
+                <button type="button" id="music-mute-btn" class="music-icon-btn music-small" title="Mute" aria-label="Mute">🔊</button>
+                <input type="range" id="music-volume" class="music-range" min="0" max="100" step="1" value="70" aria-label="Music volume">
+            </div>
+            <div class="music-playlist-head">
+                <span>Playlist</span>
+                <button type="button" id="music-reset-btn" class="music-link-btn hidden" title="Drop the changes made here and use the playlist from the character editor">↺ Use character's playlist</button>
+            </div>
+            <ol id="music-playlist" class="music-playlist"></ol>
+            <div class="music-add-row">
+                <input type="text" id="music-url-input" placeholder="Paste a YouTube or audio URL…" aria-label="Track URL to add">
+                <button type="button" id="music-add-btn">+ Add</button>
             </div>
         </div>
         <button id="chat-memories-btn" title="Chat Memories">🧠</button>
@@ -566,8 +588,8 @@
 <label for="char-narrator-reminder">Narrator Reminder:</label>
 <textarea id="char-narrator-reminder" rows="1" placeholder="Narrator Reminder for this character... (e.g., 'Reply only as an omniscient narrator now.')"></textarea>
 
-<label for="char-music-url">Music / Ambience URL:</label>
-<input type="text" id="char-music-url" placeholder="YouTube or direct audio URL (auto-plays when chat opens)...">
+<label for="char-music-url">Music / Ambience Playlist:</label>
+<textarea id="char-music-url" rows="1" placeholder="YouTube or direct audio URLs, one per line (plays when a chat opens)..."></textarea>
 
                 <label>Scenarios:</label>
 <div id="scenario-editor-list" class="scenario-list-container">

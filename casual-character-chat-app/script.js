@@ -3274,7 +3274,7 @@ chatScreen.style.pointerEvents = 'none';
 
     function showCharacterSelection() {
         stopParticles();
-        if (window._musicFeatureReady) stopMusic();
+        if (window._musicFeatureReady) leaveChatMusic();
         if ('speechSynthesis' in window) speechSynthesis.cancel();
         chatWindow.style.display = 'none';
     void chatWindow.offsetHeight;
@@ -3669,20 +3669,7 @@ if (headerAvatarUrl) {
     updateParticleButton();
     startParticles(getEffectiveParticleEffect(character, chat), fxSavedLevels(character));
     refreshChatSearchAfterRender();
-    const musicUrlInputEl = document.getElementById('music-url-input');
-    if (musicUrlInputEl) {
-        const savedUserUrl = localStorage.getItem(`userMusicUrl:${currentCharacterId}`);
-        const effectiveUrl = (savedUserUrl !== null) ? savedUserUrl : (character.musicUrl || '');
-        musicUrlInputEl.value = effectiveUrl;
-        if (window._musicFeatureReady) {
-    const isNewSession = charId !== musicCurrentCharId || chatId !== musicCurrentChatId;
-    if (isNewSession) {
-        musicCurrentCharId = charId;
-        musicCurrentChatId = chatId;
-        if (effectiveUrl) playMusic(effectiveUrl); else stopMusic();
-    }
-}
-    }
+    if (window._musicFeatureReady) loadChatMusic(charId, chatId);
     if (chatNeedsSave) await saveSingleCharacterToDB(character);
 if (window.__scrollToBottomNextStartChat) {
     setTimeout(() => {
@@ -7082,7 +7069,7 @@ if (editorDisplayUrl) {
   setTimeout(() => {
     const textareasToResize = [
       'card-name', 'char-instructions', 'char-description', 'char-lore',
-      'char-reminder', 'char-narrator-reminder'
+      'char-reminder', 'char-narrator-reminder', 'char-music-url'
     ];
     textareasToResize.forEach(id => {
       const textarea = document.getElementById(id);
@@ -7602,7 +7589,7 @@ async function setActivePersonaForChat(personaId) {
   const tags = document.getElementById('char-tags').value;
   const reminder = document.getElementById('char-reminder').value;
   const narratorReminder = document.getElementById('char-narrator-reminder').value;
-  const musicUrl = document.getElementById('char-music-url').value.trim();
+  const musicUrl = document.getElementById('char-music-url').value.split(/\r?\n/).map(line => line.trim()).filter(Boolean).join('\n');
   const characterIds = cardType === 'world' ? Array.from(worldCharSelectedIds) : [];
   const scenarioEntries = document.querySelectorAll('#scenario-editor-list .scenario-entry');
   const scenarios = [];
@@ -8925,6 +8912,7 @@ const editorFieldsToMonitor = [
   'card-name', 'char-description', 'char-lore', 'char-instructions',
   'char-reminder', 'char-narrator-reminder'
 ];
+document.getElementById('char-music-url')?.addEventListener('input', autoResizeTextarea);
 editorFieldsToMonitor.forEach(id => {
   const element = document.getElementById(id);
   if (element) {
@@ -10121,122 +10109,708 @@ personaEditorAvatarImg.onerror = () => {
     }
 
     // ── Feature B: Background Music ──
+    // The 🎵 panel is a small music player. A chat's music is a playlist: the
+    // character's Music URL field (one URL per line), or the list built in the
+    // panel, which is kept per character in local storage and wins over the
+    // character's. A track is a YouTube video, played in a hidden embed that is
+    // driven through the embed's postMessage API, or a direct audio file.
     const musicBtn = document.getElementById('music-btn');
     const musicPanel = document.getElementById('music-panel');
     const musicUrlInput = document.getElementById('music-url-input');
+    const musicAddBtn = document.getElementById('music-add-btn');
     const musicPlayBtn = document.getElementById('music-play-btn');
     const musicStopBtn = document.getElementById('music-stop-btn');
+    const musicPrevBtn = document.getElementById('music-prev-btn');
+    const musicNextBtn = document.getElementById('music-next-btn');
+    const musicShuffleBtn = document.getElementById('music-shuffle-btn');
+    const musicRepeatBtn = document.getElementById('music-repeat-btn');
+    const musicSeek = document.getElementById('music-seek');
+    const musicTimeCurrent = document.getElementById('music-time-current');
+    const musicTimeTotal = document.getElementById('music-time-total');
+    const musicVolumeSlider = document.getElementById('music-volume');
+    const musicMuteBtn = document.getElementById('music-mute-btn');
+    const musicPlaylistEl = document.getElementById('music-playlist');
+    const musicResetBtn = document.getElementById('music-reset-btn');
+    const musicNowTitle = document.getElementById('music-now-title');
+    const musicNowSub = document.getElementById('music-now-sub');
+
+    const MUSIC_REPEAT_MODES = {
+        all: { icon: '🔁', label: 'Repeat: whole playlist' },
+        one: { icon: '🔂', label: 'Repeat: this track' },
+        off: { icon: '🔁', label: 'Repeat: off' }
+    };
+    const MUSIC_TITLES_KEY = 'cccMusicTitles';
+    const MUSIC_TITLES_MAX = 300;
+    const MUSIC_YT_ID = 'ccc-music';
+
+    let musicPlaylist = [];         // track URLs, in playlist order
+    let musicOrder = [];            // playlist indices in play order (shuffled or not)
+    let musicIndex = -1;            // the selected track; loaded only while a player exists
     let musicAudioEl = null;
     let musicIframeEl = null;
     let musicIsPlaying = false;
-    let musicCurrentCharId = null;  
+    let musicStatus = '';           // an error to show in place of the track position
+    let musicFailures = 0;          // tracks in a row that would not play
+    let musicSeeking = false;       // the timeline is being dragged
+    let musicYt = { ready: false, time: 0, duration: 0, state: null };
+    let musicCurrentCharId = null;
     let musicCurrentChatId = null;
+    let musicShuffle = localStorage.getItem('cccMusicShuffle') === '1';
+    let musicRepeat = MUSIC_REPEAT_MODES[localStorage.getItem('cccMusicRepeat')] ? localStorage.getItem('cccMusicRepeat') : 'all';
+    const savedMusicVolume = parseInt(localStorage.getItem('cccMusicVolume'), 10);
+    let musicVolume = Number.isFinite(savedMusicVolume) ? Math.min(100, Math.max(0, savedMusicVolume)) : 70;
+    let musicVolumeBeforeMute = musicVolume || 70;
+    let musicTitles = {};
+    try { musicTitles = JSON.parse(localStorage.getItem(MUSIC_TITLES_KEY)) || {}; } catch (e) { musicTitles = {}; }
+    const musicTitleRequests = new Set();
 
     function extractYouTubeId(url) {
-        const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/);
+        const m = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|v\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
         return m ? m[1] : null;
     }
 
-    function stopMusic() {
+    function parseMusicList(text) {
+        return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    }
+
+    function formatMusicTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+        const s = Math.floor(seconds);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const ss = String(s % 60).padStart(2, '0');
+        return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+    }
+
+    function musicTrackTitle(url) {
+        const ytId = extractYouTubeId(url);
+        if (ytId) return musicTitles[ytId] || 'YouTube video';
+        try {
+            const u = new URL(url, location.href);
+            const file = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+            return file.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_+/g, ' ').trim() || u.hostname || url;
+        } catch (e) {
+            return url;
+        }
+    }
+
+    function rememberMusicTitle(ytId, title) {
+        if (!ytId || !title || musicTitles[ytId] === title) return;
+        delete musicTitles[ytId];
+        musicTitles[ytId] = title;
+        const ids = Object.keys(musicTitles);
+        ids.slice(0, Math.max(0, ids.length - MUSIC_TITLES_MAX)).forEach(id => delete musicTitles[id]);
+        try { localStorage.setItem(MUSIC_TITLES_KEY, JSON.stringify(musicTitles)); } catch (e) { /* full; the titles are only a nicety */ }
+        renderMusicPanel();
+    }
+
+    // YouTube's oEmbed answers cross-origin requests, file:// pages included,
+    // so a playlist can show real titles before its videos have been played.
+    function fetchMusicTitle(url) {
+        const ytId = extractYouTubeId(url);
+        if (!ytId || musicTitles[ytId] || musicTitleRequests.has(ytId)) return;
+        musicTitleRequests.add(ytId);
+        fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + ytId)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.title) rememberMusicTitle(ytId, data.title); })
+            .catch(() => {});
+    }
+
+    function musicHasTrack() {
+        return !!(musicAudioEl || musicIframeEl);
+    }
+
+    function musicLoopsItself() {
+        return musicRepeat === 'one' || (musicRepeat === 'all' && musicPlaylist.length === 1);
+    }
+
+    function rebuildMusicOrder() {
+        const order = musicPlaylist.map((_, i) => i);
+        if (musicShuffle) {
+            for (let i = order.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [order[i], order[j]] = [order[j], order[i]];
+            }
+            // The track that is on stays on: the shuffled order starts from it.
+            const at = order.indexOf(musicIndex);
+            if (at > 0) order.unshift(...order.splice(at, 1));
+        }
+        musicOrder = order;
+    }
+
+    function saveMusicList() {
+        if (!musicCurrentCharId) return;
+        localStorage.setItem(`userMusicUrl:${musicCurrentCharId}`, musicPlaylist.join('\n'));
+    }
+
+    function characterMusicList(charId) {
+        return parseMusicList(characters[charId]?.musicUrl);
+    }
+
+    function savedMusicList(charId) {
+        const saved = localStorage.getItem(`userMusicUrl:${charId}`);
+        return saved !== null ? parseMusicList(saved) : characterMusicList(charId);
+    }
+
+    function setMusicPlaying(on) {
+        musicIsPlaying = on;
+        if (musicPlayBtn) {
+            musicPlayBtn.textContent = on ? '⏸' : '▶';
+            musicPlayBtn.title = on ? 'Pause' : 'Play';
+            musicPlayBtn.setAttribute('aria-label', musicPlayBtn.title);
+        }
+        musicBtn?.classList.toggle('is-playing', on);
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = on ? 'playing' : (musicHasTrack() ? 'paused' : 'none');
+        renderMusicNowPlaying();
+    }
+
+    function musicTimes() {
+        if (musicAudioEl) return { time: musicAudioEl.currentTime || 0, duration: musicAudioEl.duration };
+        if (musicIframeEl) return { time: musicYt.time, duration: musicYt.duration };
+        return { time: 0, duration: 0 };
+    }
+
+    function paintMusicSeek(time, duration) {
+        const pct = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
+        musicSeek.style.setProperty('--music-progress', `${pct}%`);
+        musicTimeCurrent.textContent = formatMusicTime(time);
+    }
+
+    function updateMusicTimeline() {
+        if (!musicSeek || musicSeeking || musicPanel?.classList.contains('hidden')) return;
+        const { time, duration } = musicTimes();
+        const seekable = Number.isFinite(duration) && duration > 0;
+        musicSeek.disabled = !seekable;
+        musicSeek.max = seekable ? String(duration) : '0';
+        musicSeek.value = seekable ? String(Math.min(time, duration)) : '0';
+        paintMusicSeek(time, seekable ? duration : 0);
+        musicTimeTotal.textContent = seekable ? formatMusicTime(duration)
+            : (musicAudioEl && duration === Infinity ? 'LIVE' : '0:00');
+    }
+
+    function renderMusicNowPlaying() {
+        if (!musicNowTitle || !musicNowSub) return;
+        const url = musicPlaylist[musicIndex];
+        musicNowTitle.textContent = url ? musicTrackTitle(url) : 'Nothing playing';
+        musicNowTitle.title = url || '';
+        let sub;
+        if (musicStatus) sub = musicStatus;
+        else if (!musicPlaylist.length) sub = 'Add a track below to start.';
+        else if (!url) sub = `${musicPlaylist.length} track${musicPlaylist.length === 1 ? '' : 's'}`;
+        else {
+            sub = `Track ${musicIndex + 1} of ${musicPlaylist.length}`;
+            if (!musicHasTrack()) sub += ' · Stopped';
+            else if (!musicIsPlaying) sub += ' · Paused';
+        }
+        musicNowSub.textContent = sub;
+        musicNowSub.classList.toggle('is-error', !!musicStatus);
+        musicBtn?.setAttribute('title', url && musicHasTrack() ? `Background Music — ${musicTrackTitle(url)}` : 'Background Music');
+        const noTracks = !musicPlaylist.length;
+        [musicPlayBtn, musicPrevBtn, musicNextBtn, musicStopBtn].forEach(b => { if (b) b.disabled = noTracks; });
+        if ('mediaSession' in navigator && typeof MediaMetadata === 'function') {
+            navigator.mediaSession.metadata = url && musicHasTrack() ? new MediaMetadata({ title: musicTrackTitle(url), artist: 'Casual Character Chat' }) : null;
+        }
+    }
+
+    function renderMusicControls() {
+        if (musicShuffleBtn) {
+            musicShuffleBtn.classList.toggle('active', musicShuffle);
+            musicShuffleBtn.setAttribute('aria-pressed', String(musicShuffle));
+            musicShuffleBtn.title = musicShuffle ? 'Shuffle: on' : 'Shuffle: off';
+        }
+        if (musicRepeatBtn) {
+            const mode = MUSIC_REPEAT_MODES[musicRepeat];
+            musicRepeatBtn.textContent = mode.icon;
+            musicRepeatBtn.title = mode.label;
+            musicRepeatBtn.setAttribute('aria-label', mode.label);
+            musicRepeatBtn.classList.toggle('active', musicRepeat !== 'off');
+        }
+        if (musicVolumeSlider) {
+            musicVolumeSlider.value = String(musicVolume);
+            musicVolumeSlider.style.setProperty('--music-progress', `${musicVolume}%`);
+        }
+        if (musicMuteBtn) {
+            musicMuteBtn.textContent = musicVolume === 0 ? '🔇' : musicVolume < 34 ? '🔈' : musicVolume < 67 ? '🔉' : '🔊';
+            musicMuteBtn.title = musicVolume === 0 ? 'Unmute' : 'Mute';
+        }
+        if (musicResetBtn) {
+            const charId = musicCurrentCharId;
+            const own = charId ? localStorage.getItem(`userMusicUrl:${charId}`) : null;
+            const differs = own !== null && parseMusicList(own).join('\n') !== characterMusicList(charId).join('\n');
+            musicResetBtn.classList.toggle('hidden', !differs);
+        }
+    }
+
+    function renderMusicPlaylist() {
+        if (!musicPlaylistEl) return;
+        musicPlaylistEl.textContent = '';
+        if (!musicPlaylist.length) {
+            const empty = document.createElement('li');
+            empty.className = 'music-playlist-empty';
+            empty.textContent = 'No tracks yet. Paste a YouTube link or a direct audio link (.mp3, .ogg, …) below.';
+            musicPlaylistEl.appendChild(empty);
+            return;
+        }
+        musicPlaylist.forEach((url, i) => {
+            fetchMusicTitle(url);
+            const li = document.createElement('li');
+            const isCurrent = i === musicIndex;
+            li.className = 'music-track' + (isCurrent ? ' current' : '') + (isCurrent && musicIsPlaying ? ' playing' : '');
+
+            const main = document.createElement('button');
+            main.type = 'button';
+            main.className = 'music-track-main';
+            main.title = url;
+            main.dataset.action = 'play';
+            main.dataset.index = String(i);
+            const num = document.createElement('span');
+            num.className = 'music-track-num';
+            num.textContent = isCurrent && musicHasTrack() ? (musicIsPlaying ? '♪' : '⏸') : String(i + 1);
+            const name = document.createElement('span');
+            name.className = 'music-track-title';
+            name.textContent = musicTrackTitle(url);
+            main.append(num, name);
+            li.appendChild(main);
+
+            [['up', '↑', 'Move up', i === 0],
+             ['down', '↓', 'Move down', i === musicPlaylist.length - 1],
+             ['remove', '✕', 'Remove from playlist', false]].forEach(([action, text, label, disabled]) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = `music-track-btn music-track-${action}`;
+                b.textContent = text;
+                b.title = label;
+                b.setAttribute('aria-label', label);
+                b.dataset.action = action;
+                b.dataset.index = String(i);
+                b.disabled = disabled;
+                li.appendChild(b);
+            });
+            musicPlaylistEl.appendChild(li);
+        });
+    }
+
+    function renderMusicPanel() {
+        renderMusicNowPlaying();
+        renderMusicControls();
+        if (!musicPanel?.classList.contains('hidden')) {
+            renderMusicPlaylist();
+            updateMusicTimeline();
+        }
+    }
+
+    function teardownMusicPlayer() {
         if (musicAudioEl) {
-            musicAudioEl.pause();
-            musicAudioEl.currentTime = 0;
-            musicAudioEl.src = '';
-            musicAudioEl.remove();
+            const audio = musicAudioEl;
             musicAudioEl = null;
+            audio.pause();
+            audio.removeAttribute('src');
+            audio.load();
+            audio.remove();
         }
         if (musicIframeEl) {
-            musicIframeEl.src = '';
-            musicIframeEl.remove();
+            const iframe = musicIframeEl;
             musicIframeEl = null;
+            iframe.src = 'about:blank';
+            iframe.remove();
         }
-        musicIsPlaying = false;
-        if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
+        musicYt = { ready: false, time: 0, duration: 0, state: null };
+    }
+
+    function stopMusic() {
+        teardownMusicPlayer();
+        musicStatus = '';
+        setMusicPlaying(false);
+        renderMusicPanel();
+    }
+
+    // Leaving the chat screen: the next chat opened starts its own music again.
+    function leaveChatMusic() {
+        stopMusic();
+        musicCurrentCharId = null;
+        musicCurrentChatId = null;
+    }
+
+    function musicYtSend(func, args = []) {
+        musicIframeEl?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args, id: MUSIC_YT_ID, channel: 'widget' }), '*');
+    }
+
+    // The embed only reports its state once asked to, and the first request
+    // can arrive before its script listens, so it is repeated until answered.
+    function listenToMusicEmbed(iframe) {
+        let tries = 0;
+        const ask = () => {
+            if (iframe !== musicIframeEl || musicYt.ready || tries++ > 40) return;
+            iframe.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: MUSIC_YT_ID, channel: 'widget' }), '*');
+            setTimeout(ask, 250);
+        };
+        ask();
+    }
+
+    function onMusicTrackFailed(message) {
+        const failedIndex = musicIndex;
+        musicFailures++;
+        teardownMusicPlayer();
+        musicStatus = message;
+        setMusicPlaying(false);
+        renderMusicPanel();
+        // Skip past it, unless every track has now failed in a row.
+        if (musicPlaylist.length > 1 && musicFailures < musicPlaylist.length) {
+            setTimeout(() => {
+                if (musicIndex === failedIndex && !musicHasTrack()) playMusicTrack(nextMusicIndex(1, true) ?? musicOrder[0]);
+            }, 1500);
+        }
+    }
+
+    function playMusicTrack(index) {
+        teardownMusicPlayer();
+        musicStatus = '';
+        if (!musicPlaylist.length || index == null) {
+            musicIndex = -1;
+            setMusicPlaying(false);
+            renderMusicPanel();
+            return;
+        }
+        const n = musicPlaylist.length;
+        musicIndex = ((index % n) + n) % n;
+        if (!musicOrder.includes(musicIndex)) rebuildMusicOrder();
+        const url = musicPlaylist[musicIndex];
+        const ytId = extractYouTubeId(url);
+        if (ytId) {
+            const params = new URLSearchParams({ autoplay: '1', enablejsapi: '1', playsinline: '1' });
+            if (/^https?:$/.test(location.protocol)) params.set('origin', location.origin);
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${ytId}?${params}`;
+            iframe.allow = 'autoplay';
+            iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
+            iframe.addEventListener('load', () => listenToMusicEmbed(iframe));
+            document.body.appendChild(iframe);
+            musicIframeEl = iframe;
+        } else {
+            const audio = document.createElement('audio');
+            audio.preload = 'auto';
+            audio.loop = musicLoopsItself();
+            audio.volume = musicVolume / 100;
+            const current = () => audio === musicAudioEl;
+            audio.addEventListener('timeupdate', () => { if (current()) updateMusicTimeline(); });
+            audio.addEventListener('durationchange', () => { if (current()) updateMusicTimeline(); });
+            audio.addEventListener('playing', () => { if (current()) { musicFailures = 0; setMusicPlaying(true); renderMusicPlaylist(); } });
+            audio.addEventListener('pause', () => { if (current() && !audio.ended) { setMusicPlaying(false); renderMusicPlaylist(); } });
+            audio.addEventListener('ended', () => { if (current()) onMusicTrackEnded(); });
+            audio.addEventListener('error', () => { if (current()) onMusicTrackFailed("Couldn't load this audio link."); });
+            audio.src = url;
+            document.body.appendChild(audio);
+            musicAudioEl = audio;
+            audio.play().catch(() => { if (current()) setMusicPlaying(false); });
+        }
+        setMusicPlaying(true);
+        renderMusicPanel();
+    }
+
+    // The playlist index `step` places away in play order, or null when that
+    // runs off the end and the playlist does not repeat (`auto` = the track
+    // simply ended; pressing ⏭ always wraps around).
+    function nextMusicIndex(step, auto = false) {
+        if (!musicPlaylist.length) return null;
+        if (musicOrder.length !== musicPlaylist.length) rebuildMusicOrder();
+        const pos = Math.max(0, musicOrder.indexOf(musicIndex));
+        const target = pos + step;
+        if (target >= 0 && target < musicOrder.length) return musicOrder[target];
+        if (auto && musicRepeat === 'off') return null;
+        if (musicShuffle && target >= musicOrder.length) {
+            const last = musicIndex;
+            musicIndex = -1;
+            rebuildMusicOrder();
+            musicIndex = last;
+            // A fresh shuffle should not open with the track that just ended.
+            if (musicOrder.length > 1 && musicOrder[0] === last) musicOrder.push(musicOrder.shift());
+            return musicOrder[0];
+        }
+        return musicOrder[(target + musicOrder.length) % musicOrder.length];
+    }
+
+    function restartMusicTrack() {
+        seekMusicTo(0);
+        if (musicAudioEl) musicAudioEl.play().catch(() => {});
+        if (musicIframeEl) musicYtSend('playVideo');
+        setMusicPlaying(true);
+    }
+
+    function onMusicTrackEnded() {
+        if (musicLoopsItself()) { restartMusicTrack(); return; }
+        const next = nextMusicIndex(1, true);
+        if (next === null) {
+            // End of a playlist that does not repeat: rewind to the start and stop.
+            teardownMusicPlayer();
+            musicIndex = musicOrder[0] ?? -1;
+            setMusicPlaying(false);
+            renderMusicPanel();
+            return;
+        }
+        playMusicTrack(next);
+    }
+
+    function seekMusicTo(seconds) {
+        if (musicAudioEl) musicAudioEl.currentTime = seconds;
+        if (musicIframeEl) {
+            musicYtSend('seekTo', [seconds, true]);
+            musicYt.time = seconds;
+        }
+        updateMusicTimeline();
     }
 
     function pauseMusic() {
         if (musicAudioEl) musicAudioEl.pause();
-        if (musicIframeEl) musicIframeEl.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
-        musicIsPlaying = false;
-        if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
+        if (musicIframeEl) musicYtSend('pauseVideo');
+        setMusicPlaying(false);
+        renderMusicPlaylist();
     }
 
     function resumeMusic() {
-        if (musicAudioEl) musicAudioEl.play().catch(() => {});
-        if (musicIframeEl) musicIframeEl.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
-        musicIsPlaying = true;
-        if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
+        if (musicAudioEl) musicAudioEl.play().catch(() => setMusicPlaying(false));
+        if (musicIframeEl) musicYtSend('playVideo');
+        setMusicPlaying(true);
+        renderMusicPlaylist();
     }
 
-    function playMusic(url) {
-        stopMusic();
-        if (!url) return;
-        const ytId = extractYouTubeId(url);
-        if (ytId) {
-            musicIframeEl = document.createElement('iframe');
-            musicIframeEl.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&loop=1&playlist=${ytId}&enablejsapi=1`;
-            musicIframeEl.allow = 'autoplay';
-            musicIframeEl.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
-            document.body.appendChild(musicIframeEl);
-            musicIsPlaying = true;
-            if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
-        } else {
-            const audio = document.createElement('audio');
-            audio.src = url;
-            audio.loop = true;
-            document.body.appendChild(audio);
-            musicAudioEl = audio;
-            audio.play().catch(() => {
-                musicIsPlaying = false;
-                if (musicPlayBtn) musicPlayBtn.textContent = '▶ Play';
-            });
-            musicIsPlaying = true;
-            if (musicPlayBtn) musicPlayBtn.textContent = '⏸ Pause';
+    function toggleMusicPlayback() {
+        if (musicIsPlaying) pauseMusic();
+        else if (musicHasTrack()) resumeMusic();
+        else if (musicPlaylist.length) playMusicTrack(musicIndex >= 0 ? musicIndex : (musicOrder[0] ?? 0));
+    }
+
+    function previousMusicTrack() {
+        // Like any player: well into a track, ⏮ goes back to its start.
+        if (musicHasTrack() && musicTimes().time > 3) { seekMusicTo(0); return; }
+        playMusicTrack(nextMusicIndex(-1));
+    }
+
+    function nextMusicTrack() {
+        playMusicTrack(nextMusicIndex(1));
+    }
+
+    function setMusicVolume(value, persist = true) {
+        musicVolume = Math.min(100, Math.max(0, Math.round(value)));
+        if (musicVolume > 0) musicVolumeBeforeMute = musicVolume;
+        if (musicAudioEl) musicAudioEl.volume = musicVolume / 100;
+        if (musicIframeEl) musicYtSend('setVolume', [musicVolume]);
+        if (persist) localStorage.setItem('cccMusicVolume', String(musicVolume));
+        renderMusicControls();
+    }
+
+    function handleMusicYtState(state) {
+        if (state === musicYt.state) return;
+        musicYt.state = state;
+        if (state === 1) { musicFailures = 0; musicStatus = ''; setMusicPlaying(true); renderMusicPlaylist(); }
+        else if (state === 2) { setMusicPlaying(false); renderMusicPlaylist(); }
+        else if (state === 0) onMusicTrackEnded();
+    }
+
+    window.addEventListener('message', (event) => {
+        if (!musicIframeEl || event.source !== musicIframeEl.contentWindow) return;
+        let data = event.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { return; }
         }
+        if (!data || typeof data !== 'object') return;
+        const info = data.info;
+        if (data.event === 'onError') {
+            const code = Number(info);
+            onMusicTrackFailed(code === 101 || code === 150 ? "This video's owner doesn't allow it to play in other apps."
+                : code === 153 ? 'YouTube refused to play it here. Open the app from its web address instead of a file.'
+                : code === 100 || code === 2 ? "This YouTube video doesn't exist or is private."
+                : "YouTube couldn't play this video.");
+            return;
+        }
+        if (data.event === 'onReady' || data.event === 'initialDelivery' || data.event === 'infoDelivery') {
+            if (!musicYt.ready) {
+                musicYt.ready = true;
+                musicYtSend('setVolume', [musicVolume]);
+                if (!musicIsPlaying) musicYtSend('pauseVideo');
+                // Autoplay can be refused without a word from the embed; a
+                // player still not started by now is shown as paused.
+                const iframe = musicIframeEl;
+                setTimeout(() => {
+                    if (iframe === musicIframeEl && musicIsPlaying && [null, -1, 5].includes(musicYt.state)) {
+                        setMusicPlaying(false);
+                        renderMusicPlaylist();
+                    }
+                }, 3000);
+            }
+        }
+        if (data.event === 'onStateChange' && typeof info === 'number') handleMusicYtState(info);
+        if ((data.event === 'infoDelivery' || data.event === 'initialDelivery') && info && typeof info === 'object') {
+            if (typeof info.currentTime === 'number') musicYt.time = info.currentTime;
+            if (typeof info.duration === 'number') musicYt.duration = info.duration;
+            const title = info.videoData?.title;
+            const ytId = extractYouTubeId(musicPlaylist[musicIndex] || '');
+            if (title && ytId && (!info.videoData.video_id || info.videoData.video_id === ytId)) rememberMusicTitle(ytId, title);
+            if (typeof info.playerState === 'number') handleMusicYtState(info.playerState);
+            updateMusicTimeline();
+        }
+    });
+
+    function addMusicTracks(text) {
+        const urls = parseMusicList(text);
+        if (!urls.length) return;
+        const wasEmpty = !musicPlaylist.length;
+        musicFailures = 0;
+        const firstNew = musicPlaylist.length;
+        musicPlaylist.push(...urls);
+        rebuildMusicOrder();
+        saveMusicList();
+        if (musicUrlInput) musicUrlInput.value = '';
+        // Adding to an idle player plays what was added; otherwise it queues.
+        if (wasEmpty || !musicHasTrack()) playMusicTrack(firstNew);
+        else renderMusicPanel();
+    }
+
+    function removeMusicTrack(i) {
+        const wasCurrent = i === musicIndex;
+        const wasActive = musicHasTrack();
+        const resume = musicIsPlaying;
+        musicPlaylist.splice(i, 1);
+        if (i < musicIndex) musicIndex--;
+        saveMusicList();
+        if (wasCurrent) {
+            teardownMusicPlayer();
+            if (!musicPlaylist.length) musicIndex = -1;
+            else musicIndex = Math.min(i, musicPlaylist.length - 1);
+            rebuildMusicOrder();
+            if (wasActive && resume && musicPlaylist.length) { playMusicTrack(musicIndex); return; }
+            setMusicPlaying(false);
+        } else {
+            rebuildMusicOrder();
+        }
+        renderMusicPanel();
+    }
+
+    function moveMusicTrack(i, step) {
+        const j = i + step;
+        if (j < 0 || j >= musicPlaylist.length) return;
+        [musicPlaylist[i], musicPlaylist[j]] = [musicPlaylist[j], musicPlaylist[i]];
+        if (musicIndex === i) musicIndex = j;
+        else if (musicIndex === j) musicIndex = i;
+        rebuildMusicOrder();
+        saveMusicList();
+        renderMusicPanel();
+    }
+
+    // Called by startChat. Reopening the chat that is already playing leaves
+    // the music alone, and so does moving to a chat with the same playlist.
+    function loadChatMusic(charId, chatId) {
+        const isNewSession = charId !== musicCurrentCharId || chatId !== musicCurrentChatId;
+        const list = savedMusicList(charId);
+        const samePlaylist = list.join('\n') === musicPlaylist.join('\n');
+        musicCurrentCharId = charId;
+        musicCurrentChatId = chatId;
+        if (!samePlaylist) {
+            const currentUrl = musicPlaylist[musicIndex];
+            musicPlaylist = list;
+            musicIndex = currentUrl ? list.indexOf(currentUrl) : -1;
+            rebuildMusicOrder();
+        }
+        if (isNewSession && !(samePlaylist && musicHasTrack())) {
+            musicFailures = 0;
+            if (list.length) playMusicTrack(musicShuffle ? musicOrder[0] : 0);
+            else { musicIndex = -1; stopMusic(); }
+            return;
+        }
+        // The list changed under the track that is on (the character was edited).
+        if (musicIndex === -1 && musicHasTrack()) { stopMusic(); return; }
+        renderMusicPanel();
     }
 
     if (musicBtn) {
         musicBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (musicPanel) musicPanel.classList.toggle('hidden');
+            if (!musicPanel) return;
+            musicPanel.classList.toggle('hidden');
+            musicBtn.setAttribute('aria-expanded', String(!musicPanel.classList.contains('hidden')));
+            renderMusicPanel();
         });
     }
     document.addEventListener('click', (e) => {
         if (musicPanel && !musicPanel.classList.contains('hidden') &&
-            !musicBtn?.contains(e.target) && !musicPanel.contains(e.target)) {
+            !musicBtn?.contains(e.target) && !musicPanel.contains(e.target) && e.target.isConnected) {
             musicPanel.classList.add('hidden');
+            musicBtn?.setAttribute('aria-expanded', 'false');
         }
     });
-    if (musicPlayBtn) {
-        musicPlayBtn.addEventListener('click', () => {
-            if (musicIsPlaying) {
-                pauseMusic();
-            } else {
-                if (musicAudioEl || musicIframeEl) {
-                    resumeMusic();
-                } else if (musicUrlInput) {
-                    playMusic(musicUrlInput.value.trim());
-                }
-            }
+    musicPlayBtn?.addEventListener('click', toggleMusicPlayback);
+    musicStopBtn?.addEventListener('click', stopMusic);
+    musicPrevBtn?.addEventListener('click', previousMusicTrack);
+    musicNextBtn?.addEventListener('click', nextMusicTrack);
+    musicShuffleBtn?.addEventListener('click', () => {
+        musicShuffle = !musicShuffle;
+        localStorage.setItem('cccMusicShuffle', musicShuffle ? '1' : '0');
+        rebuildMusicOrder();
+        renderMusicControls();
+    });
+    musicRepeatBtn?.addEventListener('click', () => {
+        musicRepeat = musicRepeat === 'all' ? 'one' : musicRepeat === 'one' ? 'off' : 'all';
+        localStorage.setItem('cccMusicRepeat', musicRepeat);
+        if (musicAudioEl) musicAudioEl.loop = musicLoopsItself();
+        renderMusicControls();
+    });
+    if (musicSeek) {
+        musicSeek.addEventListener('input', () => {
+            musicSeeking = true;
+            paintMusicSeek(Number(musicSeek.value), Number(musicSeek.max));
+        });
+        musicSeek.addEventListener('change', () => {
+            musicSeeking = false;
+            seekMusicTo(Number(musicSeek.value));
         });
     }
-    if (musicStopBtn) musicStopBtn.addEventListener('click', stopMusic);
+    musicVolumeSlider?.addEventListener('input', () => setMusicVolume(Number(musicVolumeSlider.value), false));
+    musicVolumeSlider?.addEventListener('change', () => setMusicVolume(Number(musicVolumeSlider.value)));
+    musicMuteBtn?.addEventListener('click', () => setMusicVolume(musicVolume === 0 ? musicVolumeBeforeMute : 0));
+    musicAddBtn?.addEventListener('click', () => addMusicTracks(musicUrlInput?.value));
     if (musicUrlInput) {
-        musicUrlInput.addEventListener('input', () => {
-            const val = musicUrlInput.value.trim();
-            const charId = currentCharacterId;
-            if (!charId) return;
-            if (val) {
-                localStorage.setItem(`userMusicUrl:${charId}`, val);
-            } else {
-                localStorage.removeItem(`userMusicUrl:${charId}`);
-            }
+        musicUrlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addMusicTracks(musicUrlInput.value); }
+        });
+        // A one-line box would run several pasted lines together; each line is its own track.
+        musicUrlInput.addEventListener('paste', (e) => {
+            const text = e.clipboardData?.getData('text') || '';
+            if (parseMusicList(text).length > 1) { e.preventDefault(); addMusicTracks(text); }
         });
     }
-    // Mark Feature B as ready; auto-play if a URL was already populated during startChat
+    musicPlaylistEl?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const i = Number(btn.dataset.index);
+        if (btn.dataset.action === 'play') {
+            if (i === musicIndex && musicHasTrack()) toggleMusicPlayback();
+            else { musicFailures = 0; playMusicTrack(i); }
+        }
+        else if (btn.dataset.action === 'up') moveMusicTrack(i, -1);
+        else if (btn.dataset.action === 'down') moveMusicTrack(i, 1);
+        else if (btn.dataset.action === 'remove') removeMusicTrack(i);
+    });
+    musicResetBtn?.addEventListener('click', () => {
+        if (!musicCurrentCharId) return;
+        localStorage.removeItem(`userMusicUrl:${musicCurrentCharId}`);
+        const chatId = musicCurrentChatId;
+        musicCurrentChatId = null;              // treated as a fresh start for this chat
+        loadChatMusic(musicCurrentCharId, chatId);
+    });
+    if ('mediaSession' in navigator) {
+        const handlers = {
+            play: () => { if (!musicIsPlaying) toggleMusicPlayback(); },
+            pause: pauseMusic,
+            previoustrack: previousMusicTrack,
+            nexttrack: nextMusicTrack
+        };
+        for (const [action, handler] of Object.entries(handlers)) {
+            try { navigator.mediaSession.setActionHandler(action, () => { if (musicPlaylist.length) handler(); }); } catch (e) { /* unsupported action */ }
+        }
+    }
+    renderMusicControls();
+    // Mark Feature B as ready; start the music of a chat that opened before it was.
     window._musicFeatureReady = true;
-    const _initMusicUrl = musicUrlInput ? musicUrlInput.value.trim() : '';
-    if (_initMusicUrl && currentCharacterId) playMusic(_initMusicUrl);
+    if (currentCharacterId && currentChatId && characters[currentCharacterId]) loadChatMusic(currentCharacterId, currentChatId);
 
     // ── Feature C: TTS ──
     // The dropdown lists English and Japanese for everyone, plus the language of wherever
