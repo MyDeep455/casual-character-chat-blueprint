@@ -14224,27 +14224,24 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
     });
 
     // ── The phone's Back button ──
-    // Android's Back (button or swipe) walks the page's history, and an
-    // installed app has none of its own, so Back used to close the app from
-    // any screen. One spare history entry is now kept on top: Back spends it,
-    // the app does what its own close, cancel or back button would, and the
-    // entry is put back for the next press. Only on the main screen, with
-    // nothing open, does Back go on to close the app.
+    // An installed app has no history of its own, so Back used to close it
+    // from any screen. Now each Back does what the app's own close, cancel or
+    // back button would, and only on the main screen, with nothing open, does
+    // Back go on to close the app.
+    //
+    // Back is caught with a CloseWatcher, which Android's Back (button or
+    // swipe) fires. History entries cannot do it: Chrome's Back skips any entry
+    // a page adds without a fresh tap, and a tap within a few seconds of the
+    // last one is not fresh - so the second Back in a row closed the app. A
+    // CloseWatcher may be set up again straight after Back without a tap.
+    // Browsers without CloseWatcher get the history entry, which covers at
+    // least one Back after each tap.
     //
     // Installed app only. In a browser tab, Back keeps meaning "leave the page".
-    // Chrome skips history entries that a page adds before the user has touched
-    // it, so the spare entry is only ever added after a tap or a key press.
     const BACK_GUARD_KEY = 'cccBackGuard';
     const backGuardEnabled = window.matchMedia('(display-mode: standalone)').matches
         || window.matchMedia('(display-mode: minimal-ui)').matches
         || navigator.standalone === true;
-    let backGuardArmed = history.state?.[BACK_GUARD_KEY] === true;
-
-    function armBackGuard() {
-        if (backGuardArmed) return;
-        history.pushState({ [BACK_GUARD_KEY]: true }, '');
-        backGuardArmed = true;
-    }
 
     function isShown(el) {
         return !!el && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none';
@@ -14320,17 +14317,48 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
         return false;
     }
 
-    if (backGuardEnabled) {
+    const BACK_AGAIN_TO_CLOSE = 'Press Back again to close the app.';
+
+    if (backGuardEnabled && typeof window.CloseWatcher === 'function') {
+        // A keyboard's Escape fires the watcher too. The app already handles
+        // Escape itself, so a close that follows one is left to that handling.
+        let escapePressedAt = -Infinity;
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') escapePressedAt = performance.now();
+        }, true);
+
+        let backWatcher = null;
+        const watchBack = () => {
+            if (backWatcher) return;
+            backWatcher = new CloseWatcher();
+            backWatcher.addEventListener('close', () => {
+                backWatcher = null;
+                if (performance.now() - escapePressedAt < 500 || goBackInApp()) {
+                    watchBack();
+                    return;
+                }
+                // Main screen, nothing open: no watcher, so the next Back
+                // closes the app - unless a tap comes first.
+                showChatToast(BACK_AGAIN_TO_CLOSE);
+            });
+        };
+        watchBack();
+        document.addEventListener('click', (event) => { if (event.isTrusted) watchBack(); }, true);
+    } else if (backGuardEnabled) {
+        let backGuardArmed = history.state?.[BACK_GUARD_KEY] === true;
+        const armBackGuard = () => {
+            if (backGuardArmed) return;
+            history.pushState({ [BACK_GUARD_KEY]: true }, '');
+            backGuardArmed = true;
+        };
         // Only real input counts; the buttons goBackInApp clicks are not.
-        const armOnInput = (event) => { if (event.isTrusted) armBackGuard(); };
-        document.addEventListener('click', armOnInput, true);
-        document.addEventListener('keydown', armOnInput, true);
+        document.addEventListener('click', (event) => { if (event.isTrusted) armBackGuard(); }, true);
         window.addEventListener('popstate', (event) => {
-            // Forward onto the spare entry again, not Back.
+            // Forward onto the guard entry again, not Back.
             if (event.state?.[BACK_GUARD_KEY]) { backGuardArmed = true; return; }
             backGuardArmed = false;
             if (goBackInApp()) armBackGuard();
-            else showChatToast('Press Back again to close the app.');
+            else showChatToast(BACK_AGAIN_TO_CLOSE);
         });
     }
 
