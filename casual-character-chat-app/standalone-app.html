@@ -9804,7 +9804,7 @@ mark.highlight.current-match {
             </div>
             <div id="dice-info" class="chat-menu-info hidden" role="note">
                 <p>Rolls a 20-sided dice. The higher the number, the better whatever happens next goes. The character decides what that is.</p>
-                <p>You can also type <code>/roll</code> in the message box.</p>
+                <p>You can also type <code>/roll</code> in the message box and set what happens next. The character still decides how well or bad this next thing goes.</p>
             </div>
             <button type="button" class="chat-menu-item" id="quick-swap-btn" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">🔃</span><span class="chat-menu-label">Quick-Swap Character</span></button>
             <button type="button" class="chat-menu-item chat-menu-desktop-only" data-action="shortcuts" role="menuitem"><span class="chat-menu-icon" aria-hidden="true">⌨️</span><span class="chat-menu-label">Keyboard Shortcuts</span><kbd class="chat-menu-kbd">?</kbd></button>
@@ -20945,8 +20945,8 @@ function historyForPrompt(history) {
  * 20-sided dice. The result is sent as the user's message in plain words -
  * how good the roll was and that whatever happens next goes that well - and
  * the model decides what that next thing is: the moment at hand, or something
- * new. Text typed after "/roll" is not advertised, but it is sent on under the
- * result rather than lost.
+ * new. Text typed after "/roll" sets what happens next; it is sent on under
+ * the result.
  * ======================================================================== */
 
 function parseDiceCommand(input) {

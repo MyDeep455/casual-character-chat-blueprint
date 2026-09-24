@@ -1453,8 +1453,8 @@ function historyForPrompt(history) {
  * 20-sided dice. The result is sent as the user's message in plain words -
  * how good the roll was and that whatever happens next goes that well - and
  * the model decides what that next thing is: the moment at hand, or something
- * new. Text typed after "/roll" is not advertised, but it is sent on under the
- * result rather than lost.
+ * new. Text typed after "/roll" sets what happens next; it is sent on under
+ * the result.
  * ======================================================================== */
 
 function parseDiceCommand(input) {
