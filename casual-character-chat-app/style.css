@@ -3477,6 +3477,77 @@ max-height: 27em;
 	background-color: #435872;
 }
 
+/* Scenario Selection categories: the character's scenarios, and the games */
+#scenario-category-tabs {
+	display: flex;
+	gap: 6px;
+	margin-top: 14px;
+	padding: 4px;
+	background-color: rgba(0, 0, 0, 0.25);
+	border-radius: 10px;
+}
+
+.scenario-category-tab {
+	flex: 1;
+	padding: 9px 10px;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	background: transparent;
+	color: rgba(255, 255, 255, 0.72);
+	font-family: 'Inter', sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.scenario-category-tab:hover {
+	color: #fff;
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.scenario-category-tab.active {
+	color: #fff;
+	background-color: #6a7585;
+	border-color: rgba(255, 255, 255, 0.17);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.scenario-category-tab:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, 0.55);
+	outline-offset: 2px;
+}
+
+#scenario-category-tabs + #scenario-selection-list {
+	margin-top: 12px;
+}
+
+.game-option-btn {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding: 11px 14px;
+}
+
+.game-option-title {
+	font-weight: 600;
+}
+
+.game-option-blurb {
+	font-size: 13px;
+	line-height: 1.35;
+	color: rgba(255, 255, 255, 0.78);
+	white-space: normal;
+}
+
+.scenario-selection-empty {
+	margin: 6px 2px;
+	color: rgba(255, 255, 255, 0.72);
+	font-size: 14px;
+	line-height: 1.45;
+}
+
 
 
 .scenario-name-input {

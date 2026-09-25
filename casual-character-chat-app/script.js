@@ -122,6 +122,221 @@ function getChatMemories(chat) {
     return own ? `${own}\n\n${carried}` : carried;
 }
 
+/* ===========================================================================
+ * GAMES
+ * ===========================================================================
+ * Ready-made scenarios for playing a game with any character. They are the
+ * second category in Scenario Selection and work like a scenario whose Chat
+ * Memories hold the rules - no new prompt block, nothing tracked in code.
+ *
+ * Two differences from a written scenario:
+ *   - There is no pre-written greeting. The character opens the game in their
+ *     own voice (getOpeningPrompt), because one fixed text cannot fit every
+ *     personality.
+ *   - Anything that must stay hidden or be fair - the secret word, the number,
+ *     the character's Rock Paper Scissors throws - is decided here, by the app,
+ *     and written into the chat's memories. A model asked to "think of a word"
+ *     has nowhere to keep it and quietly changes it to fit the guesses.
+ *
+ * `rules()` runs once per new game, so every game gets fresh secrets.
+ * ======================================================================== */
+
+const GAME_RULES_INTRO = `GAME MODE: {{char}} and the user are playing a game together inside the roleplay. {{char}} stays fully in character - personality, voice, reactions and way of speaking - while following the rules below exactly. Keep the game state (turn, score, lives) accurate and repeat it briefly where the rules say so. If other characters are in this chat, they may join in as players. When the user wants to stop, wrap up the game in character and return to normal roleplay.`;
+
+const GAME_SECRET_THINGS = [
+    'an elephant', 'a penguin', 'a giraffe', 'a dolphin', 'an octopus', 'a hedgehog', 'a bee', 'a kangaroo',
+    'an owl', 'a snail', 'a shark', 'a butterfly', 'a camel', 'a panda', 'a spider', 'a flamingo',
+    'a pizza', 'a banana', 'a pineapple', 'chocolate', 'sushi', 'a birthday cake', 'popcorn', 'an egg',
+    'a coconut', 'honey', 'ice cream', 'a lemon', 'a carrot', 'coffee', 'a pancake', 'cheese',
+    'a guitar', 'a piano', 'an umbrella', 'a toothbrush', 'a mirror', 'a candle', 'a smartphone', 'a bicycle',
+    'a key', 'a pillow', 'a clock', 'a telescope', 'a backpack', 'a lightbulb', 'a camera', 'scissors',
+    'a ladder', 'a compass', 'a teddy bear', 'a kite', 'a crown', 'a sword', 'a treasure chest', 'a snowman',
+    'a volcano', 'the moon', 'a rainbow', 'a lighthouse', 'a waterfall', 'a desert', 'a castle', 'a hospital',
+    'a library', 'the Eiffel Tower', 'a submarine', 'a hot air balloon', 'a train', 'a rocket', 'a pirate ship',
+    'a dragon', 'a vampire', 'a robot', 'a ghost', 'a unicorn', 'a wizard', 'a mermaid', 'a ninja',
+    'a firefighter', 'a chef', 'an astronaut', 'a detective', 'a pharaoh', 'Santa Claus', 'a tornado', 'lightning'
+];
+
+const GAME_HANGMAN_WORDS = [
+    'ADVENTURE', 'BUTTERFLY', 'CASTLE', 'DRAGON', 'ECLIPSE', 'FIREWORK', 'GALAXY', 'HARBOR', 'ISLAND',
+    'JUNGLE', 'KNIGHT', 'LANTERN', 'MERMAID', 'NOTEBOOK', 'ORCHESTRA', 'PENGUIN', 'QUARTZ', 'RAINBOW',
+    'SNOWFLAKE', 'TREASURE', 'UMBRELLA', 'VOLCANO', 'WIZARD', 'YOGURT', 'ZEPPELIN', 'BLANKET', 'CHOCOLATE',
+    'DIAMOND', 'ELEPHANT', 'FESTIVAL', 'GUITAR', 'HORIZON', 'IGLOO', 'JIGSAW', 'KITTEN', 'LIBRARY',
+    'MOONLIGHT', 'NECKLACE', 'OCTOPUS', 'PUMPKIN', 'RIDDLE', 'SUNFLOWER', 'THUNDER', 'VAMPIRE', 'WHISPER',
+    'ANCHOR', 'BALLOON', 'COMPASS', 'DOLPHIN', 'EMERALD', 'FEATHER', 'GIRAFFE', 'HAMMOCK', 'JELLYFISH',
+    'KEYBOARD', 'LEMONADE', 'MARSHMALLOW', 'NIGHTMARE', 'PARACHUTE', 'SKELETON', 'TELESCOPE', 'VELVET'
+];
+
+function pickRandom(list) {
+    return list[Math.floor(diceRandom() * list.length)];
+}
+
+const GAMES = [
+    {
+        id: 'twenty-questions', icon: '🔍', name: '20 Questions',
+        blurb: '{{char}} thinks of something, you find out what with yes/no questions.',
+        rules() {
+            const secret = pickRandom(GAME_SECRET_THINGS);
+            return `GAME: 20 Questions - the user guesses.
+SECRET (chosen before the game started - never change it, never say it before it is guessed or the game is over): ${secret}
+- {{char}} is thinking of the secret. The user asks yes/no questions to find out what it is.
+- Answer each question truthfully about the secret: yes, no, sometimes, or partly. React in character, but never give extra hints unless the user asks for one (a hint costs one question).
+- End every answer with the count, e.g. "(Question 4/20)". A guess counts as a question.
+- A correct guess (synonyms and close enough count) wins: {{char}} reacts and reveals it. After 20 questions without a correct guess, {{char}} wins and reveals the secret.
+- For another round, {{char}} swaps roles and guesses what the user is thinking of, or picks a new secret of its own - say which.`;
+        },
+        opening: 'Open a game of 20 Questions: say you have thought of something (do not reveal it), explain the rules in a line or two in your own voice, and invite the first question.'
+    },
+    {
+        id: 'twenty-questions-reverse', icon: '🤔', name: '20 Questions (you think)',
+        blurb: 'You think of something, {{char}} tries to guess it.',
+        rules: () => `GAME: 20 Questions - {{char}} guesses.
+- The user thinks of something (an object, animal, person, place...). {{char}} asks one yes/no question per reply to find out what it is.
+- Ask smart questions that narrow things down, and think out loud in character. End each reply with the count, e.g. "(Question 4/20)". A guess counts as a question.
+- Never claim to know without asking; only guess when the answers point there. If the user says a guess is right, {{char}} celebrates; after 20 questions {{char}} gives up and asks what it was.`,
+        opening: 'Open a game of 20 Questions where you guess: tell the user to think of something and to tell you when they are ready (or say "ready"), then ask your first yes/no question once they are.'
+    },
+    {
+        id: 'hangman', icon: '🔤', name: 'Hangman',
+        blurb: 'Guess the hidden word letter by letter before you run out of lives.',
+        rules() {
+            const word = pickRandom(GAME_HANGMAN_WORDS);
+            return `GAME: Hangman.
+SECRET WORD (chosen before the game started - never change it, never say it before the game is over): ${word} (${word.length} letters: ${word.split('').join('-')})
+- The user guesses one letter at a time, or the whole word.
+- After every guess show the board on its own line: the word with one "_" per missing letter and every guessed letter in all its places, separated by spaces (for ${word.length} letters, e.g. "${'_ '.repeat(word.length).trim()}"). Below it: wrong letters so far and lives left, starting with 6.
+- A wrong letter or wrong word costs one life. A letter guessed again costs nothing - just point it out.
+- The user wins by uncovering every letter or naming the word; with 0 lives left {{char}} wins and reveals the word. React in character to every guess.`;
+        },
+        opening: 'Open a game of Hangman: explain it in a line in your own voice, show the empty board with 6 lives, and ask for the first letter.'
+    },
+    {
+        id: 'higher-lower', icon: '🔢', name: 'Higher or Lower',
+        blurb: 'Find {{char}}\'s secret number between 1 and 100.',
+        rules() {
+            const number = 1 + Math.floor(diceRandom() * 100);
+            return `GAME: Higher or Lower.
+SECRET NUMBER (chosen before the game started - never change it, never say it before it is guessed): ${number}
+- The number is between 1 and 100. The user guesses; {{char}} answers "higher" or "lower" (compare carefully against ${number}) and counts the guesses, e.g. "(Guess 3)".
+- A correct guess wins: {{char}} reacts and says how many guesses it took. Tease, cheer or sulk in character along the way.
+- For another round, {{char}} guesses the user's number instead, asking one number per reply.`;
+        },
+        opening: 'Open a game of Higher or Lower: say you have a secret number between 1 and 100 (do not reveal it), and ask for the first guess.'
+    },
+    {
+        id: 'rock-paper-scissors', icon: '✊', name: 'Rock Paper Scissors',
+        blurb: 'Best of five - {{char}}\'s throws are fixed in advance, so no cheating.',
+        rules() {
+            const throws = Array.from({ length: 15 }, () => pickRandom(['Rock', 'Paper', 'Scissors']));
+            return `GAME: Rock Paper Scissors, best of five (first to 3 wins).
+{{char}}'S THROWS (decided before the game started, in order; round 1 uses the first. Never change them and never reveal a throw before the user has made theirs): ${throws.map((t, i) => `${i + 1}. ${t}`).join(', ')}
+- The user names their throw. {{char}} then reveals the throw for that round from the list above - never pick one to win or lose on purpose.
+- Rock beats Scissors, Scissors beats Paper, Paper beats Rock; the same throw is a draw and counts as a round (use the next throw).
+- After each round show the score, e.g. "(Round 3 - you 1 : 2 {{char}})". React in character to wins and losses. For a rematch, continue with the next unused throw.`;
+        },
+        opening: 'Open a best-of-five game of Rock Paper Scissors: challenge the user in your own voice and ask for their first throw. Do not reveal yours yet.'
+    },
+    {
+        id: 'truth-or-dare', icon: '😈', name: 'Truth or Dare',
+        blurb: 'Take turns choosing truth or dare.',
+        rules: () => `GAME: Truth or Dare.
+- Players take turns. On a turn, the player chooses "truth" (answers a question honestly) or "dare" (does a task that fits the setting of the roleplay).
+- On the user's turn, {{char}} asks for their choice, then gives a question or dare that fits {{char}}'s personality, the relationship and the tone of the chat so far. Escalate slowly.
+- On {{char}}'s turn, {{char}} chooses in character and answers honestly or carries out the dare in the scene. {{char}} may refuse once per game, but must admit it.
+- Alternate turns after every truth or dare.`,
+        opening: 'Open a game of Truth or Dare in your own voice and ask the user: truth or dare?'
+    },
+    {
+        id: 'would-you-rather', icon: '⚖️', name: 'Would You Rather',
+        blurb: 'Impossible choices, and explaining why.',
+        rules: () => `GAME: Would You Rather.
+- Take turns asking "Would you rather ... or ...?" questions. Both options should be hard to choose between - funny, strange or tough, fitting {{char}}'s personality and the setting.
+- The one asked must choose and explain why. {{char}} always answers in character and comments on the user's choice and reasoning.
+- Alternate: after the user answers, the user asks next, and the other way round. Never repeat a question.`,
+        opening: 'Open a game of Would You Rather: explain it in one line in your own voice and ask the first question.'
+    },
+    {
+        id: 'two-truths-and-a-lie', icon: '🤥', name: 'Two Truths and a Lie',
+        blurb: 'Spot the lie among three statements.',
+        rules: () => `GAME: Two Truths and a Lie.
+- On a turn, a player makes three statements about themselves: two true, one lie. The other player guesses which one is the lie, then the answer is revealed.
+- {{char}}'s statements must be about {{char}} - true ones come from what is known about {{char}} (description, history, this chat), and the lie must be believable. Decide which one is the lie before posting and do not change it after the guess.
+- When the user takes a turn, {{char}} reasons out loud in character before guessing.
+- Keep score: one point for each correct guess and one for each lie that fooled the other player, e.g. "(Score - you 2 : 1 {{char}})". Alternate turns.`,
+        opening: 'Open a game of Two Truths and a Lie: explain it briefly in your own voice and go first with your three statements, numbered 1-3.'
+    },
+    {
+        id: 'never-have-i-ever', icon: '🙋', name: 'Never Have I Ever',
+        blurb: 'Confess what you have done. Five fingers each.',
+        rules: () => `GAME: Never Have I Ever.
+- Everyone starts with 5 fingers up. Players take turns saying "Never have I ever ..." about something they have really never done.
+- Everyone who HAS done it puts a finger down and may tell the story behind it. {{char}} answers truthfully for {{char}} - based on what is known about them - and tells the story in character.
+- Show the fingers left after each round, e.g. "(Fingers - you 4 : 3 {{char}})". The first player down to 0 loses. Alternate turns.`,
+        opening: 'Open a game of Never Have I Ever in your own voice: everyone starts with 5 fingers, and you go first with your "Never have I ever..." line.'
+    },
+    {
+        id: 'trivia-quiz', icon: '🧠', name: 'Trivia Quiz',
+        blurb: '{{char}} hosts a ten-question quiz on a topic of your choice.',
+        rules: () => `GAME: Trivia Quiz, hosted by {{char}}.
+- First the user picks a topic and a difficulty (easy, medium, hard). Offer three topic ideas, and accept any topic.
+- Then ask 10 questions, one per reply, each with four options labeled A-D. Questions must be factual and have exactly one correct answer - never make up facts. Do not hint at the answer.
+- After each answer, say if it was right, give the correct answer with a short fun fact, react in character, and show the score, e.g. "(Score 3/4 - Question 5 of 10 next)".
+- After question 10, announce the final score with a verdict in character and offer another round.`,
+        opening: 'Open a trivia quiz as its host in your own voice: ask the user for a topic (suggest three) and a difficulty.'
+    },
+    {
+        id: 'riddles', icon: '🧩', name: 'Riddle Challenge',
+        blurb: 'Solve {{char}}\'s riddles - three tries each, hints on request.',
+        rules: () => `GAME: Riddle Challenge.
+- {{char}} poses one riddle at a time. Each riddle must have one clear answer; decide it before asking and do not change it. Prefer lesser-known riddles and never repeat one.
+- The user has 3 tries per riddle and may ask for a hint (at most 2 per riddle). After 3 wrong tries or if the user gives up, reveal the answer.
+- Keep score of solved riddles, e.g. "(Solved 2 of 3)". The user may pose a riddle to {{char}} too - then {{char}} guesses in character.`,
+        opening: 'Open a riddle challenge in your own voice and pose your first riddle.'
+    },
+    {
+        id: 'emoji-charades', icon: '🎬', name: 'Emoji Charades',
+        blurb: 'Guess the movie, book or song from emojis only.',
+        rules: () => `GAME: Emoji Charades.
+- {{char}} picks a well-known movie, book, series, song or saying, and says only which category it is. Then {{char}} describes it with emojis only - no words, letters or numbers in the clue.
+- The user guesses. On a wrong guess, {{char}} reacts in character and may add one more emoji clue. After 3 wrong guesses, reveal the answer.
+- Decide the answer before posting the clue and do not change it. Keep score, e.g. "(You 2 : 1 {{char}})".
+- Take turns: the user may also post emojis for {{char}} to guess.`,
+        opening: 'Open a game of Emoji Charades in your own voice: name the category and give your first emoji-only clue.'
+    },
+    {
+        id: 'word-chain', icon: '🔗', name: 'Word Chain',
+        blurb: 'Each word must start with the last letter of the one before.',
+        rules: () => `GAME: Word Chain.
+- Players take turns saying one word. Each word must start with the last letter of the previous word.
+- Only real words, no names, and no word may be used twice in a game. A player who breaks a rule or gives up loses the round; point out mistakes kindly but firmly.
+- {{char}} plays fair: always a real word that follows the rules, and sometimes a hard last letter to make it tricky. Keep a running count of the chain, e.g. "(Chain: 7 words)", and react in character.`,
+        opening: 'Open a game of Word Chain: explain it in a line in your own voice and start with the first word.'
+    },
+    {
+        id: 'story-builder', icon: '📖', name: 'Story Builder',
+        blurb: 'Write a story together, one or two sentences at a time.',
+        rules: () => `GAME: Story Builder.
+- {{char}} and the user write a short story together, taking turns. Each turn adds one or two sentences to the story - no more.
+- {{char}} writes the story sentences in quotes or italics, then may comment briefly in character (about a twist, a character, the user's idea). Build on what the user wrote; never undo it.
+- The user may add "the end" at any time. Then {{char}} writes the final sentence, suggests a title, and tells the whole story back in one piece.`,
+        opening: 'Open a Story Builder game in your own voice: ask the user for a genre (or suggest one), then write the first one or two sentences.'
+    }
+];
+
+function getGameById(id) {
+    return GAMES.find(game => game.id === id) || null;
+}
+
+// A game chat starts with no greeting, so its opening request is the game's own
+// cue instead of the general "start the roleplay" line.
+function getOpeningPrompt(chat) {
+    const game = chat && chat.game ? getGameById(chat.game) : null;
+    if (game) {
+        return `${game.opening} Stay fully in character. The game rules are in the chat memories.`;
+    }
+    return "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner.";
+}
+
 document.body.style.opacity = '1';
 
 let db;
@@ -3685,7 +3900,7 @@ if (saved !== null) {
 
 
 
-async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null, scenarioSource = null) {
+async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null, scenarioSource = null, gameId = null) {
     if (!currentCharacterId) return;
     const character = characters[currentCharacterId];
     if (!character.chats) {
@@ -3737,7 +3952,9 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         participants: worldParticipants,
         activePersonaId: null,
         mood: normalizeMood(initialMood),
-        groupId: targetGroupId
+        groupId: targetGroupId,
+        // Which game this chat plays, so its opening message is the game's own.
+        ...(gameId ? { game: gameId } : {})
     };
     await saveSingleCharacterToDB(character);
     window.__scrollToBottomNextStartChat = true;
@@ -4664,7 +4881,7 @@ async function handleChatSubmit(type, { autoTurn = false, diceOnly = false } = {
     } else {
     const promptHistory = historyForPrompt(chat.history);
     if (promptHistory.length === 0) {
-        messageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner.";
+        messageForAPI = getOpeningPrompt(chat);
         historyForAPI = [];
     } else {
         const historyCopy = [...promptHistory];
@@ -5325,7 +5542,7 @@ if (messageElement) {
     let userMessageForAPI;
     let historyForAPIcall;
     if (!precedingMessage) {
-        userMessageForAPI = "Start the roleplay with a creative, exciting scenario, and introduce the central character in typical manner.";
+        userMessageForAPI = getOpeningPrompt(chat);
         historyForAPIcall = [];
     } else if (precedingMessage.sender === 'user') {
         userMessageForAPI = precedingMessage.main;
@@ -12995,15 +13212,49 @@ if (moveChatModal) moveChatModal.addEventListener('click', (e) => {
     if (e.target === moveChatModal) closeMoveChatModal();
 });
 
-startNewChatBtn.addEventListener('click', async () => {
+// Scenario Selection has two categories: the character's own scenarios, and
+// the ready-made games that every character can play.
+let scenarioSelectionCategory = 'scenarios';
+
+function renderScenarioSelection(category) {
     const character = characters[currentCharacterId];
-    if (!character.scenarios || character.scenarios.length === 0) {
-        await createNewChat();
+    if (!character) return;
+    const scenarios = character.scenarios || [];
+    scenarioSelectionCategory = category;
+    document.querySelectorAll('#scenario-category-tabs .scenario-category-tab').forEach(tab => {
+        const active = tab.dataset.category === category;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        if (tab.dataset.category === 'scenarios') tab.textContent = `📜 Scenarios (${scenarios.length})`;
+        if (tab.dataset.category === 'games') tab.textContent = `🎲 Games (${GAMES.length})`;
+    });
+    scenarioSelectionList.innerHTML = '';
+    if (category === 'games') {
+        const charName = character.chatName || character.name || 'The character';
+        GAMES.forEach(game => {
+            const gameBtn = document.createElement('button');
+            gameBtn.type = 'button';
+            gameBtn.className = 'scenario-option-btn game-option-btn';
+            gameBtn.dataset.gameId = game.id;
+            const title = document.createElement('span');
+            title.className = 'game-option-title';
+            title.textContent = `${game.icon} ${game.name}`;
+            const blurb = document.createElement('span');
+            blurb.className = 'game-option-blurb';
+            blurb.textContent = applyCharPlaceholder(game.blurb, charName);
+            gameBtn.append(title, blurb);
+            scenarioSelectionList.appendChild(gameBtn);
+        });
         return;
     }
-
-    scenarioSelectionList.innerHTML = '';
-    character.scenarios.forEach((scenario, index) => {
+    if (!scenarios.length) {
+        const empty = document.createElement('p');
+        empty.className = 'scenario-selection-empty';
+        empty.textContent = 'This character has no scenarios yet. Add some in Edit Character, or play one of the games.';
+        scenarioSelectionList.appendChild(empty);
+        return;
+    }
+    scenarios.forEach((scenario, index) => {
         const scenarioBtn = document.createElement('button');
         scenarioBtn.className = 'scenario-option-btn';
         scenarioBtn.textContent = scenario.name || 'Unnamed Scenario';
@@ -13012,17 +13263,43 @@ startNewChatBtn.addEventListener('click', async () => {
         scenarioBtn.dataset.scenarioIndex = String(index);
         scenarioSelectionList.appendChild(scenarioBtn);
     });
+}
+
+startNewChatBtn.addEventListener('click', () => {
+    const character = characters[currentCharacterId];
+    const hasScenarios = !!(character.scenarios && character.scenarios.length);
+    renderScenarioSelection(hasScenarios ? 'scenarios' : 'games');
     scenarioSelectionModal.classList.remove('hidden');
 });
 
+document.getElementById('scenario-category-tabs').addEventListener('click', (event) => {
+    const tab = event.target.closest('.scenario-category-tab');
+    if (tab && tab.dataset.category !== scenarioSelectionCategory) renderScenarioSelection(tab.dataset.category);
+});
+
+// A game chat gets the rules - with this game's secrets already drawn - as its
+// memories, and the character opens it straight away in their own voice.
+async function startGameChat(game) {
+    const memories = `${GAME_RULES_INTRO}\n\n${game.rules()}`;
+    await createNewChat(null, `${game.icon} ${game.name}`, null, { memories }, game.id);
+    await handleChatSubmit('dialog', { autoTurn: true });
+}
+
 scenarioSelectionList.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('scenario-option-btn')) {
-        const character = characters[currentCharacterId];
-        const scenario = (character.scenarios || [])[Number(event.target.dataset.scenarioIndex)];
-        if (!scenario) return;
+    const optionBtn = event.target.closest('.scenario-option-btn');
+    if (!optionBtn) return;
+    if (optionBtn.dataset.gameId) {
+        const game = getGameById(optionBtn.dataset.gameId);
+        if (!game) return;
         scenarioSelectionModal.classList.add('hidden');
-        await createNewChat(scenario.greeting || '', scenario.name || 'Unnamed Scenario', null, scenario);
+        await startGameChat(game);
+        return;
     }
+    const character = characters[currentCharacterId];
+    const scenario = (character.scenarios || [])[Number(optionBtn.dataset.scenarioIndex)];
+    if (!scenario) return;
+    scenarioSelectionModal.classList.add('hidden');
+    await createNewChat(scenario.greeting || '', scenario.name || 'Unnamed Scenario', null, scenario);
 });
 
 startEmptyChatBtn.addEventListener('click', async () => {
@@ -15248,7 +15525,7 @@ const tutorialTours = {
                 targetId: 'start-new-chat-btn',
                 position: 'top',
                 title: 'Start a new roleplay',
-                text: 'You can either start an empty chat or select a prepared scenario (greeting). Every chat with this character is saved below.',
+                text: 'Start an empty chat, pick a prepared scenario, or play a game together. Every chat with this character is saved below.',
             },
             {
                 targetId: 'new-chat-group-btn',
