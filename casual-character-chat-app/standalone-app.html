@@ -29608,6 +29608,7 @@ personaEditorAvatarImg.onerror = () => {
     let musicAudioEl = null;
     let musicIframeEl = null;
     let musicIsPlaying = false;
+    let musicWanted = false;        // should be playing: only ⏸/⏹ or leaving the chat turn it off
     let musicStatus = '';           // an error to show in place of the track position
     let musicFailures = 0;          // tracks in a row that would not play
     let musicSeeking = false;       // the timeline is being dragged
@@ -29877,6 +29878,7 @@ personaEditorAvatarImg.onerror = () => {
     }
 
     function stopMusic() {
+        musicWanted = false;
         teardownMusicPlayer();
         musicStatus = '';
         setMusicPlaying(false);
@@ -29909,6 +29911,7 @@ personaEditorAvatarImg.onerror = () => {
     function onMusicTrackFailed(message) {
         const failedIndex = musicIndex;
         musicFailures++;
+        musicWanted = false;
         teardownMusicPlayer();
         musicStatus = message;
         setMusicPlaying(false);
@@ -29926,6 +29929,7 @@ personaEditorAvatarImg.onerror = () => {
         musicStatus = '';
         if (!musicPlaylist.length || index == null) {
             musicIndex = -1;
+            musicWanted = false;
             setMusicPlaying(false);
             renderMusicPanel();
             return;
@@ -29941,6 +29945,7 @@ personaEditorAvatarImg.onerror = () => {
             const iframe = document.createElement('iframe');
             iframe.src = `https://www.youtube.com/embed/${ytId}?${params}`;
             iframe.allow = 'autoplay';
+            if (!pageActivated()) iframe.dataset.beforeActivation = '1';
             iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
             iframe.addEventListener('load', () => listenToMusicEmbed(iframe));
             document.body.appendChild(iframe);
@@ -29962,6 +29967,7 @@ personaEditorAvatarImg.onerror = () => {
             musicAudioEl = audio;
             audio.play().catch(() => { if (current()) setMusicPlaying(false); });
         }
+        musicWanted = true;
         setMusicPlaying(true);
         renderMusicPanel();
     }
@@ -29992,6 +29998,7 @@ personaEditorAvatarImg.onerror = () => {
         seekMusicTo(0);
         if (musicAudioEl) musicAudioEl.play().catch(() => {});
         if (musicIframeEl) musicYtSend('playVideo');
+        musicWanted = true;
         setMusicPlaying(true);
     }
 
@@ -30000,6 +30007,7 @@ personaEditorAvatarImg.onerror = () => {
         const next = nextMusicIndex(1, true);
         if (next === null) {
             // End of a playlist that does not repeat: rewind to the start and stop.
+            musicWanted = false;
             teardownMusicPlayer();
             musicIndex = musicOrder[0] ?? -1;
             setMusicPlaying(false);
@@ -30019,6 +30027,7 @@ personaEditorAvatarImg.onerror = () => {
     }
 
     function pauseMusic() {
+        musicWanted = false;
         if (musicAudioEl) musicAudioEl.pause();
         if (musicIframeEl) musicYtSend('pauseVideo');
         setMusicPlaying(false);
@@ -30028,9 +30037,42 @@ personaEditorAvatarImg.onerror = () => {
     function resumeMusic() {
         if (musicAudioEl) musicAudioEl.play().catch(() => setMusicPlaying(false));
         if (musicIframeEl) musicYtSend('playVideo');
+        musicWanted = true;
         setMusicPlaying(true);
         renderMusicPlaylist();
     }
+
+    // Browsers refuse to start sound before the page's first click, tap or key
+    // press, so the music of a chat restored by a reload waits for that; phones
+    // also pause it while the app is in the background. The music is still
+    // wanted either way, so it carries on at the next chance. A YouTube track
+    // that never got going is reloaded, as an embed only autoplays when it loads.
+    let musicPageActivated = false;
+    function pageActivated() {
+        return navigator.userActivation ? navigator.userActivation.hasBeenActive : musicPageActivated;
+    }
+
+    function resumeWantedMusic() {
+        if (!musicWanted || !musicPlaylist.length) return;
+        if (musicAudioEl) {
+            if (musicAudioEl.paused) resumeMusic();
+        } else if (musicIframeEl) {
+            if (musicYt.state === 1 || musicYt.state === 3) return;
+            if (musicYt.ready && musicYt.time > 0) resumeMusic();
+            else if (musicIframeEl.dataset.beforeActivation && pageActivated()) playMusicTrack(musicIndex);
+        } else {
+            playMusicTrack(musicIndex >= 0 ? musicIndex : (musicOrder[0] ?? 0));
+        }
+    }
+    ['pointerdown', 'pointerup', 'touchend', 'keydown'].forEach(type => {
+        document.addEventListener(type, (e) => {
+            musicPageActivated = true;
+            // The panel's own buttons decide for themselves (▶ on a blocked track plays it).
+            if (!musicPanel?.contains(e.target)) resumeWantedMusic();
+        }, { capture: true, passive: true });
+    });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) resumeWantedMusic(); });
+    window.addEventListener('pageshow', resumeWantedMusic);
 
     function toggleMusicPlayback() {
         if (musicIsPlaying) pauseMusic();
