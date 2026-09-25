@@ -471,6 +471,19 @@ const IMAGE_PROMPT_FALLBACK_CHARS = 800;
 // Pollinations carries the prompt in the URL path, where percent-encoding can
 // triple the length, so the prompt is bounded to keep the request sane.
 const IMAGE_PROMPT_URL_CHARS = 1500;
+// AI Horde is the backup for the free path: volunteers' GPUs, no account, and
+// open to browsers. Anonymous requests queue behind everyone with kudos, so the
+// request is kept cheap - any model at 512px arrived in about a minute, while a
+// specific SDXL model was still queued after six. The contact in Client-Agent
+// is what the Horde asks every app to send.
+const AI_HORDE_API_URL = "https://aihorde.net/api/v2";
+const AI_HORDE_ANON_KEY = '0000000000';
+const AI_HORDE_CLIENT_AGENT = 'casual-character-chat:1:https://casual-character-chat.vercel.app';
+const AI_HORDE_SIZE = 512;
+const AI_HORDE_STEPS = 20;
+const AI_HORDE_PROMPT_CHARS = 1000;
+const AI_HORDE_POLL_MS = 4000;
+const AI_HORDE_TIMEOUT_MS = 300000;
 
 const OPENROUTER_REASONING_EFFORTS = new Set([
     'none',
@@ -4230,15 +4243,25 @@ function showImagePendingBlock(messageElement, { providerLabel, onCancel }) {
     holder.appendChild(box);
 
     const started = Date.now();
+    // Once the caller has said something more specific, the generic note
+    // must not overwrite it.
+    let hintSet = false;
     const ticker = setInterval(() => {
         const seconds = Math.round((Date.now() - started) / 1000);
         timer.textContent = `${seconds}s`;
-        if (seconds === 15) {
+        if (seconds === 15 && !hintSet) {
             hint.textContent = 'The free service queues busy requests — this can take up to a minute.';
         }
     }, 1000);
 
     return {
+        setLabel(text) {
+            label.textContent = text;
+        },
+        setHint(text) {
+            hintSet = true;
+            hint.textContent = text;
+        },
         remove() {
             clearInterval(ticker);
             box.remove();
@@ -11507,6 +11530,139 @@ personaEditorAvatarImg.onerror = () => {
         return { provider: 'pollinations', url: finalUrl, width, height };
     }
 
+    function waitOrCancel(ms, signal) {
+        return new Promise((resolve, reject) => {
+            if (signal?.aborted) return reject(new DOMException('Cancelled', 'AbortError'));
+            const onAbort = () => {
+                clearTimeout(timer);
+                reject(new DOMException('Cancelled', 'AbortError'));
+            };
+            const timer = setTimeout(() => {
+                if (signal) signal.removeEventListener('abort', onAbort);
+                resolve();
+            }, ms);
+            if (signal) signal.addEventListener('abort', onAbort, { once: true });
+        });
+    }
+
+    // What the pending block says while a Horde request waits. The Horde's own
+    // wait_time estimate is horde-wide and was off by a factor of twenty in
+    // testing, so only the queue position is shown.
+    function describeHordeWait(state) {
+        if (state?.processing > 0) return 'AI Horde is drawing your image now…';
+        const position = Number(state?.queue_position) || 0;
+        const where = position > 0 ? ` (position ${position})` : '';
+        return `Waiting in the AI Horde queue${where}. Free requests wait behind others, so this can take a few minutes.`;
+    }
+
+    // Free, no key, used only as the backup when Pollinations fails. The image
+    // comes back as base64 and has no lasting URL, so it is stored like a paid
+    // one. The same prompt and seed do not give the same picture back here:
+    // any volunteer's model may take the job.
+    async function generateViaHorde({ prompt, seed, signal = null, onStatus = null }) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': AI_HORDE_ANON_KEY,
+            'Client-Agent': AI_HORDE_CLIENT_AGENT
+        };
+        const readError = async (response) => {
+            const body = await response.json().catch(() => null);
+            return body?.message || response.statusText || `HTTP ${response.status}`;
+        };
+
+        const submit = await fetch(`${AI_HORDE_API_URL}/generate/async`, {
+            method: 'POST',
+            headers,
+            signal,
+            body: JSON.stringify({
+                prompt: String(prompt).slice(0, AI_HORDE_PROMPT_CHARS),
+                params: {
+                    width: AI_HORDE_SIZE,
+                    height: AI_HORDE_SIZE,
+                    steps: AI_HORDE_STEPS,
+                    cfg_scale: 7,
+                    sampler_name: 'k_euler_a',
+                    karras: true,
+                    seed: String(seed),
+                    n: 1
+                },
+                // Matches the main free service, which does not filter either.
+                // The Horde still runs its own CSAM filter on every image.
+                nsfw: true,
+                censor_nsfw: false,
+                r2: false,
+                shared: false
+            })
+        });
+        if (!submit.ok) {
+            throw new Error(`AI Horde did not accept the request (${submit.status}): ${await readError(submit)}`);
+        }
+        const { id } = await submit.json();
+        if (!id) throw new Error('AI Horde did not return a request id.');
+
+        const started = Date.now();
+        let collected = false;
+        try {
+            for (;;) {
+                await waitOrCancel(AI_HORDE_POLL_MS, signal);
+                if (Date.now() - started > AI_HORDE_TIMEOUT_MS) {
+                    throw new Error(`AI Horde timed out after ${Math.round(AI_HORDE_TIMEOUT_MS / 60000)} minutes.`);
+                }
+                const check = await fetch(`${AI_HORDE_API_URL}/generate/check/${encodeURIComponent(id)}`, {
+                    headers: { 'Client-Agent': AI_HORDE_CLIENT_AGENT },
+                    signal
+                });
+                // Polled too fast for the Horde's taste: skip a beat, not the image.
+                if (check.status === 429) continue;
+                if (!check.ok) throw new Error(`AI Horde lost the request (${check.status}): ${await readError(check)}`);
+                const state = await check.json();
+                if (state.faulted) throw new Error('AI Horde could not finish this image.');
+                if (state.is_possible === false) throw new Error('No AI Horde volunteer can take this request right now.');
+                if (state.done) break;
+                onStatus?.(state);
+            }
+
+            const statusResponse = await fetch(`${AI_HORDE_API_URL}/generate/status/${encodeURIComponent(id)}`, {
+                headers: { 'Client-Agent': AI_HORDE_CLIENT_AGENT },
+                signal
+            });
+            if (!statusResponse.ok) throw new Error(`AI Horde did not hand over the image (${statusResponse.status}): ${await readError(statusResponse)}`);
+            const result = await statusResponse.json();
+            collected = true;
+
+            const generation = result?.generations?.[0];
+            const censored = generation?.censored
+                || (generation?.gen_metadata || []).some(m => m?.type === 'censorship');
+            if (censored) {
+                throw new ImageRefusalError('The free image service refused this prompt.\n\nIts safety filter blocked the picture. Try rewording the prompt.');
+            }
+            if (!generation?.img) throw new Error('AI Horde returned no image.');
+
+            // Base64 normally (r2 is off), but a link is handled in case a
+            // worker sends one anyway.
+            const source = /^https?:\/\//.test(generation.img)
+                ? generation.img
+                : `data:image/webp;base64,${generation.img}`;
+            const sourceBlob = await (await fetch(source, { signal })).blob();
+            const { dataURL } = await imageFileToWebp(sourceBlob, 0.80, 1024);
+            return {
+                provider: 'horde',
+                dataUrl: dataURL,
+                model: generation.model || null,
+                width: AI_HORDE_SIZE,
+                height: AI_HORDE_SIZE
+            };
+        } finally {
+            // A request left in the queue would still take up a volunteer's GPU.
+            if (!collected) {
+                fetch(`${AI_HORDE_API_URL}/generate/status/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    headers
+                }).catch(() => {});
+            }
+        }
+    }
+
     // Paid, reuses the OpenRouter key already in App Settings. Returns base64,
     // which is re-encoded to webp so the stored copy stays around 100KB.
     async function generateViaOpenRouter({ prompt, model, width = IMAGE_GEN_SIZE, height = IMAGE_GEN_SIZE, signal = null }) {
@@ -11769,14 +11925,40 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             }
 
             const seed = Math.floor(Math.random() * 1000000);
-            const result = await provider.generate({
-                prompt,
-                seed,
-                model: imageGenModel,
-                width: IMAGE_GEN_SIZE,
-                height: IMAGE_GEN_SIZE,
-                signal: controller.signal
-            });
+            let result;
+            try {
+                result = await provider.generate({
+                    prompt,
+                    seed,
+                    model: imageGenModel,
+                    width: IMAGE_GEN_SIZE,
+                    height: IMAGE_GEN_SIZE,
+                    signal: controller.signal
+                });
+            } catch (err) {
+                // Only the free path has a backup: a paid provider was chosen
+                // on purpose, and its errors say what to fix.
+                if (provider !== IMAGE_PROVIDERS.pollinations || err?.name === 'AbortError') throw err;
+                const mainError = err?.message || String(err);
+                // The backup stores the picture itself, so it obeys the same
+                // per-chat cap as the paid path.
+                if (countStoredImageBytes(chat) >= IMAGE_GEN_STORED_LIMIT) {
+                    throw new Error(`${mainError}\n\nThe free backup (AI Horde) was not tried: this chat already holds ${IMAGE_GEN_STORED_LIMIT} saved images. Remove one with the × button first.`);
+                }
+                pendingBlock?.setLabel('Generating image (free backup: AI Horde)…');
+                pendingBlock?.setHint('The main free service did not answer, so the image is being made on AI Horde instead. This can take a few minutes.');
+                try {
+                    result = await generateViaHorde({
+                        prompt,
+                        seed,
+                        signal: controller.signal,
+                        onStatus: state => pendingBlock?.setHint(describeHordeWait(state))
+                    });
+                } catch (backupErr) {
+                    if (backupErr?.name === 'AbortError' || backupErr?.name === 'ImageRefusalError') throw backupErr;
+                    throw new Error(`${mainError}\n\nThe free backup (AI Horde) failed too: ${backupErr?.message || backupErr}`);
+                }
+            }
 
             const imageRecord = {
                 id: 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -11803,7 +11985,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
 
             updateSingleMessageView(messageId);
 
-            if (imageRecord.provider === 'pollinations') {
+            if (imageRecord.provider === 'pollinations' || imageRecord.provider === 'horde') {
                 maybeShowFreeImageHint(document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`));
             }
 
