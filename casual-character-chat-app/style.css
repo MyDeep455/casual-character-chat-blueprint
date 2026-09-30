@@ -7292,6 +7292,25 @@ body.image-gen-off .generate-image-btn {
     background-color: rgba(26, 158, 60, 0.9);
 }
 
+.persona-default-character-picker {
+    margin: 20px 0 8px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.persona-default-character-picker .world-char-selected-avatars {
+    margin-bottom: 10px;
+}
+
+.custom-dialog-buttons.stacked-choice-buttons {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.custom-dialog-buttons.stacked-choice-buttons button {
+    width: 100%;
+}
+
 /* World card in character grid */
 .character-card.card--world {
     border-color: rgba(120, 180, 255, 0.25);

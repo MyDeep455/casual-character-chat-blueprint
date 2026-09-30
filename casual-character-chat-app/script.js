@@ -711,6 +711,8 @@ const defaultSettings = {
     let currentChatId = null;
     let worldCharSelectedIds = new Set();
     let worldCharPickerTempIds = new Set();
+    let personaDefaultCharacterTempIds = new Set();
+    let personaDefaultCharacterPickerPersonaId = null;
     let activeGroupParticipantId = null;
     // Chat group currently opened in the chat list (null = main, ungrouped list).
     let openChatGroupId = null;
@@ -1263,6 +1265,7 @@ function showChoiceDialog(message, options) {
 
     const btns = document.createElement('div');
     btns.className = 'custom-dialog-buttons';
+    if (options.some(opt => opt.stacked)) btns.classList.add('stacked-choice-buttons');
 
     options.forEach(opt => {
       const b = document.createElement('button');
@@ -3913,6 +3916,11 @@ if (saved !== null) {
 
 
 
+function getDefaultPersonaForCharacter(character) {
+    const personaId = character?.defaultPersonaId;
+    return personaId && personas[personaId] ? personaId : null;
+}
+
 async function createNewChat(initialMessage = null, scenarioName = null, initialMood = null, scenarioSource = null, gameId = null) {
     if (!currentCharacterId) return;
     const character = characters[currentCharacterId];
@@ -3963,7 +3971,7 @@ async function createNewChat(initialMessage = null, scenarioName = null, initial
         // so rewriting one chat's leaves the scenario and the other chats alone.
         memories: (scenarioSource && normalizeScenario(scenarioSource)?.memories) || '',
         participants: worldParticipants,
-        activePersonaId: null,
+        activePersonaId: getDefaultPersonaForCharacter(character),
         mood: normalizeMood(initialMood),
         groupId: targetGroupId,
         // Which game this chat plays, so its opening message is the game's own.
@@ -7502,6 +7510,217 @@ async function addParticipantToChat(participantId) {
 
 // --- FUNCTIONS FOR PERSONA MANAGEMENT ---
 
+function getPersonaDefaultCharacterIds(personaId) {
+  return Object.values(characters)
+    .filter(character => character.defaultPersonaId === personaId)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }))
+    .map(character => character.id);
+}
+
+function renderPersonaDefaultCharacterAvatars() {
+  const section = document.getElementById('persona-default-character-picker-section');
+  const container = document.getElementById('persona-default-character-avatars');
+  const personaId = document.getElementById('editing-persona-id')?.value;
+  if (!section || !container) return;
+
+  section.classList.toggle('hidden', !personaId || !personas[personaId]);
+  if (!personaId || !personas[personaId]) return;
+
+  container.innerHTML = '';
+  const characterIds = getPersonaDefaultCharacterIds(personaId);
+  if (characterIds.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'world-char-selected-empty';
+    empty.textContent = 'No characters or worlds selected';
+    container.appendChild(empty);
+    return;
+  }
+
+  characterIds.forEach(characterId => {
+    const character = characters[characterId];
+    if (!character) return;
+    const avatarUrl = getImageUrl(character.type === 'world'
+      ? (character.background || character.avatar)
+      : character.avatar);
+    const wrap = document.createElement('div');
+    wrap.title = character.name || (character.type === 'world' ? 'Unnamed world' : 'Unnamed character');
+
+    if (avatarUrl) {
+      const image = document.createElement('img');
+      image.src = avatarUrl;
+      image.alt = wrap.title;
+      image.onerror = function() {
+        this.style.display = 'none';
+        this.nextElementSibling?.classList.remove('hidden');
+      };
+      const placeholder = document.createElement('div');
+      placeholder.className = 'placeholder-icon hidden';
+      placeholder.textContent = character.type === 'world' ? '🌍' : '👤';
+      wrap.append(image, placeholder);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'placeholder-icon';
+      placeholder.textContent = character.type === 'world' ? '🌍' : '👤';
+      wrap.appendChild(placeholder);
+    }
+    container.appendChild(wrap);
+  });
+}
+
+async function setDefaultPersonaForCharacters(personaId, characterIds) {
+  const selectedIds = new Set([...characterIds].filter(characterId => characters[characterId]));
+  const changedCharacters = [];
+
+  Object.values(characters).forEach(character => {
+    const shouldUsePersona = selectedIds.has(character.id);
+    if (shouldUsePersona && character.defaultPersonaId !== personaId) {
+      character.defaultPersonaId = personaId;
+      changedCharacters.push(character);
+    } else if (!shouldUsePersona && character.defaultPersonaId === personaId) {
+      delete character.defaultPersonaId;
+      changedCharacters.push(character);
+    }
+  });
+
+  await Promise.all(changedCharacters.map(saveSingleCharacterToDB));
+}
+
+function openPersonaDefaultCharacterPicker(personaId) {
+  const persona = personas[personaId];
+  if (!persona) return;
+
+  personaDefaultCharacterPickerPersonaId = personaId;
+  personaDefaultCharacterTempIds = new Set(getPersonaDefaultCharacterIds(personaId));
+  let modal = document.getElementById('personaDefaultCharacterPickerModal');
+
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'personaDefaultCharacterPickerModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:2200;';
+    const panel = document.createElement('div');
+    panel.className = 'modal-content';
+    panel.style.cssText = 'max-width:600px;width:min(600px,92vw);';
+    panel.innerHTML = `
+      <h2>Set Default Persona</h2>
+      <p id="personaDefaultCharacterPickerDescription"></p>
+      <div class="modal-search-container" style="display:flex;align-items:center;gap:10px;">
+        <input type="search" id="personaDefaultCharacterPickerSearch" class="modal-search-input" placeholder="🔎 Search Character or World…">
+        <label style="display:flex;align-items:center;gap:6px;font-size:16px;color:#dcddde;">
+          <input id="personaDefaultCharacterPickerSelectAll" type="checkbox">
+          <span>Select all</span>
+        </label>
+      </div>
+      <div id="personaDefaultCharacterPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
+      <div class="form-buttons">
+        <button type="button" id="personaDefaultCharacterPickerConfirmBtn">Confirm</button>
+        <button type="button" id="personaDefaultCharacterPickerCancelBtn">Cancel</button>
+      </div>
+    `;
+    modal.appendChild(panel);
+    document.body.appendChild(modal);
+
+    panel.querySelector('#personaDefaultCharacterPickerConfirmBtn').addEventListener('click', async event => {
+      const button = event.currentTarget;
+      const selectedPersonaId = personaDefaultCharacterPickerPersonaId;
+      if (!selectedPersonaId || !personas[selectedPersonaId]) return;
+      button.disabled = true;
+      try {
+        await setDefaultPersonaForCharacters(selectedPersonaId, personaDefaultCharacterTempIds);
+        modal.style.display = 'none';
+        renderPersonaDefaultCharacterAvatars();
+        if (!personaSelectionModal.classList.contains('hidden')) {
+          openPersonaSelectionModal(personaSearchInput.value);
+        }
+      } catch (error) {
+        console.error('Unable to save default persona assignments:', error);
+        showErrorAlert('The default persona assignments could not be saved. Please try again.');
+      } finally {
+        button.disabled = false;
+      }
+    });
+    panel.querySelector('#personaDefaultCharacterPickerCancelBtn').addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+    panel.querySelector('#personaDefaultCharacterPickerSearch').addEventListener('input', renderPersonaDefaultCharacterPickerList);
+    panel.querySelector('#personaDefaultCharacterPickerSelectAll').addEventListener('change', event => {
+      document.querySelectorAll('#personaDefaultCharacterPickerList .personaDefaultCharacterPickerCheckbox').forEach(checkbox => {
+        checkbox.checked = event.target.checked;
+        if (event.target.checked) personaDefaultCharacterTempIds.add(checkbox.value);
+        else personaDefaultCharacterTempIds.delete(checkbox.value);
+      });
+      updatePersonaDefaultCharacterPickerSelectAll();
+    });
+  }
+
+  const description = modal.querySelector('#personaDefaultCharacterPickerDescription');
+  description.textContent = `Choose the characters and worlds that should start new chats with “${persona.name}”.`;
+  modal.querySelector('#personaDefaultCharacterPickerSearch').value = '';
+  renderPersonaDefaultCharacterPickerList();
+  modal.style.display = 'flex';
+}
+
+function renderPersonaDefaultCharacterPickerList() {
+  const list = document.getElementById('personaDefaultCharacterPickerList');
+  if (!list) return;
+
+  const query = (document.getElementById('personaDefaultCharacterPickerSearch')?.value || '').toLowerCase().trim();
+  const cards = Object.values(characters)
+    .filter(character => !query || (character.name || '').toLowerCase().includes(query))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+  list.innerHTML = '';
+  if (cards.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:10px;color:rgba(255,255,255,0.4);font-style:italic;text-align:center;';
+    empty.textContent = 'No characters or worlds found.';
+    list.appendChild(empty);
+    updatePersonaDefaultCharacterPickerSelectAll();
+    return;
+  }
+
+  cards.forEach(character => {
+    const avatarSrc = getImageUrl(character.type === 'world'
+      ? (character.background || character.avatar)
+      : character.avatar);
+    const row = document.createElement('label');
+    row.className = 'participant-option-btn';
+    row.style.cssText = 'justify-content:space-between;width:100%;box-sizing:border-box;';
+    const left = document.createElement('div');
+    left.style.cssText = 'display:flex;align-items:center;gap:15px;min-width:0;';
+    const avatarHtml = `<img src="${escapeHtml(avatarSrc || '')}" alt="" class="${avatarSrc ? '' : 'hidden'}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden');"><div class="placeholder-icon ${avatarSrc ? 'hidden' : ''}">${character.type === 'world' ? '🌍' : '👤'}</div>`;
+    left.innerHTML = `${avatarHtml}<span>${escapeHtml(character.name || (character.type === 'world' ? '(unnamed world)' : '(unnamed character)'))}</span>`;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'personaDefaultCharacterPickerCheckbox bulkCharCheckbox';
+    checkbox.value = character.id;
+    checkbox.checked = personaDefaultCharacterTempIds.has(character.id);
+    checkbox.addEventListener('change', event => {
+      if (event.target.checked) personaDefaultCharacterTempIds.add(character.id);
+      else personaDefaultCharacterTempIds.delete(character.id);
+      updatePersonaDefaultCharacterPickerSelectAll();
+    });
+
+    row.append(left, checkbox);
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('img').forEach(image => {
+    image.style.objectFit = 'cover';
+    image.style.objectPosition = 'center';
+  });
+  updatePersonaDefaultCharacterPickerSelectAll();
+}
+
+function updatePersonaDefaultCharacterPickerSelectAll() {
+  const selectAll = document.getElementById('personaDefaultCharacterPickerSelectAll');
+  if (!selectAll) return;
+  const checkboxes = document.querySelectorAll('#personaDefaultCharacterPickerList .personaDefaultCharacterPickerCheckbox');
+  const selected = Array.from(checkboxes).filter(checkbox => checkbox.checked).length;
+  selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+  selectAll.checked = checkboxes.length > 0 && selected === checkboxes.length;
+}
+
 function openPersonaListModal(searchTerm = '') {
   const personaListContainer = document.getElementById('persona-list-container');
   personaListContainer.innerHTML = '';
@@ -7585,6 +7804,8 @@ function openPersonaEditor(personaId = null) {
     container.style.backgroundImage = 'none';
   }
 
+  renderPersonaDefaultCharacterAvatars();
+
   personaListModal.classList.add('hidden');
   personaEditorModal.classList.remove('hidden');
   updatePersonaEditorTokenCount();
@@ -7633,7 +7854,15 @@ async function handleDeletePersona(personaId) {
     const personaName = personas[personaId]?.name || 'this Persona';
     if (await showCustomConfirm(`Are you sure you really want to delete the persona "${personaName}"?`, true)) {
         delete personas[personaId];
-        await savePersonasToDB();
+        const charactersWithThisDefault = Object.values(characters).filter(character => {
+            if (character.defaultPersonaId !== personaId) return false;
+            delete character.defaultPersonaId;
+            return true;
+        });
+        await Promise.all([
+            savePersonasToDB(),
+            ...charactersWithThisDefault.map(saveSingleCharacterToDB)
+        ]);
         openPersonaListModal(); 
     }
 }
@@ -7662,6 +7891,15 @@ createNewPersonaBtn.addEventListener('click', () => {
 cancelPersonaEditBtn.addEventListener('click', () => {
     personaEditorModal.classList.add('hidden');
     openPersonaListModal(); 
+});
+
+document.getElementById('open-persona-default-character-picker-btn').addEventListener('click', () => {
+    const personaId = document.getElementById('editing-persona-id').value;
+    if (!personaId) {
+        showCustomAlert('Save this persona first, then choose its default characters.');
+        return;
+    }
+    openPersonaDefaultCharacterPicker(personaId);
 });
 
 personaForm.addEventListener('submit', handlePersonaFormSubmit);
@@ -7745,17 +7983,25 @@ const avatarHtml = `
 }
 
 async function setActivePersonaForChat(personaId) {
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-    if (!chat) return;
+    const character = characters[currentCharacterId];
+    const chat = character?.chats?.[currentChatId];
+    if (!character || !chat) return;
 
     const personaName = personas[personaId]?.name || 'this Persona';
-    if (await showCustomConfirm(`Do you want to set "${personaName}" as your persona for this chat?\n\n(You can unselect persona anytime.)`)) {
-        chat.activePersonaId = personaId;
-        await saveSingleCharacterToDB(characters[currentCharacterId]);
-        updateTokenCount();
-        personaSelectionModal.classList.add('hidden');
-        startChat(currentCharacterId, currentChatId); 
-    }
+    const cardType = character.type === 'world' ? 'World' : 'Character';
+    const selection = await showChoiceDialog(`Set "${personaName}" as:`, [
+        { label: 'Persona for this Chat only', value: 'chat', primary: true, stacked: true },
+        { label: `Default Persona for this ${cardType}`, value: 'default', primary: true, stacked: true },
+        { label: 'Cancel', value: null, stacked: true }
+    ]);
+    if (!selection) return;
+
+    chat.activePersonaId = personaId;
+    if (selection === 'default') character.defaultPersonaId = personaId;
+    await saveSingleCharacterToDB(character);
+    updateTokenCount();
+    personaSelectionModal.classList.add('hidden');
+    startChat(currentCharacterId, currentChatId);
 }
 
 
@@ -15292,6 +15538,7 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
         ['image-crop-modal', 'image-crop-cancel-btn'],
         ['worldCharPickerModal', 'worldCharPickerCancelBtn'],
         ['bulkCharDeleteModal', 'cancel-bulk-delete-btn'],
+        ['personaDefaultCharacterPickerModal', 'personaDefaultCharacterPickerCancelBtn'],
         ['persona-editor-modal', 'cancel-persona-edit-btn'],
         ['persona-list-modal', 'close-persona-list-btn'],
         ['persona-selection-modal', 'cancel-persona-select-btn'],
