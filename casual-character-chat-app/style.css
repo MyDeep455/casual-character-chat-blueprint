@@ -3820,6 +3820,33 @@ max-height: 27em;
   border-color: rgba(216, 203, 255, 0.6);
 }
 
+/* The frame of a favorite: a thin ring that runs from the star's gold into the
+   app's violet, with a dark hairline between ring and picture so the ring
+   reads as a frame around the picture and not as its edge. */
+.favorite-item .avatar-container {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#14121f, #14121f) padding-box,
+    linear-gradient(150deg, rgba(255, 221, 140, 0.85), rgba(196, 181, 255, 0.5) 45%, rgba(139, 108, 247, 0.45) 70%, rgba(255, 215, 130, 0.6)) border-box;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 14px rgba(255, 215, 130, 0.1), 0 0 12px rgba(139, 108, 247, 0.14);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.favorite-item .avatar-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(20, 18, 31, 0.75), inset 0 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.favorite-item:hover .avatar-container {
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 215, 130, 0.22), 0 0 12px rgba(139, 108, 247, 0.2);
+}
+
 
 .avatar-container::before {
   content: none !important;

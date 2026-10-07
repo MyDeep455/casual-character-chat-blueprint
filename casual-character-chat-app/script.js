@@ -2931,6 +2931,18 @@ function getSortedCharacterCategories() {
     return [...characterCategories].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
 }
 
+// Orders the Favorites bar like the grid below it: category by category in
+// the order of their headers, characters in no category last, and by name
+// within each. The bar shows no headers, only the order follows them.
+function compareFavoriteCharacters(a, b) {
+    const sortedCategories = getSortedCharacterCategories();
+    const rank = character => {
+        const index = sortedCategories.findIndex(c => c.id === character.categoryId);
+        return index === -1 ? sortedCategories.length : index;
+    };
+    return rank(a) - rank(b) || a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
+}
+
 // Puts the main menu's cards into the grid. Without categories that is one
 // plain grid, as before. With them, every category that has cards to show gets
 // a header spanning the full row, so each category starts a grid of its own;
@@ -3227,7 +3239,8 @@ function renderCharacterList(searchTerm = '') {
         return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
     });
 
-    const favoriteCharacters = allSortedCharacters.filter(char => char.isFavorite && !char.isArchived); 
+    const favoriteCharacters = allSortedCharacters.filter(char => char.isFavorite && !char.isArchived)
+        .sort(compareFavoriteCharacters);
     if (favoriteCharacters.length > 0) {
         favoritesContainer.classList.remove('hidden');
         favoriteCharacters.forEach((character, index) => {
@@ -13777,7 +13790,8 @@ characterList.addEventListener('click', async (event) => {
                 const existing = [...favBar.querySelectorAll('.favorite-item')];
                 let inserted = false;
                 for (const el of existing) {
-                    if (character.name.localeCompare(characters[el.dataset.charId]?.name || '', 'de', { sensitivity: 'base' }) <= 0) {
+                    const other = characters[el.dataset.charId];
+                    if (other && compareFavoriteCharacters(character, other) <= 0) {
                         favBar.insertBefore(favElement, el);
                         inserted = true;
                         break;
