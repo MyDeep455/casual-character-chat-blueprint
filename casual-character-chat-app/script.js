@@ -2465,6 +2465,7 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
     version: 3, 
     characters: characters,
     personas: personas,
+    characterCategories: characterCategories,
     appSettings: settingsToExport
   };
   const dataStr = JSON.stringify(exportData, null, 2);
@@ -2499,6 +2500,26 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
     const importedAppSettings = importedData.appSettings || null;
 
     let charsAdded = 0, personasAdded = 0, charsSkipped = 0, personasSkipped = 0;
+
+    // Categories go first, so the characters below can be pointed at them. A
+    // category in the backup that matches one here, by id or by name, is not
+    // added again: its characters join the one that already exists.
+    const categoryIdMap = {};
+    let categoriesAdded = false;
+    for (const imported of (Array.isArray(importedData.characterCategories) ? importedData.characterCategories : [])) {
+        if (!imported || !imported.id || !imported.name) continue;
+        const importedName = String(imported.name);
+        const existing = getCharacterCategory(imported.id)
+            || characterCategories.find(c => c.name.toLowerCase() === importedName.toLowerCase());
+        if (existing) {
+            categoryIdMap[imported.id] = existing.id;
+        } else {
+            characterCategories.push({ id: String(imported.id), name: importedName });
+            categoryIdMap[imported.id] = String(imported.id);
+            categoriesAdded = true;
+        }
+    }
+    if (categoriesAdded) saveCharacterCategoriesToDB();
     for (const charId in importedChars) {
         if (!characters[charId]) {
             characters[charId] = importedChars[charId];
@@ -2506,6 +2527,11 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
             // too and not only in loadCharactersFromDB.
             if (Array.isArray(characters[charId].scenarios)) {
                 characters[charId].scenarios = normalizeScenarioList(characters[charId].scenarios);
+            }
+            if (characters[charId].categoryId) {
+                const categoryId = categoryIdMap[characters[charId].categoryId] || characters[charId].categoryId;
+                if (getCharacterCategory(categoryId)) characters[charId].categoryId = categoryId;
+                else delete characters[charId].categoryId;
             }
             await saveSingleCharacterToDB(importedChars[charId]);
             charsAdded++;
@@ -2868,6 +2894,268 @@ function formatCardTitle(name) {
 
 
 
+// --- Character categories: named groups that split the main menu's character
+// grid into one headed block per category. The list of categories lives in the
+// settings store; which category a character is in is saved on the character
+// itself (categoryId), so it travels with the character into copies and backups. ---
+let characterCategories = [];
+// The category whose characters the Categories dialog is showing, or null
+// while it shows the list of categories.
+let openCategoryMembersId = null;
+
+async function loadCharacterCategoriesFromDB() {
+    if (!db) return;
+    const store = db.transaction(['settings'], 'readonly').objectStore('settings');
+    const record = await new Promise((resolve, reject) => {
+        const request = store.get('characterCategories');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+    characterCategories = Array.isArray(record?.value) ? record.value.filter(c => c && c.id && c.name) : [];
+}
+
+function saveCharacterCategoriesToDB() {
+    if (!db) return;
+    const transaction = db.transaction(['settings'], 'readwrite');
+    transaction.objectStore('settings').put({ key: 'characterCategories', value: characterCategories });
+}
+
+function getCharacterCategory(categoryId) {
+    return characterCategories.find(c => c.id === categoryId) || null;
+}
+
+function getSortedCharacterCategories() {
+    return [...characterCategories].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+}
+
+// Puts the main menu's cards into the grid. Without categories that is one
+// plain grid, as before. With them, every category that has cards to show gets
+// a header spanning the full row, so each category starts a grid of its own;
+// characters in no category follow last.
+function appendCharacterCardsByCategory(activeCards) {
+    const sections = getSortedCharacterCategories().map(category => ({
+        name: category.name,
+        cards: activeCards.filter(entry => entry.character.categoryId === category.id)
+    })).filter(section => section.cards.length > 0);
+
+    if (sections.length === 0) {
+        activeCards.forEach(entry => characterList.appendChild(entry.charElement));
+        return;
+    }
+
+    const uncategorized = activeCards.filter(entry => !getCharacterCategory(entry.character.categoryId));
+    if (uncategorized.length > 0) sections.push({ name: 'Uncategorized', cards: uncategorized });
+
+    for (const section of sections) {
+        const header = document.createElement('div');
+        header.className = 'character-category-header';
+        header.innerHTML = `<span class="character-category-header-name">🗂️ ${escapeHtml(section.name)}</span>`
+            + `<span class="chat-group-count">${section.cards.length}</span>`;
+        characterList.appendChild(header);
+        section.cards.forEach(entry => characterList.appendChild(entry.charElement));
+    }
+}
+
+function openCharacterCategoriesModal() {
+    let modal = document.getElementById('characterCategoriesModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'characterCategoriesModal';
+        modal.className = 'character-categories-overlay';
+        modal.innerHTML = `
+          <div class="modal-content">
+            <h2 id="characterCategoriesTitle"></h2>
+            <p id="characterCategoriesHint"></p>
+            <div class="modal-search-container hidden" id="characterCategorySearchRow">
+              <input type="search" id="characterCategorySearch" class="modal-search-input" placeholder="🔎 Search Character…">
+            </div>
+            <div id="characterCategoryList"></div>
+            <div class="form-buttons">
+              <button type="button" id="new-character-category-btn">+ New Category</button>
+              <button type="button" id="close-character-categories-btn">Close</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+
+        modal.querySelector('#new-character-category-btn').addEventListener('click', createCharacterCategory);
+        modal.querySelector('#characterCategorySearch').addEventListener('input', renderCharacterCategoriesModal);
+        // One button for both views: it leaves the character picker first, and
+        // only closes the dialog from the list of categories.
+        modal.querySelector('#close-character-categories-btn').addEventListener('click', () => {
+            if (openCategoryMembersId) {
+                openCategoryMembersId = null;
+                renderCharacterCategoriesModal();
+            } else {
+                closeCharacterCategoriesModal();
+            }
+        });
+        modal.querySelector('#characterCategoryList').addEventListener('click', (event) => {
+            const categoryId = event.target.closest('.character-category-row')?.dataset.categoryId;
+            if (!categoryId) return;
+            if (event.target.closest('.category-members-btn')) showCharacterCategoryMembers(categoryId);
+            else if (event.target.closest('.category-rename-btn')) renameCharacterCategory(categoryId);
+            else if (event.target.closest('.category-delete-btn')) deleteCharacterCategory(categoryId);
+        });
+    }
+
+    openCategoryMembersId = null;
+    renderCharacterCategoriesModal();
+}
+
+function closeCharacterCategoriesModal() {
+    document.getElementById('characterCategoriesModal')?.remove();
+    openCategoryMembersId = null;
+    renderCharacterList();
+}
+
+function showCharacterCategoryMembers(categoryId) {
+    openCategoryMembersId = categoryId;
+    const search = document.getElementById('characterCategorySearch');
+    if (search) search.value = '';
+    renderCharacterCategoriesModal();
+}
+
+function renderCharacterCategoriesModal() {
+    const modal = document.getElementById('characterCategoriesModal');
+    if (!modal) return;
+
+    const category = getCharacterCategory(openCategoryMembersId);
+    if (!category) openCategoryMembersId = null;
+
+    const title = modal.querySelector('#characterCategoriesTitle');
+    const hint = modal.querySelector('#characterCategoriesHint');
+    const list = modal.querySelector('#characterCategoryList');
+    modal.querySelector('#characterCategorySearchRow').classList.toggle('hidden', !category);
+    modal.querySelector('#new-character-category-btn').classList.toggle('hidden', Boolean(category));
+    modal.querySelector('#close-character-categories-btn').textContent = category ? 'Back to Categories' : 'Close';
+    list.innerHTML = '';
+
+    if (!category) {
+        title.textContent = '🗂️ Character Categories';
+        hint.textContent = 'Categories sort your characters into separate grids on the main menu.';
+        const sorted = getSortedCharacterCategories();
+        if (sorted.length === 0) {
+            list.innerHTML = `<p class="character-categories-empty">No categories yet. Create one to get started.</p>`;
+            return;
+        }
+        sorted.forEach(entry => {
+            const count = Object.values(characters).filter(c => c.categoryId === entry.id && !c.isArchived).length;
+            const row = document.createElement('div');
+            row.className = 'character-category-row';
+            row.dataset.categoryId = entry.id;
+            row.innerHTML = `
+              <span class="character-category-row-name">${escapeHtml(entry.name)}</span>
+              <span class="chat-group-count">${count} ${count === 1 ? 'character' : 'characters'}</span>
+              <div class="form-buttons character-category-actions">
+                <button type="button" class="category-members-btn" title="Add or remove characters">Characters</button>
+                <button type="button" class="category-rename-btn" title="Rename this category">Rename</button>
+                <button type="button" class="category-delete-btn" title="Delete this category">Delete</button>
+              </div>`;
+            list.appendChild(row);
+        });
+        return;
+    }
+
+    title.textContent = `🗂️ ${category.name}`;
+    hint.textContent = 'Tick the characters that belong in this category. A character can only be in one category at a time.';
+
+    const q = modal.querySelector('#characterCategorySearch').value.toLowerCase().trim();
+    const candidates = Object.values(characters)
+        .filter(c => !c.isArchived && (!q || (c.name || '').toLowerCase().includes(q)))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
+
+    if (candidates.length === 0) {
+        list.innerHTML = `<p class="character-categories-empty">No characters found.</p>`;
+        return;
+    }
+
+    candidates.forEach(character => {
+        const isWorld = character.type === 'world';
+        const imageSource = isWorld ? character.background : character.avatar;
+        const otherCategory = character.categoryId !== category.id ? getCharacterCategory(character.categoryId) : null;
+
+        const row = document.createElement('label');
+        row.className = 'participant-option-btn character-category-member';
+        row.innerHTML = `
+          <span class="character-category-member-info">
+            <img src="${escapeHtml(imageSource ? getImageUrl(imageSource) : '')}" alt="Avatar" class="${imageSource ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+            <div class="placeholder-icon ${imageSource ? 'hidden' : ''}">${isWorld ? '🌍' : '👤'}</div>
+            <span>${escapeHtml(character.name || '(unnamed)')}</span>
+            ${otherCategory ? `<span class="chat-group-count">in ${escapeHtml(otherCategory.name)}</span>` : ''}
+          </span>`;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'bulkCharCheckbox category-member-checkbox';
+        checkbox.checked = character.categoryId === category.id;
+        checkbox.addEventListener('change', async () => {
+            if (checkbox.checked) character.categoryId = category.id;
+            else delete character.categoryId;
+            // Either way the character is no longer in another category.
+            row.querySelector('.chat-group-count')?.remove();
+            await saveSingleCharacterToDB(character);
+        });
+
+        row.appendChild(checkbox);
+        list.appendChild(row);
+    });
+}
+
+// Asks for a category name and returns it cleaned up, or null when the user
+// cancelled or the name cannot be used.
+async function promptCharacterCategoryName(message, currentCategory = null) {
+    const input = await showCustomPrompt(message, currentCategory ? currentCategory.name : '');
+    if (input === null) return null;
+    const name = input.trim().slice(0, 60);
+    if (!name) {
+        showCustomAlert('Please enter a name for the category.');
+        return null;
+    }
+    if (characterCategories.some(c => c !== currentCategory && c.name.toLowerCase() === name.toLowerCase())) {
+        showCustomAlert(`A category named "${name}" already exists.`);
+        return null;
+    }
+    return name;
+}
+
+async function createCharacterCategory() {
+    const name = await promptCharacterCategoryName('Enter a name for the new category:');
+    if (!name) return;
+    const category = { id: 'cat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11), name };
+    characterCategories.push(category);
+    saveCharacterCategoriesToDB();
+    // Straight on to choosing its characters - an empty category shows nothing.
+    showCharacterCategoryMembers(category.id);
+}
+
+async function renameCharacterCategory(categoryId) {
+    const category = getCharacterCategory(categoryId);
+    if (!category) return;
+    const name = await promptCharacterCategoryName('Enter a new name for the category:', category);
+    if (!name) return;
+    category.name = name;
+    saveCharacterCategoriesToDB();
+    renderCharacterCategoriesModal();
+}
+
+async function deleteCharacterCategory(categoryId) {
+    const category = getCharacterCategory(categoryId);
+    if (!category) return;
+    if (!await showCustomConfirm(`Delete the category "${category.name}"? Its characters are not deleted, they only lose this category.`, true)) return;
+
+    characterCategories = characterCategories.filter(c => c.id !== categoryId);
+    saveCharacterCategoriesToDB();
+    for (const character of Object.values(characters)) {
+        if (character.categoryId === categoryId) {
+            delete character.categoryId;
+            await saveSingleCharacterToDB(character);
+        }
+    }
+    renderCharacterCategoriesModal();
+}
+
+
+
 function renderCharacterList(searchTerm = '') {
     const favoritesBar = document.getElementById('favorites-bar');
     const favoritesContainer = document.getElementById('favorites-bar-container');
@@ -2921,6 +3209,7 @@ const filteredCharacters = allSortedCharacters.filter(char => {
 });
 
     let archivedCount = 0;
+    const activeCards = [];
 
     for (const character of filteredCharacters) {
         const charId = character.id;
@@ -2976,9 +3265,11 @@ const filteredCharacters = allSortedCharacters.filter(char => {
             archivedCharacterList.appendChild(charElement);
             archivedCount++; 
         } else {
-            characterList.appendChild(charElement);
+            activeCards.push({ character, charElement });
         }
     }
+
+    appendCharacterCardsByCategory(activeCards);
 
     if (archivedCount > 0) {
         archiveSection.classList.remove('hidden');
@@ -8288,6 +8579,7 @@ async function startRandomChat() {
 }
 
 document.getElementById('random-chat-btn')?.addEventListener('click', startRandomChat);
+document.getElementById('manage-categories-btn')?.addEventListener('click', openCharacterCategoriesModal);
 
 
 
@@ -13298,7 +13590,9 @@ async function toggleArchiveState(charId) {
     await saveSingleCharacterToDB(character);
 
     const card = document.querySelector(`.character-card[data-char-id="${CSS.escape(charId)}"]`);
-    if (!card) { renderCharacterList(searchInput.value.trim()); return; }
+    // With categories the card's place depends on its category and the headers
+    // around it, so the list is rebuilt instead of moving the one card.
+    if (!card || characterCategories.length > 0) { renderCharacterList(searchInput.value.trim()); return; }
 
     const archiveBtn = card.querySelector('.archive-btn');
     const upIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
@@ -15538,6 +15832,7 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
         ['image-crop-modal', 'image-crop-cancel-btn'],
         ['worldCharPickerModal', 'worldCharPickerCancelBtn'],
         ['bulkCharDeleteModal', 'cancel-bulk-delete-btn'],
+        ['characterCategoriesModal', 'close-character-categories-btn'],
         ['personaDefaultCharacterPickerModal', 'personaDefaultCharacterPickerCancelBtn'],
         ['persona-editor-modal', 'cancel-persona-edit-btn'],
         ['persona-list-modal', 'close-persona-list-btn'],
@@ -15658,6 +15953,7 @@ async function initializeApp() {
             loadCharactersFromDB(),
             loadPersonasFromDB(),
             loadAppSettingsFromDB(),
+            loadCharacterCategoriesFromDB(),
         ]);
         populateModelSelector();
         await loadAndApplySettingsFromDB();

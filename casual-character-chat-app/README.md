@@ -61,6 +61,10 @@ All of your non-archived characters are displayed here as individual cards, auto
 * **Favorite Button (★):** Adds or removes the character from your Favorites Bar.
 * **Archive Button (↓/↑):** Moves a character to the archive or restores them to the main list.
 
+### 🗂️ Categories
+* The **🗂️ Categories** button (left of 🎲 Random Chat) sorts your characters into separate, headed grids on the main menu.
+* Create, rename and delete categories there, and use **Characters** to tick which characters belong to a category. A character can only be in one category at a time; deleting a category never deletes its characters.
+
 ### 🗑️ Bulk Delete & 🗃️ Archive
 
 * **Bulk Delete Button:** Opens a modal where you can select and delete multiple characters at once.

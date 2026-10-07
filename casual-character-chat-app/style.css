@@ -7412,6 +7412,8 @@ body.image-gen-off .generate-image-btn {
 #random-chat-container {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin: 22px 0 18px;
 }
 #random-chat-btn {
@@ -7437,6 +7439,138 @@ body.image-gen-off .generate-image-btn {
 #random-chat-btn:active {
     transform: translateY(1px);
     box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 2px 4px rgba(0,0,0,0.22);
+}
+
+
+
+/* ── Character categories ── */
+#manage-categories-btn {
+    background-color: rgba(60, 72, 184, 0.85);
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 48%, rgba(0,0,0,0.12) 100%);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    padding: 8px 22px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.16);
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease-out, box-shadow 0.15s ease;
+}
+#manage-categories-btn:hover {
+    background-color: rgba(78, 92, 210, 0.95);
+    border-color: rgba(255, 255, 255, 0.32);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.38), 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+#manage-categories-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 2px 4px rgba(0,0,0,0.22);
+}
+
+/* A header takes a whole grid row, so the cards after it start a new grid. */
+.character-category-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 0 2px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.35);
+}
+.character-category-header:first-child {
+    margin-top: 0;
+}
+.character-category-header-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.character-categories-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 2200;
+}
+.character-categories-overlay .modal-content {
+    width: min(600px, 92vw);
+    max-width: 600px;
+}
+#characterCategoryList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+    margin: 14px 0;
+    padding-right: 10px;
+}
+.character-categories-empty {
+    margin: 6px 0;
+    color: rgba(255, 255, 255, 0.62);
+    font-style: italic;
+}
+.character-category-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 9px 12px;
+    background-color: rgba(60, 72, 184, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+}
+.character-category-row-name {
+    flex: 1 1 140px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #fff;
+    font-weight: 600;
+}
+.character-category-actions {
+    margin-top: 0;
+    gap: 6px;
+}
+.character-category-actions button[type="button"] {
+    padding: 4px 10px;
+    font-size: 14px;
+}
+.character-category-actions button.category-members-btn {
+    background-color: rgba(60, 72, 184, 0.85);
+}
+.character-category-actions button.category-delete-btn {
+    background-color: rgba(201, 48, 64, 0.90);
+}
+.character-categories-overlay #new-character-category-btn {
+    margin-right: auto;
+    background-color: rgb(26, 158, 60);
+}
+.character-category-member {
+    justify-content: space-between;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+.character-category-member-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+}
+.bulkCharCheckbox.category-member-checkbox:checked {
+    background-color: rgba(60, 72, 184, 0.95);
+    border-color: rgba(120, 132, 255, 0.95);
+}
+.bulkCharCheckbox.category-member-checkbox:focus-visible {
+    outline-color: rgba(120, 132, 255, 0.9);
 }
 
 
