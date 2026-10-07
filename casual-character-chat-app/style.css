@@ -9648,3 +9648,27 @@ mark.chat-search-hit,
         white-space: nowrap;
     }
 }
+
+/* ================== LIGHT RENDERING ==========================================
+   Set by the ambient effects code in script.js.
+   .no-gpu   the browser draws without a graphics card (hardware acceleration is
+             off or unavailable)
+   .fx-lite  an ambient effect is running and the device cannot keep it smooth
+   Blur behind a panel is worked out again whenever anything under it changes,
+   and an ambient effect changes the whole chat screen on every frame: every
+   message bubble, the header and the input bar were re-blurred 60 times a
+   second. The panels keep their tinted backgrounds, only the blur goes. */
+html.no-gpu *, html.no-gpu *::before, html.no-gpu *::after,
+html.fx-lite *, html.fx-lite *::before, html.fx-lite *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The shimmering titles repaint on every frame, and each repaint ran their wide
+   glow filters again. Without a graphics card that alone slows the main screen,
+   so the shimmer stays and the glow goes. */
+html.no-gpu .main-title,
+html.no-gpu .main-header h3,
+html.no-gpu #app-loader-title {
+    filter: none;
+}

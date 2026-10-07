@@ -9671,6 +9671,30 @@ mark.chat-search-hit,
     }
 }
 
+/* ================== LIGHT RENDERING ==========================================
+   Set by the ambient effects code in script.js.
+   .no-gpu   the browser draws without a graphics card (hardware acceleration is
+             off or unavailable)
+   .fx-lite  an ambient effect is running and the device cannot keep it smooth
+   Blur behind a panel is worked out again whenever anything under it changes,
+   and an ambient effect changes the whole chat screen on every frame: every
+   message bubble, the header and the input bar were re-blurred 60 times a
+   second. The panels keep their tinted backgrounds, only the blur goes. */
+html.no-gpu *, html.no-gpu *::before, html.no-gpu *::after,
+html.fx-lite *, html.fx-lite *::before, html.fx-lite *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The shimmering titles repaint on every frame, and each repaint ran their wide
+   glow filters again. Without a graphics card that alone slows the main screen,
+   so the shimmer stays and the glow goes. */
+html.no-gpu .main-title,
+html.no-gpu .main-header h3,
+html.no-gpu #app-loader-title {
+    filter: none;
+}
+
 /* =========================================================================
  * STANDALONE-ONLY STYLES
  * =========================================================================
@@ -29942,12 +29966,133 @@ personaEditorAvatarImg.onerror = () => {
 
     let W = window.innerWidth, H = window.innerHeight, fxDpr = 1;
     let fx = null;
+
+    // ── quality ──
+    // An effect repaints the whole chat screen on every frame, so its cost is the canvas plus
+    // everything the browser has to put together again on top of it. A graphics card does that
+    // without effort; a browser with hardware acceleration switched off, or a slow phone, does
+    // not, and the effect stutters. So the effect watches its own frame rate and steps down
+    // through these levels until it runs smoothly, and climbs back up when there is room.
+    //   res      canvas pixels per CSS pixel, at most (the canvas is stretched to the screen)
+    //   count    share of the particles
+    //   lite     no blur behind the message bubbles and panels and no blending of the canvas
+    //            into the page: the two things that cost the most to redo on every frame
+    //   minFrame shortest time between two frames in ms (30 = an even 30 frames a second)
+    const FX_TIERS = [
+        { res: 2, count: 1, lite: false, minFrame: 0 },
+        { res: 1.25, count: 1, lite: false, minFrame: 0 },
+        { res: 1, count: 1, lite: true, minFrame: 0 },
+        { res: 0.7, count: 0.8, lite: true, minFrame: 0 },
+        { res: 0.5, count: 0.6, lite: true, minFrame: 30 },
+    ];
+    const FX_TIER_KEY = 'fxQualityTier';
+    // No graphics card behind the page: the browser draws everything on the processor.
+    const fxSoftwareRendering = (() => {
+        try {
+            const gl = document.createElement('canvas').getContext('webgl', { failIfMajorPerformanceCaveat: true });
+            if (!gl) return true;
+            const info = gl.getExtension('WEBGL_debug_renderer_info');
+            const renderer = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+            gl.getExtension('WEBGL_lose_context')?.loseContext();
+            return /swiftshader|llvmpipe|software|basic render/i.test(renderer);
+        } catch (e) {
+            return false;
+        }
+    })();
+    // Blur behind panels is recomputed whenever anything under it moves (scrolling, too), and a
+    // glow filter on every frame of a moving title: both are far too slow without a graphics card.
+    if (fxSoftwareRendering) document.documentElement.classList.add('no-gpu');
+    // Start where the last visit settled. On a first visit start low where trouble is likely
+    // and climb from there: climbing is invisible, stepping down is not.
+    let fxTier = fxSoftwareRendering ? 3 : window.matchMedia?.('(hover: none) and (pointer: coarse)').matches ? 2 : 0;
+    // Climbing above this level was tried and stuttered. Remembered for a week, so that not
+    // every visit begins with the same failed attempt, but a new graphics driver, or
+    // hardware acceleration switched back on, is still noticed.
+    let fxBestTier = 0;
+    try {
+        const saved = JSON.parse(localStorage.getItem(FX_TIER_KEY) || 'null');
+        if (saved && saved.tier >= 0 && saved.tier < FX_TIERS.length && saved.software === fxSoftwareRendering) {
+            fxTier = saved.tier;
+            if (saved.best > 0 && saved.best <= fxTier && Date.now() - saved.at < 7 * 86400000) fxBestTier = saved.best;
+        }
+    } catch (e) {}
+    let fxGoverned = true;
+    const fxWatch = { last: 0, from: 0, sum: 0, n: 0, long: 0, calmSince: 0, climbedAt: -1e9, slideFrom: -1, slideAvg: 0 };
+    function fxRes(tier = fxTier) {
+        // soft, screen-filling effects look the same on a canvas half the size
+        const res = Math.min(window.devicePixelRatio || 1, FX_TIERS[tier].res) * (fx && fx.lowRes ? 0.5 : 1);
+        return Math.max(0.3, res);
+    }
+    // Two levels can come to the same thing on a given screen (a canvas cannot be sharper than
+    // the screen is): stepping between those would change nothing.
+    const fxTierLooks = (tier) => { const t = FX_TIERS[tier]; return `${fxRes(tier)}|${t.count}|${t.lite}|${t.minFrame}`; };
+    function fxApplyTier() {
+        const lite = !!fx && FX_TIERS[fxTier].lite;
+        document.documentElement.classList.toggle('fx-lite', lite);
+        if (particleCanvas) particleCanvas.style.mixBlendMode = fx && !lite ? (fx.blend || '') : '';
+        resizeParticleCanvas();
+    }
+    function fxSaveTier() {
+        try { localStorage.setItem(FX_TIER_KEY, JSON.stringify({ tier: fxTier, best: fxBestTier, at: Date.now(), software: fxSoftwareRendering })); } catch (e) {}
+    }
+    function fxSetTier(tier) {
+        fxTier = Math.max(0, Math.min(FX_TIERS.length - 1, tier));
+        fxBestTier = Math.min(fxBestTier, fxTier);
+        fxSaveTier();
+        fxApplyTier();
+        fxWatchRestart();
+    }
+    function fxWatchRestart() {
+        fxWatch.last = 0; fxWatch.sum = 0; fxWatch.n = 0; fxWatch.long = 0; fxWatch.calmSince = 0;
+        fxWatch.from = performance.now() + 800;   // let the new setting settle before judging it
+    }
+    // Called on every animation frame, drawn or not: how evenly do frames arrive?
+    function fxWatchFrame(now) {
+        const delta = fxWatch.last ? now - fxWatch.last : 0;
+        fxWatch.last = now;
+        if (!fxGoverned || !delta || now < fxWatch.from) return;
+        if (delta > 300) return;   // the tab was away, or something unrelated held the page up
+        fxWatch.sum += delta; fxWatch.n++;
+        if (delta > 30) fxWatch.long++;
+        if (fxWatch.sum < 1500) return;
+        const avg = fxWatch.sum / fxWatch.n, longShare = fxWatch.long / fxWatch.n;
+        fxWatch.sum = 0; fxWatch.n = 0; fxWatch.long = 0;
+        const looks = fxTierLooks(fxTier);
+        if (avg > 21 || longShare > 0.12) {
+            fxWatch.calmSince = 0;
+            // it stuttered right after a climb: this level is as good as it gets here
+            const failedClimb = now - fxWatch.climbedAt < 15000 && fxTier < FX_TIERS.length - 1;
+            if (fxWatch.slideFrom < 0) { fxWatch.slideFrom = fxTier; fxWatch.slideAvg = avg; }
+            let next = fxTier + (avg > 40 ? 2 : 1);
+            while (next < FX_TIERS.length - 1 && fxTierLooks(next) === looks) next++;
+            if (fxTier < FX_TIERS.length - 1) {
+                fxSetTier(next);
+                if (failedClimb) { fxBestTier = fxTier; fxSaveTier(); }
+                return;
+            }
+            // At the bottom and no smoother than at the start: the frame rate is held down by
+            // something else (a power-saving mode, a 30 Hz screen), so give the quality back.
+            if (fxWatch.slideFrom < fxTier && avg > fxWatch.slideAvg * 0.92) {
+                fxGoverned = false;
+                fxSetTier(fxWatch.slideFrom);
+            }
+            return;
+        }
+        fxWatch.slideFrom = -1;
+        if (avg > 18.5 || longShare > 0.03) { fxWatch.calmSince = 0; return; }
+        if (!fxWatch.calmSince) { fxWatch.calmSince = now; return; }
+        if (now - fxWatch.calmSince < 20000 || fxTier <= fxBestTier) return;
+        let next = fxTier - 1;
+        while (next > fxBestTier && fxTierLooks(next) === looks) next--;
+        fxSetTier(next);
+        fxWatch.climbedAt = now;
+    }
+
     function resizeParticleCanvas() {
         if (!particleCanvas) return;
         W = window.innerWidth;
         H = window.innerHeight;
-        // soft, screen-filling effects don't gain anything from a retina canvas
-        fxDpr = Math.min(window.devicePixelRatio || 1, fx && fx.lowRes ? 1 : 2);
+        fxDpr = fxRes();
         particleCanvas.width = Math.round(W * fxDpr);
         particleCanvas.height = Math.round(H * fxDpr);
     }
@@ -29957,6 +30102,7 @@ personaEditorAvatarImg.onerror = () => {
     function stopParticles() {
         if (particleAnimId) { cancelAnimationFrame(particleAnimId); particleAnimId = null; }
         fx = null;
+        document.documentElement.classList.remove('fx-lite');
         if (particleCtx && particleCanvas) {
             particleCanvas.style.mixBlendMode = '';
             particleCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -29978,14 +30124,18 @@ personaEditorAvatarImg.onerror = () => {
             fx.t = 0;
             fx.last = 0;
             // light effects (glows, aurora) add onto the chat background instead of covering it
-            particleCanvas.style.mixBlendMode = fx.blend || '';
-            resizeParticleCanvas();
+            fxApplyTier();
+            fxWatchRestart();
             particleAnimId = requestAnimationFrame(fxFrame);
         });
     }
 
     function fxFrame(now) {
         if (!fx) return;
+        particleAnimId = requestAnimationFrame(fxFrame);
+        fxWatchFrame(now);
+        const minFrame = FX_TIERS[fxTier].minFrame;
+        if (minFrame && fx.last && now - fx.last < minFrame - 3) return;
         // the Speed slider runs the effect's clock faster or slower
         const dt = (fx.last ? Math.min(0.05, Math.max(0, (now - fx.last) / 1000)) : 1 / 60) * fxSpeed;
         fx.last = now;
@@ -29999,7 +30149,6 @@ personaEditorAvatarImg.onerror = () => {
         g.setTransform(1, 0, 0, 1, 0, 0);
         g.globalAlpha = 1;
         g.globalCompositeOperation = 'source-over';
-        particleAnimId = requestAnimationFrame(fxFrame);
     }
 
     // ── helpers ──
@@ -30007,7 +30156,7 @@ personaEditorAvatarImg.onerror = () => {
     const fxPick = (list) => list[Math.floor(Math.random() * list.length)];
     const fxSmooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     // how many particles for this screen: the counts are tuned for a 1280×800 window
-    const fxCount = (base) => Math.round(base * fxVolume * Math.min(1.5, Math.max(0.45, (W * H) / (1280 * 800))));
+    const fxCount = (base) => Math.round(base * fxVolume * FX_TIERS[fxTier].count * Math.min(1.5, Math.max(0.45, (W * H) / (1280 * 800))));
     // particle size for this screen
     const fxSize = () => Math.min(1.25, Math.max(0.75, Math.sqrt(W * H) / 1100));
     // extra strength when the Opacity slider is above normal (below normal, the canvas itself fades)
@@ -30386,6 +30535,8 @@ personaEditorAvatarImg.onerror = () => {
                 };
             };
             const spawnWisp = (initial) => ({ x: fxRand(W * 0.05, W * 0.95), age: initial ? fxRand(0, 4) : 0, life: fxRand(4, 6), len: fxRand(140, 260) * S, amp: fxRand(10, 20) * S, ph: fxRand(0, 6.3), w: fxRand(5, 9) * S });
+            const WISP_SCALE = 0.25;
+            let wispLayer = null;
             return {
                 frame(g, dt, t) {
                     fxSync(puffs, fxCount(32), spawnPuff);
@@ -30407,13 +30558,21 @@ personaEditorAvatarImg.onerror = () => {
                         const soft = fxBlurred(p.v, 6);
                         if (soft) fxDraw(g, soft, x, y, size * soft.fxPad * m, size * soft.fxPad, r, a * Math.min(1, 0.65 + u));
                     }
-                    g.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
+                    if (!wisps.length) return;
+                    // Soft and faint, so the wisps melt into the clouds instead of reading as lines.
+                    // They are drawn on a small canvas and stretched back up, which blurs them; a
+                    // blur filter looks the same but has to be worked out again for every stroke
+                    // of every frame, which alone slowed the effect to a crawl.
+                    const lw = Math.max(1, Math.ceil(W * WISP_SCALE)), lh = Math.max(1, Math.ceil(H * WISP_SCALE));
+                    if (!wispLayer || wispLayer.width !== lw || wispLayer.height !== lh) wispLayer = fxCanvas(lw, lh);
+                    const main = g;
+                    g = wispLayer.getContext('2d');
+                    g.setTransform(1, 0, 0, 1, 0, 0);
+                    g.clearRect(0, 0, lw, lh);
+                    g.setTransform(WISP_SCALE, 0, 0, WISP_SCALE, 0, 0);
                     g.lineCap = 'round';
                     g.lineJoin = 'round';
                     g.strokeStyle = 'rgb(250,251,255)';
-                    // blurred and faint, so the wisps melt into the clouds instead of reading as lines
-                    const blur = typeof g.filter === 'string';
-                    if (blur) g.filter = `blur(${(3 * S * fxDpr).toFixed(1)}px)`;
                     for (let i = 0; i < wisps.length; i++) {
                         const w = wisps[i];
                         w.age += dt;
@@ -30436,7 +30595,9 @@ personaEditorAvatarImg.onerror = () => {
                         g.lineWidth = w.w * 0.55 * (1.2 - 0.6 * u);
                         g.stroke();
                     }
-                    if (blur) g.filter = 'none';
+                    main.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
+                    main.globalAlpha = 1;
+                    main.drawImage(wispLayer, 0, 0, lw / WISP_SCALE, lh / WISP_SCALE);
                 },
             };
         },
