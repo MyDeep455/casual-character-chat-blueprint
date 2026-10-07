@@ -156,7 +156,7 @@ The top bar provides context and quick access to important features:
 * **Settings (⚙️):** Toggles the settings panel for live customization.
 * **Mood (😊):** Set a mood for the character in the current chat session. A picker opens with presets — *Happy, Sad, Angry, Nervous, Flirty, Tired, Curious, Scared, Bored* — plus a "None / Clear" option. The mood is injected into every AI request, subtly shaping how the character speaks and reacts. The button icon shows the currently active mood emoji.
 * **Ambient Effects (✨):** Opens the particle effects picker. Choose from *Snow, Rain, Sparks, Fireflies, Sakura, Fog, Steam, Aurora, Leaves,* or *Darkness*, and control intensity with a slider. The effect is saved on the character card and activates automatically on every chat open. Select "None" to disable.
-* **Quick Swap Character (↔️):** Opens a searchable list of your other characters. Clicking one instantly moves the entire current chat session (including all message history) to that character and opens it. Useful for re-assigning an ongoing story without returning to the main screen.
+* **Quick Swap Character (↔️):** Opens a searchable list of your other characters and worlds. Clicking one instantly moves the entire current chat session (including all message history) to that character or world and opens it. Useful for re-assigning an ongoing story without returning to the main screen. Character chats can be moved into a World and World chats to a character.
 
 ### The Settings Panel
 

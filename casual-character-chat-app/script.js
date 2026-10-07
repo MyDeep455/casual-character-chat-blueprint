@@ -9868,22 +9868,24 @@ personaEditorAvatarImg.onerror = () => {
         quickSwapCharacterList.innerHTML = '';
         const lc = (filter || '').toLowerCase();
         const items = Object.values(characters).filter(c =>
-            c.id !== currentCharacterId && c.type !== 'world' && c.name.toLowerCase().includes(lc)
-        ).sort((a, b) => a.name.localeCompare(b.name));
+            c.id !== currentCharacterId && (c.name || '').toLowerCase().includes(lc)
+        ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         if (!items.length) {
-            quickSwapCharacterList.innerHTML = '<p style="text-align:center;opacity:0.6;padding:16px">No characters found.</p>';
+            quickSwapCharacterList.innerHTML = '<p style="text-align:center;opacity:0.6;padding:16px">No characters or worlds found.</p>';
             return;
         }
         items.forEach(c => {
             const item = document.createElement('button');
             item.className = 'participant-option-btn';
-            const imageUrl = getImageUrl(c.avatar);
+            const isWorldItem = c.type === 'world';
+            const imageSource = isWorldItem ? c.background : c.avatar;
+            const imageUrl = getImageUrl(imageSource);
             const avatarHtml = `
-    <img src="${escapeHtml(imageUrl)}" class="${c.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-    <div class="placeholder-icon ${c.avatar ? 'hidden' : ''}">👤</div>`;
+    <img src="${escapeHtml(imageUrl)}" class="${imageSource ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+    <div class="placeholder-icon ${imageSource ? 'hidden' : ''}">${isWorldItem ? '🌍' : '👤'}</div>`;
             item.innerHTML = avatarHtml;
             const nameSpan = document.createElement('span');
-            nameSpan.textContent = c.name;
+            nameSpan.textContent = isWorldItem ? `${c.name} (World)` : c.name;
             item.appendChild(nameSpan);
             item.addEventListener('click', () => performQuickSwap(c.id));
             quickSwapCharacterList.appendChild(item);
@@ -9902,8 +9904,29 @@ personaEditorAvatarImg.onerror = () => {
         // The chat's main participant is its owner. Left as the old character,
         // the scene roster and narrator prompts kept describing them instead
         // of the one swapped in. A guest who becomes the owner is not listed twice.
-        if (Array.isArray(chatToMove.participants)) {
-            const guests = chatToMove.participants.filter(pid => pid !== currentCharacterId && pid !== newCharId);
+        const fromWorld = oldChar.type === 'world';
+        const toWorld = newChar.type === 'world';
+        // An AI message without a speakerId belongs to the chat's owner, so what it
+        // means changes with the owner's type. Pin it down before the owner changes.
+        (chatToMove.history || []).forEach(msg => {
+            if (msg.sender !== 'ai' || msg.speakerId || msg.type === 'story') return;
+            if (fromWorld) {
+                // A World's own lines are narration, whoever owns the chat next.
+                msg.type = 'story';
+            } else if (toWorld) {
+                // The character's lines stay theirs instead of turning into narration.
+                msg.speakerId = currentCharacterId;
+            }
+        });
+        if (Array.isArray(chatToMove.participants) || fromWorld || toWorld) {
+            const guests = (chatToMove.participants || []).filter(pid => pid !== currentCharacterId && pid !== newCharId);
+            // A character moving into a World stays in the scene as one of its cast.
+            if (toWorld && !fromWorld) guests.unshift(currentCharacterId);
+            if (toWorld) {
+                (newChar.characterIds || []).forEach(id => {
+                    if (characters[id] && id !== newCharId && !guests.includes(id)) guests.push(id);
+                });
+            }
             chatToMove.participants = [newCharId, ...guests];
         }
         if (!newChar.chats) newChar.chats = {};

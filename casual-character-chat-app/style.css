@@ -157,17 +157,18 @@ h1 {
     justify-content: end;
 }
 
-/* Import lands under Create Character, Export under Global App Settings — the
-   outer edge of each group, furthest from the title. Each stretches to the width
-   of the menu button above it, so the label is centred rather than left against
-   the padding. */
+/* Manage Personas lands under Create Character, Global App Settings under Export
+   Data — the outer edge of each group, furthest from the title. Buttons sharing a
+   column stretch to the wider one, so the label is centred rather than left
+   against the padding. */
 #import-btn,
-#export-btn {
+#export-btn,
+#app-settings-btn {
     justify-content: center;
 }
 
-#import-btn { grid-column: 1; }
-#export-btn { grid-column: 2; }
+#manage-personas-btn { grid-column: 1; }
+#app-settings-btn    { grid-column: 2; }
 
 
 .main-header h3 {
