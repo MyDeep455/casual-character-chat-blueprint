@@ -7554,6 +7554,9 @@ body.image-gen-off .generate-image-btn {
     margin-right: auto;
     background-color: rgb(26, 158, 60);
 }
+.character-categories-overlay #confirm-character-category-btn {
+    background-color: rgb(26, 158, 60);
+}
 .character-category-member {
     justify-content: space-between;
     box-sizing: border-box;

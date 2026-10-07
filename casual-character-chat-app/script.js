@@ -2902,6 +2902,8 @@ let characterCategories = [];
 // The category whose characters the Categories dialog is showing, or null
 // while it shows the list of categories.
 let openCategoryMembersId = null;
+// The characters ticked in that view. Nothing is saved until Confirm.
+let categoryMemberSelection = new Set();
 
 async function loadCharacterCategoriesFromDB() {
     if (!db) return;
@@ -2973,14 +2975,17 @@ function openCharacterCategoriesModal() {
             <div class="form-buttons">
               <button type="button" id="new-character-category-btn">+ New Category</button>
               <button type="button" id="close-character-categories-btn">Close</button>
+              <button type="button" id="confirm-character-category-btn">Confirm</button>
             </div>
           </div>`;
         document.body.appendChild(modal);
 
         modal.querySelector('#new-character-category-btn').addEventListener('click', createCharacterCategory);
         modal.querySelector('#characterCategorySearch').addEventListener('input', renderCharacterCategoriesModal);
-        // One button for both views: it leaves the character picker first, and
-        // only closes the dialog from the list of categories.
+        modal.querySelector('#confirm-character-category-btn').addEventListener('click', confirmCharacterCategoryMembers);
+        // One button for both views: in the character picker it is Cancel and
+        // drops the ticks, and only from the list of categories does it close
+        // the dialog.
         modal.querySelector('#close-character-categories-btn').addEventListener('click', () => {
             if (openCategoryMembersId) {
                 openCategoryMembersId = null;
@@ -3010,6 +3015,9 @@ function closeCharacterCategoriesModal() {
 
 function showCharacterCategoryMembers(categoryId) {
     openCategoryMembersId = categoryId;
+    categoryMemberSelection = new Set(Object.values(characters)
+        .filter(c => c.categoryId === categoryId && !c.isArchived)
+        .map(c => c.id));
     const search = document.getElementById('characterCategorySearch');
     if (search) search.value = '';
     renderCharacterCategoriesModal();
@@ -3027,7 +3035,8 @@ function renderCharacterCategoriesModal() {
     const list = modal.querySelector('#characterCategoryList');
     modal.querySelector('#characterCategorySearchRow').classList.toggle('hidden', !category);
     modal.querySelector('#new-character-category-btn').classList.toggle('hidden', Boolean(category));
-    modal.querySelector('#close-character-categories-btn').textContent = category ? 'Back to Categories' : 'Close';
+    modal.querySelector('#confirm-character-category-btn').classList.toggle('hidden', !category);
+    modal.querySelector('#close-character-categories-btn').textContent = category ? 'Cancel' : 'Close';
     list.innerHTML = '';
 
     if (!category) {
@@ -3057,7 +3066,7 @@ function renderCharacterCategoriesModal() {
     }
 
     title.textContent = `🗂️ ${category.name}`;
-    hint.textContent = 'Tick the characters that belong in this category. A character can only be in one category at a time.';
+    hint.textContent = 'Assign Characters to a Category';
 
     const q = modal.querySelector('#characterCategorySearch').value.toLowerCase().trim();
     const candidates = Object.values(characters)
@@ -3087,18 +3096,33 @@ function renderCharacterCategoriesModal() {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'bulkCharCheckbox category-member-checkbox';
-        checkbox.checked = character.categoryId === category.id;
-        checkbox.addEventListener('change', async () => {
-            if (checkbox.checked) character.categoryId = category.id;
-            else delete character.categoryId;
-            // Either way the character is no longer in another category.
-            row.querySelector('.chat-group-count')?.remove();
-            await saveSingleCharacterToDB(character);
+        checkbox.checked = categoryMemberSelection.has(character.id);
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) categoryMemberSelection.add(character.id);
+            else categoryMemberSelection.delete(character.id);
         });
 
         row.appendChild(checkbox);
         list.appendChild(row);
     });
+}
+
+// Saves the ticks of the character picker and returns to the list of
+// categories. Archived characters are not listed there and keep their category.
+async function confirmCharacterCategoryMembers() {
+    const category = getCharacterCategory(openCategoryMembersId);
+    if (category) {
+        for (const character of Object.values(characters)) {
+            if (character.isArchived) continue;
+            const selected = categoryMemberSelection.has(character.id);
+            if (selected === (character.categoryId === category.id)) continue;
+            if (selected) character.categoryId = category.id;
+            else delete character.categoryId;
+            await saveSingleCharacterToDB(character);
+        }
+    }
+    openCategoryMembersId = null;
+    renderCharacterCategoriesModal();
 }
 
 // Asks for a category name and returns it cleaned up, or null when the user
