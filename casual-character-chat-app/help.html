@@ -544,10 +544,10 @@ No one else, including the developer, can access your characters or conversation
     <ul>
         <li><strong>Back Arrow (←):</strong> Takes you back to the character's chat dashboard.</li>
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
-        <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
+        <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. To change who takes part, use the <code>👥</code> button.</li>
         <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history. With OpenRouter models it also shows what this chat has cost so far, and what everything since you opened the app has cost (the "session").</li>
         <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, events still to come, or reminders the AI tends to forget over long conversations. A chat started from a scenario begins with that scenario's <strong>Chat Memories</strong> already in the box - its own copy, so rewriting it here changes nothing anywhere else. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
-        <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
+        <li><strong>Group Chat (👥):</strong> Opens a selection modal listing your characters with a tick box each. Tick the ones that should take part in the current conversation, untick the ones that should leave, and press <code>Confirm</code> - adding a second character turns the chat into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
         <li><strong>Mood (😊):</strong> Click this button to set a mood for the character in the current chat session. A picker opens with preset options — <em>Happy, Sad, Angry, Excited, Nervous, Flirty, Tired, Curious, Scared, Bored</em> — plus a "None / Clear" option to remove the mood. The chosen mood is injected into the AI's system context with every message, subtly shaping how the character speaks and reacts throughout the conversation. The button icon updates to the emoji of the currently active mood so you can see it at a glance.</li>
@@ -704,12 +704,12 @@ No one else, including the developer, can access your characters or conversation
     <p>You aren't limited to one-on-one conversations. Any chat can be turned into a group chat with multiple AI characters interacting with you and each other.</p>
 
     <h3>Starting a Group Chat</h3>
-    <p>To add more characters to an existing conversation, simply click the <code>Add Participant (👥)</code> button in the chat header. This will open a selection modal where you can choose any of your other characters to join the chat.</p>
+    <p>To add more characters to an existing conversation, simply click the <code>Group Chat (👥)</code> button in the chat header. This will open a selection modal where you can tick any of your other characters to join the chat.</p>
 
     <h3>Managing Participants</h3>
     <ul>
-        <li><strong>Adding:</strong> In the participant selection window, simply click on the character you want to add. You can add as many as you like. Use the search bar in the modal to find characters quickly.</li>
-        <li><strong>Removing:</strong> All current participants (besides the main character) are shown as small, overlapping icons in the chat header. To remove a character from the chat, just click on their icon. A confirmation prompt will appear.</li>
+        <li><strong>Adding:</strong> In the participant selection window, tick every character you want to add and press <code>Confirm</code>. You can add as many as you like in one go. Use the search bar in the modal to find characters quickly - your ticks are kept while you search.</li>
+        <li><strong>Removing:</strong> Open the same window again: the characters already in the chat are listed first, with their boxes ticked. Untick the ones that should leave and press <code>Confirm</code>. Nothing changes until you confirm, so <code>Cancel</code> leaves the chat as it was. All current participants (besides the main character) are also shown as small, overlapping icons in the chat header.</li>
     </ul>
 
     <h3>Addressing Specific Characters in a Group Chat</h3>

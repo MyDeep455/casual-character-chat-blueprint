@@ -2956,7 +2956,6 @@ max-height: 27em;
     position: relative;
     display: inline-flex;
     margin-left: -7px;
-    cursor: pointer;
     transition: z-index 0s;
 }
 
@@ -2984,18 +2983,6 @@ max-height: 27em;
     transform: scale(1.2);
     z-index: 10;
     position: relative;
-}
-
-.participant-remove-hint {
-    font-size: 12px;
-    font-weight: bold;
-    color: rgba(255, 255, 255, 0.8);
-    text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.6);
-    margin-left: 5px;
-    align-self: center;
-    pointer-events: none;
-    line-height: 1;
-    user-select: none;
 }
 
 
@@ -10096,7 +10083,7 @@ mark.highlight.current-match {
             </div>
         </div>
         <button id="chat-memories-btn" title="Chat Memories">🧠</button>
-        <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
+        <button id="add-participant-btn" title="Add / Remove Characters - Group Chat">👥</button>
         <button id="select-persona-btn" title="Select Persona">🎭</button>
         <button id="settings-btn" title="Chat Settings">⚙️</button>
         <div id="settings-panel" class="hidden">
@@ -10518,7 +10505,7 @@ mark.highlight.current-match {
 <div id="participant-selection-modal" class="hidden">
     <div class="modal-content" id="participant-modal-content">
         <h2>👥 Group Chat Selection</h2>
-        <p>Choose any of your Characters to join the Chat:</p>
+        <p>Tick the Characters that should be part of this Chat:</p>
         <div class="modal-search-container">
   <input type="search" id="participant-search-input" class="modal-search-input" placeholder="🔎 Search Character...">
 </div>
@@ -10526,6 +10513,7 @@ mark.highlight.current-match {
             </div>
         <div class="form-buttons">
             <button type="button" id="cancel-participant-selection-btn">Cancel</button>
+            <button type="button" id="confirm-participant-selection-btn">Confirm</button>
         </div>
     </div>
 </div>
@@ -27392,7 +27380,7 @@ function renderParticipantIcons() {
 
         const wrapper = document.createElement('div');
         wrapper.className = 'participant-icon-wrapper';
-        wrapper.dataset.charId = charId;
+        wrapper.title = participant.name || '';
 
         if (participant.avatar) {
             const img = document.createElement('img');
@@ -27416,11 +27404,6 @@ function renderParticipantIcons() {
 
         participantIconList.appendChild(wrapper);
     });
-
-    const hint = document.createElement('span');
-    hint.className = 'participant-remove-hint';
-    hint.innerHTML = '&times;';
-    participantIconList.appendChild(hint);
 }
 
 
@@ -27510,55 +27493,90 @@ function clearActiveGroupParticipant() {
 
 
 
-function openParticipantModal(searchTerm = '') {
-  participantSelectionList.innerHTML = '';
-  const currentParticipants = characters[currentCharacterId]?.chats?.[currentChatId]?.participants || [];
+// The characters ticked in the group chat picker. Nothing is saved until Confirm.
+let participantSelection = new Set();
 
-  const sortedCharacters = Object.values(characters).sort((a, b) => {
-    return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
-  });
-
-  const lowerCaseSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredCharacters = sortedCharacters.filter(char =>
-    char.type !== 'world' && char.name.toLowerCase().includes(lowerCaseSearchTerm)
-  );
-
-  filteredCharacters.forEach(char => {
-    if (!currentParticipants.includes(char.id)) {
-      const btn = document.createElement('button');
-      btn.className = 'participant-option-btn';
-      btn.dataset.charId = char.id;
-
-      const imageUrl = getImageUrl(char.avatar);
-const avatarHtml = `
-    <img src="${escapeHtml(imageUrl)}" class="${char.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-    <div class="placeholder-icon ${char.avatar ? 'hidden' : ''}">👤</div>
-`;
-
-      btn.innerHTML = `${avatarHtml} <span>${escapeHtml(char.name)}</span>`;
-
-      participantSelectionList.appendChild(btn);
-    }
-  });
-smartObjectFitAll('.participant-option-btn img');
-  participantSelectionModal.classList.remove('hidden');
-  document.querySelectorAll('#participant-selection-list img').forEach(img => {
-  img.style.objectFit = 'cover';
-  img.style.objectPosition = 'center';
-});
+// Every character that can join the open chat as a guest: its main character
+// is part of it anyway, and a world card cannot be a guest.
+function getSelectableParticipants() {
+    return Object.values(characters).filter(c => c.type !== 'world' && c.id !== currentCharacterId);
 }
 
-
-
-async function addParticipantToChat(participantId) {
+function openParticipantModal() {
     const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-    if (!chat || chat.participants.includes(participantId)) return;
+    if (!chat) return;
+    const selectableIds = new Set(getSelectableParticipants().map(c => c.id));
+    participantSelection = new Set((chat.participants || []).filter(id => selectableIds.has(id)));
+    participantSearchInput.value = '';
+    renderParticipantModalList();
+    participantSelectionModal.classList.remove('hidden');
+}
 
-    chat.participants.push(participantId);
+function renderParticipantModalList() {
+    participantSelectionList.innerHTML = '';
+    const currentParticipants = characters[currentCharacterId]?.chats?.[currentChatId]?.participants || [];
+    const q = participantSearchInput.value.toLowerCase().trim();
+    // Characters already in the chat come first, so they are easy to find and untick.
+    const candidates = getSelectableParticipants()
+        .filter(c => !q || (c.name || '').toLowerCase().includes(q))
+        .sort((a, b) => (currentParticipants.includes(b.id) - currentParticipants.includes(a.id))
+            || (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
+
+    if (candidates.length === 0) {
+        participantSelectionList.innerHTML = `<p class="character-categories-empty">No characters found.</p>`;
+        return;
+    }
+
+    candidates.forEach(character => {
+        const row = document.createElement('label');
+        row.className = 'participant-option-btn character-category-member';
+        row.innerHTML = `
+          <span class="character-category-member-info">
+            <img src="${escapeHtml(character.avatar ? getImageUrl(character.avatar) : '')}" alt="Avatar" class="${character.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+            <div class="placeholder-icon ${character.avatar ? 'hidden' : ''}">👤</div>
+            <span>${escapeHtml(character.name || '(unnamed)')}</span>
+          </span>`;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'bulkCharCheckbox category-member-checkbox';
+        checkbox.checked = participantSelection.has(character.id);
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) participantSelection.add(character.id);
+            else participantSelection.delete(character.id);
+        });
+
+        row.appendChild(checkbox);
+        participantSelectionList.appendChild(row);
+    });
+    smartObjectFitAll('#participant-selection-list img');
+}
+
+// Saves the ticks of the group chat picker: ticked characters join the chat,
+// unticked ones leave it. Whoever was already in keeps their place in the order.
+async function confirmParticipantSelection() {
+    participantSelectionModal.classList.add('hidden');
+    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    if (!chat) return;
+
+    const selectableIds = new Set(getSelectableParticipants().map(c => c.id));
+    const current = chat.participants || [currentCharacterId];
+    const next = current.filter(id => !selectableIds.has(id) || participantSelection.has(id));
+    participantSelection.forEach(id => {
+        if (selectableIds.has(id) && !next.includes(id)) next.push(id);
+    });
+    if (next.length === current.length && next.every((id, i) => id === current[i])) return;
+
+    chat.participants = next;
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateTokenCount();
-    renderParticipantIcons(); 
-    participantSelectionModal.classList.add('hidden');
+    renderParticipantIcons();
+    if (activeGroupParticipantId && !next.includes(activeGroupParticipantId)) {
+        clearActiveGroupParticipant();
+    }
+    if (!groupCharDropdown.classList.contains('hidden')) {
+        showGroupCharDropdown();
+    }
     playSound('swap');
 }
 
@@ -33572,14 +33590,9 @@ stopStreamBtn.addEventListener('click', () => {
 
 
 
-addParticipantBtn.addEventListener('click', () => {
-  participantSearchInput.value = ''; 
-  openParticipantModal(); 
-});
+addParticipantBtn.addEventListener('click', openParticipantModal);
 
-participantSearchInput.addEventListener('input', () => {
-  openParticipantModal(participantSearchInput.value);
-});
+participantSearchInput.addEventListener('input', renderParticipantModalList);
 
 participantSelectionModal.addEventListener('click', (event) => {
   if (event.target.id === 'cancel-participant-selection-btn') {
@@ -33588,13 +33601,7 @@ participantSelectionModal.addEventListener('click', (event) => {
   }
 });
 
-participantSelectionList.addEventListener('click', (event) => {
-    const targetBtn = event.target.closest('.participant-option-btn');
-    if (targetBtn) {
-        const participantId = targetBtn.dataset.charId;
-        addParticipantToChat(participantId);
-    }
-});
+document.getElementById('confirm-participant-selection-btn').addEventListener('click', confirmParticipantSelection);
 
 messageInput.addEventListener('focus', () => {
     showGroupCharDropdown();
@@ -33630,30 +33637,6 @@ groupCharDropdown.addEventListener('mousedown', (event) => {
 groupCharBubbleDismiss.addEventListener('mousedown', (event) => {
     event.preventDefault(); // keeps textarea focused, prevents blur→flash cycle
     clearActiveGroupParticipant();
-});
-
-participantIconList.addEventListener('click', async (event) => {
-    const iconElement = event.target.closest('[data-char-id]');
-    if (!iconElement) return; 
-
-    const charIdToRemove = iconElement.dataset.charId;
-    const characterToRemove = characters[charIdToRemove];
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-
-    if (!characterToRemove || !chat) return;
-
-    if (await showCustomConfirm(`Do you really want to remove "${characterToRemove.name}" from this chat?`, true)) {
-        chat.participants = chat.participants.filter(id => id !== charIdToRemove);
-        await saveSingleCharacterToDB(characters[currentCharacterId]);
-        updateTokenCount();
-        renderParticipantIcons();
-        if (charIdToRemove === activeGroupParticipantId) {
-            clearActiveGroupParticipant();
-        }
-        if (!groupCharDropdown.classList.contains('hidden')) {
-            showGroupCharDropdown();
-        }
-    }
 });
 
 selectPersonaBtn.addEventListener('click', async () => {
@@ -36681,10 +36664,10 @@ No one else, including the developer, can access your characters or conversation
     <ul>
         <li><strong>Back Arrow (←):</strong> Takes you back to the character's chat dashboard.</li>
         <li><strong>Character & Name:</strong> Shows the character and the name of the current chat session.</li>
-        <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. You can simply click an icon to remove that participant from the chat.</li>
+        <li><strong>Participant Icons:</strong> In a group chat, small, overlapping icons of all participating characters will appear next to the icon of the base chat character. To change who takes part, use the <code>👥</code> button.</li>
         <li><strong>Token Info (ℹ️):</strong> Hovering over this icon displays a tooltip with an estimate of the total tokens currently being used in the chat's context. This includes the character definitions, persona data, and the recent chat history. With OpenRouter models it also shows what this chat has cost so far, and what everything since you opened the app has cost (the "session").</li>
         <li><strong>Chat Memories (🧠):</strong> Opens a text field where you can write persistent, high-priority notes for this specific chat session. These notes are sent along with every AI request, making them ideal for key facts, ongoing story constraints, events still to come, or reminders the AI tends to forget over long conversations. A chat started from a scenario begins with that scenario's <strong>Chat Memories</strong> already in the box - its own copy, so rewriting it here changes nothing anywhere else. Inside this panel, there is also a <strong>✨ Auto-summarize Chat</strong> button: click it to have an AI model read the current conversation and generate a concise summary, which is then automatically appended to your memory notes. A dialog lets you choose which of your saved models performs the summarization, pre-selected to the model currently in use for the chat.</li>
-        <li><strong>Add Participant (👥):</strong> Opens a selection modal to add another one of your characters to the current conversation, turning it into a group chat.</li>
+        <li><strong>Group Chat (👥):</strong> Opens a selection modal listing your characters with a tick box each. Tick the ones that should take part in the current conversation, untick the ones that should leave, and press <code>Confirm</code> - adding a second character turns the chat into a group chat.</li>
         <li><strong>Select Persona (🎭):</strong> This button allows you to select one of your saved personas to represent you in the chat. You can unselect your persona anytime by simply clicking the button again.</li>
         <li><strong>Settings (⚙️):</strong> Toggles the visibility of the settings panel, where you can customize the chat's appearance and AI behavior.</li>
         <li><strong>Mood (😊):</strong> Click this button to set a mood for the character in the current chat session. A picker opens with preset options — <em>Happy, Sad, Angry, Excited, Nervous, Flirty, Tired, Curious, Scared, Bored</em> — plus a "None / Clear" option to remove the mood. The chosen mood is injected into the AI's system context with every message, subtly shaping how the character speaks and reacts throughout the conversation. The button icon updates to the emoji of the currently active mood so you can see it at a glance.</li>
@@ -36841,12 +36824,12 @@ No one else, including the developer, can access your characters or conversation
     <p>You aren't limited to one-on-one conversations. Any chat can be turned into a group chat with multiple AI characters interacting with you and each other.</p>
 
     <h3>Starting a Group Chat</h3>
-    <p>To add more characters to an existing conversation, simply click the <code>Add Participant (👥)</code> button in the chat header. This will open a selection modal where you can choose any of your other characters to join the chat.</p>
+    <p>To add more characters to an existing conversation, simply click the <code>Group Chat (👥)</code> button in the chat header. This will open a selection modal where you can tick any of your other characters to join the chat.</p>
 
     <h3>Managing Participants</h3>
     <ul>
-        <li><strong>Adding:</strong> In the participant selection window, simply click on the character you want to add. You can add as many as you like. Use the search bar in the modal to find characters quickly.</li>
-        <li><strong>Removing:</strong> All current participants (besides the main character) are shown as small, overlapping icons in the chat header. To remove a character from the chat, just click on their icon. A confirmation prompt will appear.</li>
+        <li><strong>Adding:</strong> In the participant selection window, tick every character you want to add and press <code>Confirm</code>. You can add as many as you like in one go. Use the search bar in the modal to find characters quickly - your ticks are kept while you search.</li>
+        <li><strong>Removing:</strong> Open the same window again: the characters already in the chat are listed first, with their boxes ticked. Untick the ones that should leave and press <code>Confirm</code>. Nothing changes until you confirm, so <code>Cancel</code> leaves the chat as it was. All current participants (besides the main character) are also shown as small, overlapping icons in the chat header.</li>
     </ul>
 
     <h3>Addressing Specific Characters in a Group Chat</h3>

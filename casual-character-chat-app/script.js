@@ -7651,7 +7651,7 @@ function renderParticipantIcons() {
 
         const wrapper = document.createElement('div');
         wrapper.className = 'participant-icon-wrapper';
-        wrapper.dataset.charId = charId;
+        wrapper.title = participant.name || '';
 
         if (participant.avatar) {
             const img = document.createElement('img');
@@ -7675,11 +7675,6 @@ function renderParticipantIcons() {
 
         participantIconList.appendChild(wrapper);
     });
-
-    const hint = document.createElement('span');
-    hint.className = 'participant-remove-hint';
-    hint.innerHTML = '&times;';
-    participantIconList.appendChild(hint);
 }
 
 
@@ -7769,55 +7764,90 @@ function clearActiveGroupParticipant() {
 
 
 
-function openParticipantModal(searchTerm = '') {
-  participantSelectionList.innerHTML = '';
-  const currentParticipants = characters[currentCharacterId]?.chats?.[currentChatId]?.participants || [];
+// The characters ticked in the group chat picker. Nothing is saved until Confirm.
+let participantSelection = new Set();
 
-  const sortedCharacters = Object.values(characters).sort((a, b) => {
-    return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
-  });
-
-  const lowerCaseSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredCharacters = sortedCharacters.filter(char =>
-    char.type !== 'world' && char.name.toLowerCase().includes(lowerCaseSearchTerm)
-  );
-
-  filteredCharacters.forEach(char => {
-    if (!currentParticipants.includes(char.id)) {
-      const btn = document.createElement('button');
-      btn.className = 'participant-option-btn';
-      btn.dataset.charId = char.id;
-
-      const imageUrl = getImageUrl(char.avatar);
-const avatarHtml = `
-    <img src="${escapeHtml(imageUrl)}" class="${char.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-    <div class="placeholder-icon ${char.avatar ? 'hidden' : ''}">👤</div>
-`;
-
-      btn.innerHTML = `${avatarHtml} <span>${escapeHtml(char.name)}</span>`;
-
-      participantSelectionList.appendChild(btn);
-    }
-  });
-smartObjectFitAll('.participant-option-btn img');
-  participantSelectionModal.classList.remove('hidden');
-  document.querySelectorAll('#participant-selection-list img').forEach(img => {
-  img.style.objectFit = 'cover';
-  img.style.objectPosition = 'center';
-});
+// Every character that can join the open chat as a guest: its main character
+// is part of it anyway, and a world card cannot be a guest.
+function getSelectableParticipants() {
+    return Object.values(characters).filter(c => c.type !== 'world' && c.id !== currentCharacterId);
 }
 
-
-
-async function addParticipantToChat(participantId) {
+function openParticipantModal() {
     const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-    if (!chat || chat.participants.includes(participantId)) return;
+    if (!chat) return;
+    const selectableIds = new Set(getSelectableParticipants().map(c => c.id));
+    participantSelection = new Set((chat.participants || []).filter(id => selectableIds.has(id)));
+    participantSearchInput.value = '';
+    renderParticipantModalList();
+    participantSelectionModal.classList.remove('hidden');
+}
 
-    chat.participants.push(participantId);
+function renderParticipantModalList() {
+    participantSelectionList.innerHTML = '';
+    const currentParticipants = characters[currentCharacterId]?.chats?.[currentChatId]?.participants || [];
+    const q = participantSearchInput.value.toLowerCase().trim();
+    // Characters already in the chat come first, so they are easy to find and untick.
+    const candidates = getSelectableParticipants()
+        .filter(c => !q || (c.name || '').toLowerCase().includes(q))
+        .sort((a, b) => (currentParticipants.includes(b.id) - currentParticipants.includes(a.id))
+            || (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
+
+    if (candidates.length === 0) {
+        participantSelectionList.innerHTML = `<p class="character-categories-empty">No characters found.</p>`;
+        return;
+    }
+
+    candidates.forEach(character => {
+        const row = document.createElement('label');
+        row.className = 'participant-option-btn character-category-member';
+        row.innerHTML = `
+          <span class="character-category-member-info">
+            <img src="${escapeHtml(character.avatar ? getImageUrl(character.avatar) : '')}" alt="Avatar" class="${character.avatar ? '' : 'hidden'}" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+            <div class="placeholder-icon ${character.avatar ? 'hidden' : ''}">👤</div>
+            <span>${escapeHtml(character.name || '(unnamed)')}</span>
+          </span>`;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'bulkCharCheckbox category-member-checkbox';
+        checkbox.checked = participantSelection.has(character.id);
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) participantSelection.add(character.id);
+            else participantSelection.delete(character.id);
+        });
+
+        row.appendChild(checkbox);
+        participantSelectionList.appendChild(row);
+    });
+    smartObjectFitAll('#participant-selection-list img');
+}
+
+// Saves the ticks of the group chat picker: ticked characters join the chat,
+// unticked ones leave it. Whoever was already in keeps their place in the order.
+async function confirmParticipantSelection() {
+    participantSelectionModal.classList.add('hidden');
+    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
+    if (!chat) return;
+
+    const selectableIds = new Set(getSelectableParticipants().map(c => c.id));
+    const current = chat.participants || [currentCharacterId];
+    const next = current.filter(id => !selectableIds.has(id) || participantSelection.has(id));
+    participantSelection.forEach(id => {
+        if (selectableIds.has(id) && !next.includes(id)) next.push(id);
+    });
+    if (next.length === current.length && next.every((id, i) => id === current[i])) return;
+
+    chat.participants = next;
     await saveSingleCharacterToDB(characters[currentCharacterId]);
     updateTokenCount();
-    renderParticipantIcons(); 
-    participantSelectionModal.classList.add('hidden');
+    renderParticipantIcons();
+    if (activeGroupParticipantId && !next.includes(activeGroupParticipantId)) {
+        clearActiveGroupParticipant();
+    }
+    if (!groupCharDropdown.classList.contains('hidden')) {
+        showGroupCharDropdown();
+    }
     playSound('swap');
 }
 
@@ -13831,14 +13861,9 @@ stopStreamBtn.addEventListener('click', () => {
 
 
 
-addParticipantBtn.addEventListener('click', () => {
-  participantSearchInput.value = ''; 
-  openParticipantModal(); 
-});
+addParticipantBtn.addEventListener('click', openParticipantModal);
 
-participantSearchInput.addEventListener('input', () => {
-  openParticipantModal(participantSearchInput.value);
-});
+participantSearchInput.addEventListener('input', renderParticipantModalList);
 
 participantSelectionModal.addEventListener('click', (event) => {
   if (event.target.id === 'cancel-participant-selection-btn') {
@@ -13847,13 +13872,7 @@ participantSelectionModal.addEventListener('click', (event) => {
   }
 });
 
-participantSelectionList.addEventListener('click', (event) => {
-    const targetBtn = event.target.closest('.participant-option-btn');
-    if (targetBtn) {
-        const participantId = targetBtn.dataset.charId;
-        addParticipantToChat(participantId);
-    }
-});
+document.getElementById('confirm-participant-selection-btn').addEventListener('click', confirmParticipantSelection);
 
 messageInput.addEventListener('focus', () => {
     showGroupCharDropdown();
@@ -13889,30 +13908,6 @@ groupCharDropdown.addEventListener('mousedown', (event) => {
 groupCharBubbleDismiss.addEventListener('mousedown', (event) => {
     event.preventDefault(); // keeps textarea focused, prevents blur→flash cycle
     clearActiveGroupParticipant();
-});
-
-participantIconList.addEventListener('click', async (event) => {
-    const iconElement = event.target.closest('[data-char-id]');
-    if (!iconElement) return; 
-
-    const charIdToRemove = iconElement.dataset.charId;
-    const characterToRemove = characters[charIdToRemove];
-    const chat = characters[currentCharacterId]?.chats?.[currentChatId];
-
-    if (!characterToRemove || !chat) return;
-
-    if (await showCustomConfirm(`Do you really want to remove "${characterToRemove.name}" from this chat?`, true)) {
-        chat.participants = chat.participants.filter(id => id !== charIdToRemove);
-        await saveSingleCharacterToDB(characters[currentCharacterId]);
-        updateTokenCount();
-        renderParticipantIcons();
-        if (charIdToRemove === activeGroupParticipantId) {
-            clearActiveGroupParticipant();
-        }
-        if (!groupCharDropdown.classList.contains('hidden')) {
-            showGroupCharDropdown();
-        }
-    }
 });
 
 selectPersonaBtn.addEventListener('click', async () => {

@@ -217,7 +217,7 @@
             </div>
         </div>
         <button id="chat-memories-btn" title="Chat Memories">🧠</button>
-        <button id="add-participant-btn" title="Add Characters - Group Chat">👥</button>
+        <button id="add-participant-btn" title="Add / Remove Characters - Group Chat">👥</button>
         <button id="select-persona-btn" title="Select Persona">🎭</button>
         <button id="settings-btn" title="Chat Settings">⚙️</button>
         <div id="settings-panel" class="hidden">
@@ -639,7 +639,7 @@
 <div id="participant-selection-modal" class="hidden">
     <div class="modal-content" id="participant-modal-content">
         <h2>👥 Group Chat Selection</h2>
-        <p>Choose any of your Characters to join the Chat:</p>
+        <p>Tick the Characters that should be part of this Chat:</p>
         <div class="modal-search-container">
   <input type="search" id="participant-search-input" class="modal-search-input" placeholder="🔎 Search Character...">
 </div>
@@ -647,6 +647,7 @@
             </div>
         <div class="form-buttons">
             <button type="button" id="cancel-participant-selection-btn">Cancel</button>
+            <button type="button" id="confirm-participant-selection-btn">Confirm</button>
         </div>
     </div>
 </div>
