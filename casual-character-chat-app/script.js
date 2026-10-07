@@ -3066,7 +3066,7 @@ function renderCharacterCategoriesModal() {
     }
 
     title.textContent = `🗂️ ${category.name}`;
-    hint.textContent = 'Assign Characters to a Category';
+    hint.textContent = 'Assign Characters to a Category:';
 
     const q = modal.querySelector('#characterCategorySearch').value.toLowerCase().trim();
     const candidates = Object.values(characters)
@@ -3879,8 +3879,8 @@ function openBulkCharacterDeleteModal() {
       <div id="bulkCharList" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto; padding-right:10px;"></div>
 
       <div class="form-buttons">
-        <button type="button" id="bulkCharDeleteBtn">Delete selected</button>
         <button type="button" id="cancel-bulk-delete-btn">Cancel</button>
+        <button type="button" id="bulkCharDeleteBtn">Delete selected</button>
       </div>
     `;
     modal.appendChild(panel);
@@ -7184,8 +7184,8 @@ function openWorldCharPickerModal() {
           </div>
           <div id="worldCharPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
           <div class="form-buttons">
-            <button type="button" id="worldCharPickerConfirmBtn">Confirm</button>
             <button type="button" id="worldCharPickerCancelBtn">Cancel</button>
+            <button type="button" id="worldCharPickerConfirmBtn">Confirm</button>
           </div>
         `;
         modal.appendChild(panel);
@@ -7927,8 +7927,8 @@ function openPersonaDefaultCharacterPicker(personaId) {
       </div>
       <div id="personaDefaultCharacterPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
       <div class="form-buttons">
-        <button type="button" id="personaDefaultCharacterPickerConfirmBtn">Confirm</button>
         <button type="button" id="personaDefaultCharacterPickerCancelBtn">Cancel</button>
+        <button type="button" id="personaDefaultCharacterPickerConfirmBtn">Confirm</button>
       </div>
     `;
     modal.appendChild(panel);

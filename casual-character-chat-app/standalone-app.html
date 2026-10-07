@@ -5282,7 +5282,7 @@ body.image-gen-off .generate-image-btn {
     justify-content: center;
     align-items: stretch;
     flex-wrap: nowrap;
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   #character-editor-modal .editor-header-buttons button {
@@ -5291,7 +5291,7 @@ body.image-gen-off .generate-image-btn {
   }
 
   #character-form .form-buttons {
-    flex-direction: column;
+    flex-direction: column-reverse;
     justify-content: center;
     align-items: stretch;
     gap: 12px;
@@ -6264,7 +6264,7 @@ body.image-gen-off .generate-image-btn {
     justify-content: center;
     align-items: stretch;
     flex-wrap: nowrap;
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   #character-editor-modal .editor-header-buttons button {
@@ -6273,7 +6273,7 @@ body.image-gen-off .generate-image-btn {
   }
 
   #character-form .form-buttons {
-    flex-direction: column;
+    flex-direction: column-reverse;
     justify-content: center;
     align-items: stretch;
     gap: 12px;
@@ -10329,11 +10329,11 @@ mark.highlight.current-match {
             <textarea id="chat-memories-textarea" rows="4" placeholder="Key facts, constraints, and what is still to come..."></textarea>
 
             <div class="editor-action-row">
-                <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
-                </button>
                 <button type="button" id="cancel-memories-edit-btn" class="editor-action-btn cancel-btn" title="Discard Changes">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
+                <button type="button" id="save-memories-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
                 </button>
             </div>
             <div class="editor-info chat-memories-info">Optional: Press ENTER or double-click outside the editor to Save and Close</div>
@@ -10351,8 +10351,8 @@ mark.highlight.current-match {
     </div>
     <h2>Character Editor</h2>
     <div class="editor-header-buttons">
-        <button type="button" id="save-edit-btn-top">Save Character</button>
         <button type="button" id="cancel-edit-btn-top">Cancel</button>
+        <button type="button" id="save-edit-btn-top">Save Character</button>
     </div>
 </div>
             
@@ -10475,8 +10475,8 @@ mark.highlight.current-match {
 </div>
        
                <div class="form-buttons">
-    <button type="submit" id="save-edit-btn-bottom">Save Character</button>
     <button type="button" id="cancel-edit-btn">Cancel</button>
+    <button type="submit" id="save-edit-btn-bottom">Save Character</button>
 </div>
             </form>
         </div>
@@ -10488,11 +10488,11 @@ mark.highlight.current-match {
             <h2>Edit Message</h2>
             <textarea id="message-editor-textarea"></textarea>
             <div class="editor-action-row">
-                <button type="button" id="save-message-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
-                </button>
                 <button type="button" id="cancel-message-edit-btn" class="editor-action-btn cancel-btn" title="Discard Changes">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
+                <button type="button" id="save-message-edit-btn" class="editor-action-btn save-btn" title="Save and Close">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
                 </button>
             </div>
             <div class="editor-info">Optional: Press ENTER or double-click outside the editor to Save and Close</div>
@@ -10704,8 +10704,8 @@ mark.highlight.current-match {
             </div>
 
             <div class="form-buttons">
-                <button type="submit">Save Persona</button>
                 <button type="button" id="cancel-persona-edit-btn">Cancel</button>
+                <button type="submit">Save Persona</button>
             </div>
         </form>
     </div>
@@ -10735,8 +10735,8 @@ mark.highlight.current-match {
             <button type="button" id="add-model-btn" class="add-scenario-button">+ Add new Model</button>
 
             <div class="form-buttons">
-                <button type="submit" id="save-app-settings-btn">Save Settings</button>
                 <button type="button" id="cancel-app-settings-btn">Cancel</button>
+                <button type="submit" id="save-app-settings-btn">Save Settings</button>
             </div>
         </form>
     </div>
@@ -22807,7 +22807,7 @@ function renderCharacterCategoriesModal() {
     }
 
     title.textContent = `🗂️ ${category.name}`;
-    hint.textContent = 'Assign Characters to a Category';
+    hint.textContent = 'Assign Characters to a Category:';
 
     const q = modal.querySelector('#characterCategorySearch').value.toLowerCase().trim();
     const candidates = Object.values(characters)
@@ -23620,8 +23620,8 @@ function openBulkCharacterDeleteModal() {
       <div id="bulkCharList" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto; padding-right:10px;"></div>
 
       <div class="form-buttons">
-        <button type="button" id="bulkCharDeleteBtn">Delete selected</button>
         <button type="button" id="cancel-bulk-delete-btn">Cancel</button>
+        <button type="button" id="bulkCharDeleteBtn">Delete selected</button>
       </div>
     `;
     modal.appendChild(panel);
@@ -26925,8 +26925,8 @@ function openWorldCharPickerModal() {
           </div>
           <div id="worldCharPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
           <div class="form-buttons">
-            <button type="button" id="worldCharPickerConfirmBtn">Confirm</button>
             <button type="button" id="worldCharPickerCancelBtn">Cancel</button>
+            <button type="button" id="worldCharPickerConfirmBtn">Confirm</button>
           </div>
         `;
         modal.appendChild(panel);
@@ -27668,8 +27668,8 @@ function openPersonaDefaultCharacterPicker(personaId) {
       </div>
       <div id="personaDefaultCharacterPickerList" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:10px;"></div>
       <div class="form-buttons">
-        <button type="button" id="personaDefaultCharacterPickerConfirmBtn">Confirm</button>
         <button type="button" id="personaDefaultCharacterPickerCancelBtn">Cancel</button>
+        <button type="button" id="personaDefaultCharacterPickerConfirmBtn">Confirm</button>
       </div>
     `;
     modal.appendChild(panel);

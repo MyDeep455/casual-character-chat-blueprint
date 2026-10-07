@@ -5260,7 +5260,7 @@ body.image-gen-off .generate-image-btn {
     justify-content: center;
     align-items: stretch;
     flex-wrap: nowrap;
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   #character-editor-modal .editor-header-buttons button {
@@ -5269,7 +5269,7 @@ body.image-gen-off .generate-image-btn {
   }
 
   #character-form .form-buttons {
-    flex-direction: column;
+    flex-direction: column-reverse;
     justify-content: center;
     align-items: stretch;
     gap: 12px;
@@ -6242,7 +6242,7 @@ body.image-gen-off .generate-image-btn {
     justify-content: center;
     align-items: stretch;
     flex-wrap: nowrap;
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   #character-editor-modal .editor-header-buttons button {
@@ -6251,7 +6251,7 @@ body.image-gen-off .generate-image-btn {
   }
 
   #character-form .form-buttons {
-    flex-direction: column;
+    flex-direction: column-reverse;
     justify-content: center;
     align-items: stretch;
     gap: 12px;
