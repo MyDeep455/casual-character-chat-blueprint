@@ -886,6 +886,7 @@ const defaultSettings = {
     const participantSelectionList = document.getElementById('participant-selection-list');
     const cancelParticipantSelectionBtn = document.getElementById('cancel-participant-selection-btn');
     const participantSearchInput = document.getElementById('participant-search-input');
+    const participantSelectAll = document.getElementById('participant-select-all');
     const personaSearchInput = document.getElementById('persona-search-input');
     // App Settings Modal Elements
     const appSettingsModal = document.getElementById('app-settings-modal');
@@ -2968,8 +2969,12 @@ function openCharacterCategoriesModal() {
           <div class="modal-content">
             <h2 id="characterCategoriesTitle"></h2>
             <p id="characterCategoriesHint"></p>
-            <div class="modal-search-container hidden" id="characterCategorySearchRow">
+            <div class="modal-search-container hidden" id="characterCategorySearchRow" style="display:flex;align-items:center;gap:10px;">
               <input type="search" id="characterCategorySearch" class="modal-search-input" placeholder="🔎 Search Character…">
+              <label style="display:flex;align-items:center;gap:6px;font-size:16px;color:#dcddde;">
+                <input id="characterCategorySelectAll" type="checkbox">
+                <span>Select all</span>
+              </label>
             </div>
             <div id="characterCategoryList"></div>
             <div class="form-buttons">
@@ -2982,6 +2987,9 @@ function openCharacterCategoriesModal() {
 
         modal.querySelector('#new-character-category-btn').addEventListener('click', createCharacterCategory);
         modal.querySelector('#characterCategorySearch').addEventListener('input', renderCharacterCategoriesModal);
+        modal.querySelector('#characterCategorySelectAll').addEventListener('change', (e) => {
+            setTickListSelectAll(e.target, modal.querySelector('#characterCategoryList'), categoryMemberSelection);
+        });
         modal.querySelector('#confirm-character-category-btn').addEventListener('click', confirmCharacterCategoryMembers);
         // One button for both views: in the character picker it is Cancel and
         // drops the ticks, and only from the list of categories does it close
@@ -3069,12 +3077,16 @@ function renderCharacterCategoriesModal() {
     hint.textContent = 'Assign Characters to a Category:';
 
     const q = modal.querySelector('#characterCategorySearch').value.toLowerCase().trim();
+    const selectAll = modal.querySelector('#characterCategorySelectAll');
+    // Characters already in the category come first, so they are easy to find and untick.
     const candidates = Object.values(characters)
         .filter(c => !c.isArchived && (!q || (c.name || '').toLowerCase().includes(q)))
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
+        .sort((a, b) => ((b.categoryId === category.id) - (a.categoryId === category.id))
+            || (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }));
 
     if (candidates.length === 0) {
         list.innerHTML = `<p class="character-categories-empty">No characters found.</p>`;
+        updateTickListSelectAll(selectAll, list);
         return;
     }
 
@@ -3096,15 +3108,37 @@ function renderCharacterCategoriesModal() {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'bulkCharCheckbox category-member-checkbox';
+        checkbox.value = character.id;
         checkbox.checked = categoryMemberSelection.has(character.id);
         checkbox.addEventListener('change', () => {
             if (checkbox.checked) categoryMemberSelection.add(character.id);
             else categoryMemberSelection.delete(character.id);
+            updateTickListSelectAll(selectAll, list);
         });
 
         row.appendChild(checkbox);
         list.appendChild(row);
     });
+    updateTickListSelectAll(selectAll, list);
+}
+
+// "Select all" of a tick list: ticks or unticks every row currently shown - a
+// search narrows that down - and records it in the list's set of ticked ids.
+function setTickListSelectAll(selectAll, list, selection) {
+    list.querySelectorAll('.bulkCharCheckbox').forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+        if (selectAll.checked) selection.add(checkbox.value);
+        else selection.delete(checkbox.value);
+    });
+    updateTickListSelectAll(selectAll, list);
+}
+
+// Mirrors the rows of a tick list back in its "Select all" box.
+function updateTickListSelectAll(selectAll, list) {
+    const boxes = Array.from(list.querySelectorAll('.bulkCharCheckbox'));
+    const selected = boxes.filter(checkbox => checkbox.checked).length;
+    selectAll.indeterminate = selected > 0 && selected < boxes.length;
+    selectAll.checked = boxes.length > 0 && selected === boxes.length;
 }
 
 // Saves the ticks of the character picker and returns to the list of
@@ -7220,7 +7254,9 @@ function renderWorldCharPickerModalList() {
     const editingId = editingCharField.value;
     const chars = Object.values(characters)
         .filter(c => c.type !== 'world' && c.id !== editingId && (!q || (c.name || '').toLowerCase().includes(q)))
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+        // Characters already chosen for the world come first, so they are easy to find and untick.
+        .sort((a, b) => (worldCharSelectedIds.has(b.id) - worldCharSelectedIds.has(a.id))
+            || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
     list.innerHTML = '';
     if (chars.length === 0) {
         const empty = document.createElement('div');
@@ -7795,6 +7831,7 @@ function renderParticipantModalList() {
 
     if (candidates.length === 0) {
         participantSelectionList.innerHTML = `<p class="character-categories-empty">No characters found.</p>`;
+        updateTickListSelectAll(participantSelectAll, participantSelectionList);
         return;
     }
 
@@ -7811,16 +7848,19 @@ function renderParticipantModalList() {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'bulkCharCheckbox category-member-checkbox';
+        checkbox.value = character.id;
         checkbox.checked = participantSelection.has(character.id);
         checkbox.addEventListener('change', () => {
             if (checkbox.checked) participantSelection.add(character.id);
             else participantSelection.delete(character.id);
+            updateTickListSelectAll(participantSelectAll, participantSelectionList);
         });
 
         row.appendChild(checkbox);
         participantSelectionList.appendChild(row);
     });
     smartObjectFitAll('#participant-selection-list img');
+    updateTickListSelectAll(participantSelectAll, participantSelectionList);
 }
 
 // Saves the ticks of the group chat picker: ticked characters join the chat,
@@ -8009,9 +8049,12 @@ function renderPersonaDefaultCharacterPickerList() {
   if (!list) return;
 
   const query = (document.getElementById('personaDefaultCharacterPickerSearch')?.value || '').toLowerCase().trim();
+  // Cards that already use this persona come first, so they are easy to find and untick.
+  const savedIds = new Set(getPersonaDefaultCharacterIds(personaDefaultCharacterPickerPersonaId));
   const cards = Object.values(characters)
     .filter(character => !query || (character.name || '').toLowerCase().includes(query))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    .sort((a, b) => (savedIds.has(b.id) - savedIds.has(a.id))
+      || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
   list.innerHTML = '';
   if (cards.length === 0) {
@@ -13864,6 +13907,10 @@ stopStreamBtn.addEventListener('click', () => {
 addParticipantBtn.addEventListener('click', openParticipantModal);
 
 participantSearchInput.addEventListener('input', renderParticipantModalList);
+
+participantSelectAll.addEventListener('change', () => {
+    setTickListSelectAll(participantSelectAll, participantSelectionList, participantSelection);
+});
 
 participantSelectionModal.addEventListener('click', (event) => {
   if (event.target.id === 'cancel-participant-selection-btn') {

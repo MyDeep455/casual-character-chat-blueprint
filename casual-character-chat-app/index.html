@@ -640,8 +640,12 @@
     <div class="modal-content" id="participant-modal-content">
         <h2>👥 Group Chat Selection</h2>
         <p>Tick the Characters that should be part of this Chat:</p>
-        <div class="modal-search-container">
+        <div class="modal-search-container" style="display:flex;align-items:center;gap:10px;">
   <input type="search" id="participant-search-input" class="modal-search-input" placeholder="🔎 Search Character...">
+  <label style="display:flex;align-items:center;gap:6px;font-size:16px;color:#dcddde;">
+    <input id="participant-select-all" type="checkbox">
+    <span>Select all</span>
+  </label>
 </div>
         <div id="participant-selection-list">
             </div>
