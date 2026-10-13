@@ -1942,7 +1942,7 @@ h1 {
 
 #character-form #char-instructions,
 #character-form #char-description,
-#character-form #char-lore,
+#character-form .lore-book-text,
 #character-form #char-reminder,
 #character-form #char-narrator-reminder {
 max-height: 27em;
@@ -4637,6 +4637,8 @@ hr.settings-separator {
     width: 20px;
     justify-content: center;
     user-select: none;
+    /* A finger on the handle drags the row instead of scrolling the panel. */
+    touch-action: none;
     transition: color 0.15s ease;
 }
 
@@ -7423,6 +7425,55 @@ body.image-gen-off .generate-image-btn {
 }
 .lore-keyword-input {
     font-weight: normal !important;
+}
+.lore-fields {
+    flex-grow: 1;
+    min-width: 0;
+}
+.lore-book-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+.lore-book-head .lore-book-name {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+/* A <label>, so it needs the id to outrank #character-form label's margins. */
+#character-form .lore-book-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    margin: 0;
+    font-size: 13px;
+    font-weight: normal;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.lore-book-toggle input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+/* A lorebook that is kept but not sent. */
+.lore-book-off .lore-book-name,
+.lore-book-off .lore-book-text {
+    opacity: 0.45;
+}
+.lore-entry.dragging,
+.lore-book.dragging {
+    opacity: 0.35;
+}
+.lore-entry.drag-over-top,
+.lore-book.drag-over-top {
+    border-top: 2px solid #5865f2;
+    margin-top: -2px;
+}
+.lore-entry.drag-over-bottom,
+.lore-book.drag-over-bottom {
+    border-bottom: 2px solid #5865f2;
 }
 
 /* ── Character randomizer button ── */

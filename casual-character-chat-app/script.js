@@ -870,7 +870,6 @@ const defaultSettings = {
     const editorAvatarPlaceholder = document.getElementById('editor-avatar-placeholder');
     const charInstructionsInput = document.getElementById('char-instructions');
     const charDescriptionInput = document.getElementById('char-description');
-    const charLoreInput = document.getElementById('char-lore');
     // World editor elements
     const cardTypeCharacterRadio = document.getElementById('type-character');
     const cardTypeWorldRadio = document.getElementById('type-world');
@@ -984,6 +983,72 @@ const defaultSettings = {
             const rect = rowEl.getBoundingClientRect();
             const midY = rect.top + rect.height / 2;
             listEl.insertBefore(dragSrcEl, e.clientY < midY ? rowEl : rowEl.nextSibling);
+        });
+
+        // A finger gets no native drag-and-drop to lean on, so on touch the
+        // handle is followed by hand: same markers, same drop rule.
+        handleEl.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' || dragSrcEl) return;
+            e.preventDefault();
+            try { handleEl.setPointerCapture(e.pointerId); } catch (_) {}
+            dragSrcEl = rowEl;
+            dragScrollEl = scrollEl || null;
+            rowEl.classList.add('dragging');
+            let targetRow = null;
+            let dropBefore = false;
+
+            const clearMarks = () => {
+                listEl.querySelectorAll(rowSelector).forEach(el => {
+                    el.classList.remove('drag-over-top', 'drag-over-bottom');
+                });
+            };
+
+            const onMove = (ev) => {
+                clearMarks();
+                targetRow = null;
+                // The row nearest the finger, so the gaps between rows count too.
+                let nearest = Infinity;
+                listEl.querySelectorAll(rowSelector).forEach(el => {
+                    const rect = el.getBoundingClientRect();
+                    const dist = ev.clientY < rect.top ? rect.top - ev.clientY
+                               : ev.clientY > rect.bottom ? ev.clientY - rect.bottom : 0;
+                    if (dist < nearest) {
+                        nearest = dist;
+                        targetRow = el;
+                        dropBefore = ev.clientY < rect.top + rect.height / 2;
+                    }
+                });
+                if (targetRow === rowEl) targetRow = null;
+                if (targetRow) targetRow.classList.add(dropBefore ? 'drag-over-top' : 'drag-over-bottom');
+
+                if (dragScrollEl) {
+                    const scrollRect = dragScrollEl.getBoundingClientRect();
+                    dragScrollDir = ev.clientY < scrollRect.top + 80 ? -1
+                                  : ev.clientY > scrollRect.bottom - 80 ? 1 : 0;
+                    if (dragScrollDir !== 0 && !dragScrollRAF) {
+                        dragScrollRAF = requestAnimationFrame(updateDragScroll);
+                    }
+                }
+            };
+
+            const finish = (ev) => {
+                handleEl.removeEventListener('pointermove', onMove);
+                handleEl.removeEventListener('pointerup', finish);
+                handleEl.removeEventListener('pointercancel', finish);
+                clearMarks();
+                rowEl.classList.remove('dragging');
+                if (ev.type === 'pointerup' && targetRow) {
+                    listEl.insertBefore(rowEl, dropBefore ? targetRow : targetRow.nextSibling);
+                }
+                dragSrcEl = null;
+                dragScrollEl = null;
+                if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
+                dragScrollDir = 0;
+            };
+
+            handleEl.addEventListener('pointermove', onMove);
+            handleEl.addEventListener('pointerup', finish);
+            handleEl.addEventListener('pointercancel', finish);
         });
     }
 
@@ -1345,43 +1410,103 @@ function extractDataFromPng(arrayBuffer) {
 
 
 // Card lorebooks arrive in several shapes: a V3 `character_book` object with an
-// entries array, a bare string, or one of the older flat fields. Everything
-// funnels through here into { pieces, entries } - `pieces` feeds the always-on
-// lorebook text, `entries` the keyword-triggered list the editor can drive.
+// entries array (or an entries map keyed by id), a list of such books, a bare
+// string, or one of the older flat fields. Everything funnels through here
+// into { books, loose }. Each book is { name, pieces, entries } - `pieces`
+// feeds an always-on lorebook's text, `entries` the keyword-triggered list the
+// editor can drive. `loose` is the lore that came as plain text, in no book.
 function extractCardLorebook(data) {
-  const pieces = [];
-  const entries = [];
-  const push = (value) => {
+  const books = [];
+  const loose = [];
+  const seen = new Set();
+  const pushLoose = (value) => {
     const t = typeof value === "string" ? value.trim() : "";
-    if (t) pieces.push(t);
+    if (t && !loose.includes(t)) loose.push(t);
   };
 
-  const book = data.character_book || data.embedded_lorebook || null;
-  if (typeof book === "string") push(book);
+  const entryListOf = (book) => {
+    if (Array.isArray(book)) return book;
+    if (!book || typeof book !== "object" || !book.entries) return null;
+    if (Array.isArray(book.entries)) return book.entries;
+    return typeof book.entries === "object" ? Object.values(book.entries) : null;
+  };
+  const isBook = (v) => !!v && !Array.isArray(v) && typeof v === "object" && !!entryListOf(v);
 
-  const list = Array.isArray(book) ? book
-             : (book && Array.isArray(book.entries) ? book.entries : null);
+  const addSource = (source) => {
+    if (!source) return;
+    if (typeof source === "string") { pushLoose(source); return; }
+    // A list of whole books rather than a list of entries.
+    if (Array.isArray(source) && source.some(isBook)) { source.forEach(addSource); return; }
 
-  if (list) {
+    const list = entryListOf(source);
+    if (!list) return;
+
+    const pieces = [];
+    const entries = [];
     list.forEach((e) => {
       if (!e) return;
       const rawKeys = Array.isArray(e.keys) ? e.keys
                     : Array.isArray(e.key) ? e.key
                     : (e.keys || e.key || e.keyword || "");
       const keywords = (Array.isArray(rawKeys) ? rawKeys.join(", ") : String(rawKeys || "")).trim();
-      const content = String(e.content || e.value || e.entry || "").trim();
+      const content = String(e.content || e.value || e.entry || e.text || "").trim();
       if (!content) return;
 
       entries.push({ keywords: keywords, text: content });
       pieces.push([keywords ? `[${keywords}]` : "", content].filter(Boolean).join("\n").trim());
     });
+    if (entries.length === 0) return;
+
+    // The same book is often listed twice, once embedded and once in a list.
+    const signature = pieces.join("\n\n");
+    if (seen.has(signature)) return;
+    seen.add(signature);
+
+    const name = Array.isArray(source) ? "" : String(source.name || "").trim();
+    books.push({ name: name, pieces: pieces, entries: entries });
+  };
+
+  addSource(data.character_book || data.embedded_lorebook || null);
+  addSource(data.lorebooks);
+  addSource(data.character_books);
+  addSource(data.lorebook);
+  pushLoose(data.lore);
+  pushLoose(data.world_scenario);
+
+  return { books: books, loose: loose };
+}
+
+// The always-on lorebooks of a character, as [{ name, text, enabled }]. A
+// character saved before there could be several has only the one `lore`
+// string, which is that character's single lorebook.
+function normalizeLoreBooks(character) {
+  if (character && Array.isArray(character.loreBooks)) {
+    return character.loreBooks
+      .filter(b => b && typeof b === "object")
+      .map(b => ({
+        name: typeof b.name === "string" ? b.name : "",
+        text: typeof b.text === "string" ? b.text : "",
+        enabled: b.enabled !== false
+      }));
   }
+  const legacy = character && typeof character.lore === "string" ? character.lore : "";
+  return legacy.trim() ? [{ name: "", text: legacy, enabled: true }] : [];
+}
 
-  push(data.lorebook);
-  push(data.lore);
-  push(data.world_scenario);
+// What the active lorebooks add up to - the text that is actually sent.
+function joinLoreBooks(books) {
+  return (books || [])
+    .filter(b => b && b.enabled !== false)
+    .map(b => (b.text || "").trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
 
-  return { pieces: pieces, entries: entries };
+function getAlwaysOnLoreText(character) {
+  if (!character) return "";
+  return Array.isArray(character.loreBooks)
+    ? joinLoreBooks(normalizeLoreBooks(character))
+    : (character.lore || "").trim();
 }
 
 
@@ -1415,8 +1540,8 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
   // they read as part of the persona, in the lorebook as world facts. Both
   // are wrong, so they are left behind.
 
-  const book = extractCardLorebook(data);
-  const flatLore = book.pieces.filter(p => p && p !== tagline).join("\n\n").trim();
+  const cardLore = extractCardLorebook(data);
+  const cardLoreEntries = cardLore.books.reduce((all, b) => all.concat(b.entries), []);
 
   // Which lore mode the card actually wants. Always-on lore is prepended to
   // every prompt, which is fine for a few paragraphs and ruinous for a real
@@ -1426,9 +1551,27 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
   // lives in loreEntries only. With no keywords nothing would ever fire, so
   // those stay always-on. Either way the entries are filled in, so switching
   // the toggle in the editor just works.
-  const keyed = book.entries.filter(e => e.keywords).length;
-  const useKeyword = book.entries.length > 0 && keyed >= book.entries.length / 2;
-  const allLore = useKeyword ? "" : flatLore;
+  const keyed = cardLoreEntries.filter(e => e.keywords).length;
+  const useKeyword = cardLoreEntries.length > 0 && keyed >= cardLoreEntries.length / 2;
+
+  // Always-on, every lorebook the card brought stays a lorebook of its own, so
+  // each can be switched off without losing it. Lore that came as plain text
+  // is one more book beside them.
+  const cardLoreBooks = [];
+  if (!useKeyword) {
+    const notTagline = (p) => p && p !== tagline;
+    cardLore.books.forEach((b, index) => {
+      const text = b.pieces.filter(notTagline).join("\n\n").trim();
+      if (!text) return;
+      const fallbackName = cardLore.books.length > 1 ? `Lorebook ${index + 1}` : "";
+      cardLoreBooks.push({ name: b.name || fallbackName, text: text, enabled: true });
+    });
+    const looseText = cardLore.loose.filter(notTagline).join("\n\n").trim();
+    if (looseText) {
+      cardLoreBooks.push({ name: cardLoreBooks.length > 0 ? "Background" : "", text: looseText, enabled: true });
+    }
+  }
+  const allLore = joinLoreBooks(cardLoreBooks);
 
   const allScenarios = [];
   const mainScenarioText = [txt(data.scenario), txt(data.first_mes)].filter(Boolean).join("\n\n").trim();
@@ -1456,8 +1599,9 @@ function convertExternalCardToCCC(externalCard, imageBlob = null) {
     gallery: [],
     description: allDescriptions,
     lore: allLore,
+    loreBooks: cardLoreBooks,
     loreMode: useKeyword ? 'keyword' : 'flat',
-    loreEntries: book.entries,
+    loreEntries: cardLoreEntries,
     tags: (Array.isArray(data.tags) ? data.tags.join(', ') : ''),
     instructions: txt(data.system_prompt),
     reminder: txt(data.post_history_instructions),
@@ -1603,7 +1747,7 @@ function applyUserPlaceholder(s, persona) {
 }
 
 // Returns the lore text to inject for a character.
-// 'flat' mode (default, legacy): the whole `lore` string, always included.
+// 'flat' mode (default, legacy): every active always-on lorebook, always included.
 // 'keyword' mode: only the loreEntries whose trigger keywords appear in `scanText` (recent messages).
 function getLoreText(character, scanText) {
     if (!character) return '';
@@ -1619,7 +1763,7 @@ function getLoreText(character, scanText) {
             .filter(Boolean)
             .join('\n\n');
     }
-    return (character.lore || '').trim();
+    return getAlwaysOnLoreText(character);
 }
 
 // Card text (description, lore, world sheet) is written with {{char}} and
@@ -3552,9 +3696,7 @@ if (dashboardAvatarUrl) {
     }
 
     const mainCharacter = characters[currentCharacterId];
-    if (mainCharacter && mainCharacter.lore) {
-        characterContextText += mainCharacter.lore;
-    }
+    characterContextText += getAlwaysOnLoreText(mainCharacter);
 
     totalTokens += Math.round(characterContextText.length / 4);
 
@@ -3576,7 +3718,7 @@ function calculateCharacterTokens(character) {
     let totalText = '';
     totalText += character.chatName || '';
     totalText += character.description || '';
-    totalText += character.lore || '';
+    totalText += getAlwaysOnLoreText(character);
     totalText += character.instructions || '';
     totalText += character.reminder || '';
     totalText += character.narratorReminder || '';
@@ -3590,7 +3732,7 @@ function updateEditorTokenCount() {
     const tempChar = {
         chatName: document.getElementById('chat-name').value,
         description: document.getElementById('char-description').value,
-        lore: document.getElementById('char-lore').value,
+        lore: getEditorLoreText(),
         instructions: document.getElementById('char-instructions').value,
         reminder: document.getElementById('char-reminder').value,
         narratorReminder: document.getElementById('char-narrator-reminder').value
@@ -7149,9 +7291,12 @@ function updateSingleMessageView(messageId) {
     document.getElementById('char-description').placeholder = isWorld
         ? 'Setting overview, geography, atmosphere, society, factions, tone etc.'
         : 'Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc.';
-    document.getElementById('char-lore').placeholder = isWorld
+    const lorePlaceholder = isWorld
         ? 'Historical events, myths, creation stories, notable conflicts, secrets of this world etc.'
         : 'Deeper Background Story, World & Relationships of the Character, Fun Facts etc.';
+    const loreBookListEl = document.getElementById('lore-book-list');
+    loreBookListEl.dataset.placeholder = lorePlaceholder;
+    loreBookListEl.querySelectorAll('.lore-book-text').forEach(ta => { ta.placeholder = lorePlaceholder; });
     const instrContainer = document.getElementById('char-instructions-container');
     if (instrContainer) instrContainer.style.display = isWorld ? 'none' : '';
     document.getElementById('char-instructions').placeholder = "General AI Instructions for this character... (e.g., 'Be creative and drive the plot forward.')";
@@ -7161,7 +7306,7 @@ function updateSingleMessageView(messageId) {
     document.getElementById('char-narrator-reminder').placeholder = isWorld
         ? "Narrator Reminder... (e.g., 'Switch to third-person narrator voice now.')"
         : "Narrator Reminder for this character... (e.g., 'Reply only as an omniscient narrator now.')";
-    const loreLabelEl = document.querySelector('label[for="char-lore"]');
+    const loreLabelEl = document.getElementById('char-lore-label');
     if (loreLabelEl) loreLabelEl.textContent = isWorld ? 'World Lore:' : 'Lorebook:';
     const instrLabelEl = document.querySelector('label[for="char-instructions"]');
     if (instrLabelEl) instrLabelEl.textContent = 'AI Instructions:';
@@ -7542,6 +7687,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
     document.getElementById('scenario-editor-list').innerHTML = '';
     createScenarioInput({ name: 'Main Greeting', greeting: '' });
     document.getElementById('lore-editor-list').innerHTML = '';
+    fillEditorLoreBooks([]);
     const flatLoreRadio = document.querySelector('input[name="lore-mode"][value="flat"]');
     if (flatLoreRadio) flatLoreRadio.checked = true;
     updateEditorForLoreMode('flat');
@@ -7612,7 +7758,7 @@ if (editorDisplayUrl) {
   document.getElementById('chat-list-screen').style.backgroundImage = backgroundUrl ? cssUrl(backgroundUrl) : 'none';
   charInstructionsInput.value = character.instructions || '';
   charDescriptionInput.value = character.description || '';
-  charLoreInput.value = character.lore || '';
+  fillEditorLoreBooks(normalizeLoreBooks(character));
   document.getElementById('char-tags').value = character.tags || '';
   refreshTagEditorFromField();
   document.getElementById('char-reminder').value = character.reminder || '';
@@ -7647,13 +7793,14 @@ if (editorDisplayUrl) {
 
   setTimeout(() => {
     const textareasToResize = [
-      'card-name', 'char-instructions', 'char-description', 'char-lore',
+      'card-name', 'char-instructions', 'char-description',
       'char-reminder', 'char-narrator-reminder', 'char-music-url'
     ];
     textareasToResize.forEach(id => {
       const textarea = document.getElementById(id);
       if (textarea) autoResizeTextarea({ target: textarea });
     });
+    resizeEditorLoreBooks();
   }, 0);
 }
 
@@ -8438,7 +8585,9 @@ async function setActivePersonaForChat(personaId) {
 
   const instructions = charInstructionsInput.value;
   const description = charDescriptionInput.value;
-  const lore = charLoreInput.value;
+  // `lore` stays what is sent: the active lorebooks, joined.
+  const loreBooks = readEditorLoreBooks();
+  const lore = joinLoreBooks(loreBooks);
   commitPendingTagInput();
   const tags = document.getElementById('char-tags').value;
   const reminder = document.getElementById('char-reminder').value;
@@ -8484,6 +8633,7 @@ async function setActivePersonaForChat(personaId) {
     character.instructions = instructions;
     character.description = description;
     character.lore = lore;
+    character.loreBooks = loreBooks;
     character.loreMode = loreMode;
     character.loreEntries = loreEntries;
     character.tags = tags;
@@ -8505,6 +8655,7 @@ async function setActivePersonaForChat(personaId) {
       instructions: instructions,
       description: description,
       lore: lore,
+      loreBooks: loreBooks,
       loreMode: loreMode,
       loreEntries: loreEntries,
       tags: tags,
@@ -8606,13 +8757,125 @@ document.getElementById('scenario-editor-list').addEventListener('click', async 
     }
 });
 
-// --- Keyword-triggered lorebook entries ---
+// --- Lorebook rows: always-on lorebooks and keyword-triggered entries ---
+function createLoreDragHandle() {
+    const handle = document.createElement('div');
+    handle.className = 'model-drag-handle lore-drag-handle';
+    handle.title = 'Drag to reorder';
+    handle.innerHTML = `<svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="12" y2="2"/><line x1="2" y1="6" x2="12" y2="6"/><line x1="2" y1="10" x2="12" y2="10"/></svg>`;
+    return handle;
+}
+
+function createLoreBookInput(book = {}) {
+    const listDiv = document.getElementById('lore-book-list');
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'scenario-entry lore-book';
+    const handle = createLoreDragHandle();
+    const fieldsWrapper = document.createElement('div');
+    fieldsWrapper.className = 'lore-fields';
+
+    const headRow = document.createElement('div');
+    headRow.className = 'lore-book-head';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.className = 'lore-book-toggle';
+    toggleLabel.title = 'Only active lorebooks are sent to the AI';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'lore-book-enabled';
+    toggle.checked = book.enabled !== false;
+    toggleLabel.appendChild(toggle);
+    toggleLabel.appendChild(document.createTextNode('Active'));
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'scenario-name-input lore-book-name';
+    nameInput.placeholder = 'Lorebook name (optional)';
+    nameInput.value = book.name || '';
+
+    const textarea = document.createElement('textarea');
+    textarea.rows = 4;
+    textarea.className = 'lore-book-text';
+    textarea.placeholder = listDiv.dataset.placeholder || '';
+    textarea.value = book.text || '';
+    textarea.addEventListener('dblclick', (e) => e.target.style.height = `${e.target.scrollHeight}px`);
+    textarea.addEventListener('input', autoResizeTextarea);
+
+    const syncEnabled = () => entryDiv.classList.toggle('lore-book-off', !toggle.checked);
+    toggle.addEventListener('change', syncEnabled);
+    syncEnabled();
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-scenario-btn delete-lore-book-btn';
+    deleteBtn.title = 'Delete Lorebook';
+    deleteBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+
+    headRow.appendChild(toggleLabel);
+    headRow.appendChild(nameInput);
+    fieldsWrapper.appendChild(headRow);
+    fieldsWrapper.appendChild(textarea);
+    entryDiv.appendChild(handle);
+    entryDiv.appendChild(fieldsWrapper);
+    entryDiv.appendChild(deleteBtn);
+    listDiv.appendChild(entryDiv);
+
+    enableRowDragReorder(entryDiv, {
+        listEl: listDiv,
+        handleEl: handle,
+        rowSelector: '.lore-book',
+        scrollEl: listDiv.closest('.modal-content')
+    });
+    return entryDiv;
+}
+
+// The editor always offers one lorebook to write in, even on an empty card.
+function fillEditorLoreBooks(books) {
+    document.getElementById('lore-book-list').innerHTML = '';
+    (books && books.length > 0 ? books : [{}]).forEach(createLoreBookInput);
+}
+
+// Reads the lorebooks back out of the DOM, in the order they are shown.
+function readEditorLoreBooks() {
+    const books = [];
+    document.querySelectorAll('#lore-book-list .lore-book').forEach(row => {
+        const text = row.querySelector('.lore-book-text')?.value || '';
+        if (text.trim() === '') return;
+        books.push({
+            name: (row.querySelector('.lore-book-name')?.value || '').trim(),
+            text: text,
+            enabled: !!row.querySelector('.lore-book-enabled')?.checked
+        });
+    });
+    return books;
+}
+
+function getEditorLoreText() {
+    return joinLoreBooks(readEditorLoreBooks());
+}
+
+function resizeEditorLoreBooks() {
+    document.querySelectorAll('#lore-book-list .lore-book-text').forEach(ta => autoResizeTextarea({ target: ta }));
+}
+
+// Generated lore goes into the first lorebook; any others are left alone.
+function setEditorMainLoreText(text) {
+    const row = document.querySelector('#lore-book-list .lore-book') || createLoreBookInput({});
+    const textarea = row.querySelector('.lore-book-text');
+    const toggle = row.querySelector('.lore-book-enabled');
+    textarea.value = text;
+    toggle.checked = true;
+    row.classList.remove('lore-book-off');
+    autoResizeTextarea({ target: textarea });
+}
+
 function createLoreEntryInput(entry = {}) {
     const listDiv = document.getElementById('lore-editor-list');
     const entryDiv = document.createElement('div');
     entryDiv.className = 'scenario-entry lore-entry';
+    const handle = createLoreDragHandle();
     const fieldsWrapper = document.createElement('div');
-    fieldsWrapper.style.flexGrow = '1';
+    fieldsWrapper.className = 'lore-fields';
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
@@ -8635,9 +8898,17 @@ function createLoreEntryInput(entry = {}) {
 
     fieldsWrapper.appendChild(keyInput);
     fieldsWrapper.appendChild(textarea);
+    entryDiv.appendChild(handle);
     entryDiv.appendChild(fieldsWrapper);
     entryDiv.appendChild(deleteBtn);
     listDiv.appendChild(entryDiv);
+
+    enableRowDragReorder(entryDiv, {
+        listEl: listDiv,
+        handleEl: handle,
+        rowSelector: '.lore-entry',
+        scrollEl: listDiv.closest('.modal-content')
+    });
 }
 
 function updateEditorForLoreMode(mode) {
@@ -8650,6 +8921,8 @@ function updateEditorForLoreMode(mode) {
     } else {
         flatC.classList.remove('hidden');
         kwC.classList.add('hidden');
+        // They could not be measured while hidden.
+        resizeEditorLoreBooks();
     }
 }
 
@@ -8673,6 +8946,24 @@ document.getElementById('lore-editor-list').addEventListener('click', async (eve
 });
 
 document.getElementById('lore-editor-list').addEventListener('input', updateEditorTokenCount);
+
+document.getElementById('add-lore-book-btn').addEventListener('click', () => {
+    createLoreBookInput({});
+});
+
+document.getElementById('lore-book-list').addEventListener('click', async (event) => {
+    const delBtn = event.target.closest('.delete-lore-book-btn');
+    if (delBtn) {
+        if (await showCustomConfirm("Do you really want to delete this lorebook?", true)) {
+            delBtn.closest('.lore-book').remove();
+            updateEditorTokenCount();
+        }
+    }
+});
+
+// `change` as well as `input`: ticking a lorebook on or off changes the count.
+document.getElementById('lore-book-list').addEventListener('input', updateEditorTokenCount);
+document.getElementById('lore-book-list').addEventListener('change', updateEditorTokenCount);
 
 // --- Character randomizer: start a fresh chat with a random character and a random mood ---
 async function startRandomChat() {
@@ -9764,7 +10055,7 @@ if (galleryActionModal) {
 
 
 const editorFieldsToMonitor = [
-  'card-name', 'char-description', 'char-lore', 'char-instructions',
+  'card-name', 'char-description', 'char-instructions',
   'char-reminder', 'char-narrator-reminder'
 ];
 document.getElementById('char-music-url')?.addEventListener('input', autoResizeTextarea);
@@ -13406,7 +13697,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             || worldName
             || 'the character';
         const charDesc = document.getElementById('char-description')?.value || '';
-        const charLore = document.getElementById('char-lore')?.value || '';
+        const charLore = getEditorLoreText();
 
         if (!charDesc.trim() && !charLore.trim()) {
             showCustomAlert(isWorld
@@ -13770,8 +14061,7 @@ Output ONLY the raw JSON object. No markdown fences, no commentary.`;
                     autoResizeTextarea({ target: charDescriptionInput });
                 }
                 if (parsed.lore) {
-                    charLoreInput.value = String(parsed.lore);
-                    autoResizeTextarea({ target: charLoreInput });
+                    setEditorMainLoreText(String(parsed.lore));
                 }
                 if (parsed.worldRules) {
                     const reminderEl = document.getElementById('char-reminder');
@@ -14839,7 +15129,6 @@ characterEditorModal.addEventListener('wheel', (event) => {
 
 const editorTextareasToResize = [
     'char-description',
-    'char-lore',
     'char-instructions',
     'char-reminder',
     'char-narrator-reminder',

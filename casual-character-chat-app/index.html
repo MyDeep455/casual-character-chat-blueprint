@@ -543,17 +543,21 @@
                 <textarea id="char-description" rows="1" placeholder="Identity, Appearance, Personality, Abilities, Speech Style, Dialog Examples etc."></textarea>
 
                 <div class="lore-header-row">
-                    <label for="char-lore">Lorebook:</label>
+                    <label id="char-lore-label">Lorebook:</label>
                     <div class="lore-mode-toggle">
                         <label><input type="radio" name="lore-mode" value="flat" checked> Always-on</label>
                         <label><input type="radio" name="lore-mode" value="keyword"> Keyword-triggered</label>
                     </div>
                 </div>
                 <div id="lore-flat-container">
-                    <textarea id="char-lore" rows="1" placeholder="Background Story, World, Relationships, Fun Facts, etc."></textarea>
+                    <p class="lore-help-text">Every active lorebook is sent to the AI with every message. Untick one to keep it without sending it.</p>
+                    <div id="lore-book-list" class="scenario-list-container" data-placeholder="Background Story, World, Relationships, Fun Facts, etc."></div>
+                    <div class="scenario-action-row">
+                        <button type="button" id="add-lore-book-btn" class="add-scenario-button">+ Add Lorebook</button>
+                    </div>
                 </div>
                 <div id="lore-keyword-container" class="hidden">
-                    <p class="lore-help-text">Entries are only added to the AI's context when one of its trigger keywords appears in recent messages.</p>
+                    <p class="lore-help-text">Entries are only added to the AI's context when one of its trigger keywords appears in recent messages. Drag an entry by its handle to reorder.</p>
                     <div id="lore-editor-list" class="scenario-list-container"></div>
                     <div class="scenario-action-row">
                         <button type="button" id="add-lore-entry-btn" class="add-scenario-button">+ Add Lore Entry</button>
