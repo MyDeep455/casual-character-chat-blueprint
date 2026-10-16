@@ -7305,6 +7305,9 @@ body.image-gen-off .generate-image-btn {
     text-align: center;
     margin-bottom: 4px;
 }
+.world-char-picker-btn-row .nowrap-chunk {
+    white-space: nowrap;
+}
 #worldCharPickerConfirmBtn,
 #personaDefaultCharacterPickerConfirmBtn,
 #confirm-participant-selection-btn {
