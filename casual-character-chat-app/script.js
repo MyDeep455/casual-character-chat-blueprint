@@ -1573,7 +1573,9 @@ function showCustomPrompt(message, defaultValue = '') {
 // `pendingSuggestion` lets the dialog open instantly with whatever text is
 // already available and improve it later, instead of making the user wait on a
 // network round trip before the box even appears. Anything the user types wins.
-function showCustomLargePrompt(message, placeholder = '', defaultValue = '', rows = 6, pendingSuggestion = null, extraElement = null) {
+// `regenerate`, when given, adds a ↻ button that asks for a fresh suggestion
+// and replaces the box's text with it.
+function showCustomLargePrompt(message, placeholder = '', defaultValue = '', rows = 6, pendingSuggestion = null, extraElement = null, regenerate = null) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.className = 'custom-alert-overlay';
@@ -1605,22 +1607,38 @@ function showCustomLargePrompt(message, placeholder = '', defaultValue = '', row
 
         buttonContainer.appendChild(cancelButton);
         buttonContainer.appendChild(okButton);
-        modal.appendChild(messageP);
+
+        let regenerateButton = null;
+        if (regenerate) {
+            const header = document.createElement('div');
+            header.className = 'prompt-dialog-header';
+            regenerateButton = document.createElement('button');
+            regenerateButton.type = 'button';
+            regenerateButton.className = 'prompt-regenerate-btn';
+            regenerateButton.textContent = '↻';
+            regenerateButton.title = 'Write a new prompt';
+            regenerateButton.setAttribute('aria-label', 'Write a new prompt');
+            header.append(messageP, regenerateButton);
+            modal.appendChild(header);
+        } else {
+            modal.appendChild(messageP);
+        }
         modal.appendChild(textarea);
         if (extraElement) modal.appendChild(extraElement);
 
-        let refiningNote = null;
-        if (pendingSuggestion) {
-            refiningNote = document.createElement('div');
-            refiningNote.className = 'prompt-refining-note';
-            const spinner = document.createElement('span');
-            spinner.className = 'btn-spinner';
-            refiningNote.appendChild(spinner);
-            refiningNote.appendChild(document.createTextNode(
-                'Refining this into an image prompt… you can edit or send it now.'
-            ));
-            modal.appendChild(refiningNote);
-        }
+        const refiningNote = document.createElement('div');
+        refiningNote.className = 'prompt-refining-note hidden';
+        modal.appendChild(refiningNote);
+        const setNote = (text, busy = false) => {
+            refiningNote.replaceChildren();
+            if (busy) {
+                const spinner = document.createElement('span');
+                spinner.className = 'btn-spinner';
+                refiningNote.appendChild(spinner);
+            }
+            refiningNote.appendChild(document.createTextNode(text));
+            refiningNote.classList.toggle('hidden', !text);
+        };
 
         modal.appendChild(buttonContainer);
         overlay.appendChild(modal);
@@ -1629,22 +1647,42 @@ function showCustomLargePrompt(message, placeholder = '', defaultValue = '', row
         textarea.focus();
 
         // Once the user touches the box, a late suggestion must not overwrite
-        // their work; it only fills in text they never changed.
+        // their work; it only fills in text they never changed. A press of ↻
+        // asks for new text, so its answer replaces the box either way.
         let userEdited = false;
         textarea.addEventListener('input', () => { userEdited = true; });
 
-        if (pendingSuggestion) {
-            Promise.resolve(pendingSuggestion).then(better => {
-                if (refiningNote) refiningNote.remove();
-                if (!overlay.isConnected || userEdited) return;
+        // Only the newest request may fill the box.
+        let latestRequest = 0;
+        const fillFrom = (suggestion, { replace, busyText }) => {
+            const request = ++latestRequest;
+            setNote(busyText, true);
+            if (regenerateButton) regenerateButton.disabled = true;
+            Promise.resolve(suggestion).then(better => {
+                if (!overlay.isConnected || request !== latestRequest) return;
+                setNote('');
+                if (userEdited && !replace) return;
                 const cleaned = String(better || '').trim();
                 if (cleaned && cleaned !== textarea.value) {
                     textarea.value = cleaned;
+                    userEdited = false;
                 }
-            }).catch(() => {
-                if (refiningNote) refiningNote.remove();
+            }).catch(err => {
+                if (!overlay.isConnected || request !== latestRequest) return;
+                // A refusal is worth saying; a first attempt that simply could
+                // not reach a text model leaves the scene text quietly in place.
+                setNote(regenerate ? (err?.notice || (replace ? 'No new prompt came back. Press ↻ to try again.' : '')) : '');
+            }).finally(() => {
+                if (request === latestRequest && regenerateButton) regenerateButton.disabled = false;
             });
+        };
+
+        if (pendingSuggestion) {
+            fillFrom(pendingSuggestion, { replace: false, busyText: 'Refining this into an image prompt… you can edit or send it now.' });
         }
+        regenerateButton?.addEventListener('click', () => {
+            fillFrom(regenerate(), { replace: true, busyText: 'Writing a new prompt…' });
+        });
 
         const confirm = () => {
             overlay.remove();
@@ -5060,6 +5098,13 @@ function ensureImagesHolder(messageElement) {
     return holder;
 }
 
+// Older pictures carry only the provider and, for paid ones, the model id.
+function imageModelCaption(image) {
+    const service = { openrouter: 'OpenRouter', horde: 'AI Horde', pollinations: 'Pollinations' }[image?.provider] || '';
+    const model = image?.modelName || image?.model || '';
+    return [model, service].filter(Boolean).join(' · ');
+}
+
 function renderVariationImages(messageElement, variation, message) {
     if (!messageElement) return;
 
@@ -5102,6 +5147,14 @@ function renderVariationImages(messageElement, variation, message) {
             }
         });
         container.appendChild(img);
+
+        const caption = imageModelCaption(image);
+        if (caption) {
+            const modelNote = document.createElement('div');
+            modelNote.className = 'generated-image-model';
+            modelNote.textContent = caption;
+            container.appendChild(modelNote);
+        }
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -13039,7 +13092,8 @@ personaEditorAvatarImg.onerror = () => {
         url.searchParams.set('nologo', 'true');
         const finalUrl = url.toString();
         await preloadImage(finalUrl, IMAGE_GEN_TIMEOUT_MS, signal);
-        return { provider: 'pollinations', url: finalUrl, width, height };
+        // Sana is the only model the free endpoint offers.
+        return { provider: 'pollinations', url: finalUrl, modelName: 'Sana', width, height };
     }
 
     function waitOrCancel(ms, signal) {
@@ -13280,6 +13334,7 @@ personaEditorAvatarImg.onerror = () => {
             provider: 'openrouter',
             dataUrl: dataURL,
             model: modelId,
+            modelName: OPENROUTER_IMAGE_MODELS.find(m => m.id === modelId)?.name || modelId,
             cost: (typeof json?.usage?.cost === 'number') ? json.usage.cost : null,
             reference: usedReference ? reference.kind : null,
             width,
@@ -13455,36 +13510,43 @@ Describe what is literally visible - subject, appearance, clothing, pose, settin
 From the character reference, use only physical appearance (face, hair, eyes, body, typical clothing); ignore personality, backstory and behavior.
 Do not write dialogue, narration, names, or any commentary about the request.`;
 
-    // Raw roleplay prose makes a poor image prompt, so it is distilled first.
-    // The free path must keep working when no text model is reachable, so any
-    // failure here falls back to the trimmed scene text instead of throwing.
     // What the prompt box shows straight away, with no network round trip.
     function imagePromptFallback(sceneText) {
         return String(sceneText || '').trim().slice(0, IMAGE_PROMPT_FALLBACK_CHARS);
     }
 
+    // Small or safety-tuned models sometimes answer with a verdict ("safe"),
+    // a refusal or a stray word instead of a prompt.
+    function isUsableImagePrompt(text) {
+        if (text.split(/[\s,]+/).filter(Boolean).length < 4) return false;
+        return !/^(i\s*(can['’]?t|cannot|won['’]?t|am (not able|unable)|['’]m (sorry|not able|unable))|sorry|i apologi[sz]e|as an ai)\b/i.test(text);
+    }
+
+    // Raw roleplay prose makes a poor image prompt, so it is distilled first.
+    // Throws when no usable prompt comes back; the prompt box then keeps the
+    // scene text it opened with, so the free path works without a text model.
     async function buildImagePrompt(sceneText, character, signal = null) {
         const scene = String(sceneText || '').trim();
         const appearance = String(character?.description || '').trim().slice(0, IMAGE_PROMPT_APPEARANCE_CHARS);
-        const fallback = imagePromptFallback(scene);
-        if (!scene) return fallback;
-        try {
-            const sceneForModel = scene.slice(0, IMAGE_PROMPT_SCENE_CHARS);
-            const userMessage = appearance
-                ? `Character reference:\n${appearance}\n\nScene:\n${sceneForModel}`
-                : `Scene:\n${sceneForModel}`;
-            // Turning a scene into a comma-separated list is mechanical work,
-            // so reasoning is switched off where the model allows it. Without
-            // this, a thinking model set as the Suggestions Model spends time
-            // and tokens deliberating before writing a single line.
-            const distilled = await callAISimple(
-                IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none', { chat: getCurrentChat() }
-            );
-            const cleaned = String(distilled || '').replace(/\s+/g, ' ').trim();
-            return cleaned || fallback;
-        } catch (_) {
-            return fallback;
+        if (!scene) return '';
+        const sceneForModel = scene.slice(0, IMAGE_PROMPT_SCENE_CHARS);
+        const userMessage = appearance
+            ? `Character reference:\n${appearance}\n\nScene:\n${sceneForModel}`
+            : `Scene:\n${sceneForModel}`;
+        // Turning a scene into a comma-separated list is mechanical work,
+        // so reasoning is switched off where the model allows it. Without
+        // this, a thinking model set as the Suggestions Model spends time
+        // and tokens deliberating before writing a single line.
+        const distilled = await callAISimple(
+            IMAGE_PROMPT_SYSTEM, userMessage, suggestionModelId, signal, 'none', { chat: getCurrentChat() }
+        );
+        const cleaned = String(distilled || '').replace(/\s+/g, ' ').trim();
+        if (!isUsableImagePrompt(cleaned)) {
+            const unusable = new Error('No usable image prompt came back.');
+            unusable.notice = `The text model answered "${cleaned.slice(0, 60) || 'nothing'}" instead of a prompt. Press ↻ to try again, or edit it.`;
+            throw unusable;
         }
+        return cleaned;
     }
 
     function countStoredImageBytes(chat) {
@@ -13606,7 +13668,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             // length, so it runs in the background and fills the box when it
             // lands rather than holding the dialog shut until then.
             const refineController = new AbortController();
-            const suggestion = buildImagePrompt(variation.main, speaker, refineController.signal);
+            const refine = () => buildImagePrompt(variation.main, speaker, refineController.signal);
             const referencePicker = provider.takesReference
                 ? buildReferencePicker(imageReferenceOptions(speaker))
                 : null;
@@ -13619,8 +13681,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                     // Roomy, so a whole distilled prompt or a long fallback is
                     // visible without scrolling a small box to check the end.
                     12,
-                    suggestion,
-                    referencePicker?.element
+                    refine(),
+                    referencePicker?.element,
+                    refine
                 );
             } finally {
                 // Nothing is waiting on it once the dialog closes.

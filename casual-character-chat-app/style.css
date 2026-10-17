@@ -4802,8 +4802,11 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
   margin: 9px 0;
 }
 
+/* Shrinks to the picture, so the × and the model note sit on its corners. */
 .generated-image {
   position: relative;
+  align-self: center;
+  max-width: 100%;
   margin-bottom: 0;
 }
 
@@ -4844,6 +4847,40 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
   display: none;
 }
 
+/* Which model made the picture, shown on hover like the × button. */
+.generated-image-model {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  max-width: calc(100% - 12px);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.72em;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.generated-image:hover .generated-image-model {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .generated-image-model {
+    opacity: 0.8;
+  }
+}
+
+.generated-image.image-failed .generated-image-model {
+  display: none;
+}
+
 .generated-image-error {
   padding: 12px;
   border: 1px dashed rgba(255, 255, 255, 0.25);
@@ -4863,6 +4900,40 @@ body.freeze-body   { position: fixed; width: 100%; overflow: hidden; }
   font-size: 0.8em;
   opacity: 0.65;
   line-height: 1.4;
+}
+
+.prompt-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Scoped to the dialog so its blue button style does not apply. */
+.custom-alert-modal .prompt-regenerate-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -5px;
+  padding: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.custom-alert-modal .prompt-regenerate-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.14);
+  box-shadow: none;
+  transform: none;
+}
+
+.custom-alert-modal .prompt-regenerate-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .image-reference-picker {
