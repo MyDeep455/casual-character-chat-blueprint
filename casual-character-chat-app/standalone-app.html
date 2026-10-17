@@ -3423,16 +3423,20 @@ max-height: 27em;
     font-size: 0.9em;
 }
 
+.on-device-model-entry {
+    padding: 8px 10px;
+    border: 1px solid #40444b;
+    border-radius: 5px;
+    background-color: rgba(0,0,0,0.2);
+    color: #fff;
+}
+
 .on-device-model-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 9px;
-    padding: 6px 10px;
-    border: 1px solid #40444b;
-    border-radius: 5px;
-    background-color: rgba(0,0,0,0.2);
-    color: #fff;
+    min-height: 28px;
 }
 
 .add-scenario-button {
@@ -10867,7 +10871,7 @@ mark.highlight.current-match {
 
             <div id="on-device-models-section">
                 <hr class="settings-separator">
-                <label>Downloaded on-device models:</label>
+                <label>On-device models:</label>
                 <div id="on-device-model-list" class="on-device-model-list"></div>
             </div>
 
@@ -20558,22 +20562,30 @@ function onDeviceModelLabel(model, downloaded) {
 }
 
 // The settings a model entry would carry. On-device models are not entries in
-// the editable list, so they borrow the instructions and reminders of the first
-// model in it, which every shipped model shares.
+// the editable list: each has its own prompts in App Settings, and until those
+// are edited it borrows the ones of the first model in the list, which every
+// shipped model shares.
 function findModelSettings(id) {
     const list = (typeof appSettings !== 'undefined' && appSettings && appSettings.availableModels) || [];
     const own = list.find(m => m.id === id);
     if (own || !isOnDeviceModelId(id)) return own;
     const model = getOnDeviceModel(id);
     if (!model) return undefined;
-    const template = list.find(m => m.instructions) || STARTER_PACK_MODELS[0] || {};
+    const template = onDevicePromptTemplate();
+    const saved = appSettings?.onDevicePrompts?.[id] || {};
     return {
         id: model.id,
         name: model.name,
-        instructions: template.instructions || '',
-        reminder: template.reminder || '',
-        narratorReminder: template.narratorReminder || ''
+        instructions: saved.instructions ?? template.instructions ?? '',
+        reminder: saved.reminder ?? template.reminder ?? '',
+        narratorReminder: saved.narratorReminder ?? template.narratorReminder ?? ''
     };
+}
+
+// The prompts an on-device model uses until it is given its own in App Settings.
+function onDevicePromptTemplate() {
+    const list = (typeof appSettings !== 'undefined' && appSettings && appSettings.availableModels) || [];
+    return list.find(m => m.instructions) || STARTER_PACK_MODELS[0] || {};
 }
 
 // The chat code reads every reply as an OpenAI-style SSE stream. For an
@@ -20812,7 +20824,8 @@ function appendOnDeviceModelOptions(select) {
     select.appendChild(group);
 }
 
-// App Settings: the downloaded on-device models, each with a delete button.
+// App Settings: every on-device model with its own Global Prompts, and a
+// delete button for the downloaded ones.
 const TRASH_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
 async function renderOnDeviceModelList() {
@@ -20822,32 +20835,81 @@ async function renderOnDeviceModelList() {
         document.getElementById('on-device-models-section')?.classList.add('hidden');
         return;
     }
-    const ids = await OnDeviceAI.downloadedIds();
+    const downloaded = await OnDeviceAI.downloadedIds().catch(() => []);
     container.innerHTML = '';
-    if (ids.length === 0) {
-        container.textContent = 'None yet.';
-        return;
-    }
-    ids.forEach(id => {
-        const model = getOnDeviceModel(id);
-        const row = document.createElement('div');
-        row.className = 'on-device-model-row';
-        const label = document.createElement('span');
-        label.textContent = `${model.icon} ${model.name} · ${model.sizeGb} GB`;
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'delete-scenario-btn';
-        remove.title = 'Delete download';
-        remove.innerHTML = TRASH_ICON_SVG;
-        remove.addEventListener('click', async () => {
-            remove.disabled = true;
-            await OnDeviceAI.remove(id).catch(error => console.error('[on-device]', error));
-            renderOnDeviceModelList();
-            refreshOnDeviceModelLabels();
+    ON_DEVICE_MODELS.forEach(model => {
+        const prompts = findModelSettings(model.id);
+        const entry = document.createElement('div');
+        entry.className = 'on-device-model-entry';
+        entry.dataset.modelId = model.id;
+        entry.innerHTML = `
+            <div class="on-device-model-row">
+                <span class="on-device-model-name"></span>
+            </div>
+            <details class="global-prompts-container">
+                <summary class="global-prompts-summary">Global Prompts</summary>
+                <div class="global-prompts-content">
+                    <label>AI Instructions:</label>
+                    <textarea class="on-device-instructions-input" rows="2"></textarea>
+                    <label>Character Reminder:</label>
+                    <textarea class="on-device-reminder-input" rows="2"></textarea>
+                    <label>Narrator Reminder:</label>
+                    <textarea class="on-device-narrator-reminder-input" rows="2"></textarea>
+                </div>
+            </details>`;
+        const name = entry.querySelector('.on-device-model-name');
+        const setName = isDownloaded => {
+            name.textContent = `${model.icon} ${model.name} · ${isDownloaded ? '✓ ' : ''}${model.sizeGb} GB`;
+        };
+        setName(downloaded.includes(model.id));
+        entry.querySelector('.on-device-instructions-input').value = prompts.instructions;
+        entry.querySelector('.on-device-reminder-input').value = prompts.reminder;
+        entry.querySelector('.on-device-narrator-reminder-input').value = prompts.narratorReminder;
+
+        const textareas = entry.querySelectorAll('textarea');
+        textareas.forEach(textarea => textarea.addEventListener('input', autoResizeTextarea));
+        const details = entry.querySelector('details');
+        details.addEventListener('toggle', () => {
+            if (details.open) textareas.forEach(textarea => autoResizeTextarea({ target: textarea }));
         });
-        row.append(label, remove);
-        container.appendChild(row);
+
+        if (downloaded.includes(model.id)) {
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'delete-scenario-btn';
+            remove.title = 'Delete download';
+            remove.innerHTML = TRASH_ICON_SVG;
+            remove.addEventListener('click', async () => {
+                remove.disabled = true;
+                await OnDeviceAI.remove(model.id).catch(error => console.error('[on-device]', error));
+                remove.remove();
+                setName(false);
+                refreshOnDeviceModelLabels();
+            });
+            entry.querySelector('.on-device-model-row').appendChild(remove);
+        }
+        container.appendChild(entry);
     });
+}
+
+// Read back on Save. Prompts left as they came (the shared ones) are not
+// stored, so these models keep following the first model's prompts until
+// someone actually gives them their own.
+function collectOnDevicePrompts() {
+    const prompts = { ...((typeof appSettings !== 'undefined' && appSettings?.onDevicePrompts) || {}) };
+    const template = onDevicePromptTemplate();
+    document.querySelectorAll('.on-device-model-entry').forEach(entry => {
+        const own = {
+            instructions: entry.querySelector('.on-device-instructions-input').value.trim(),
+            reminder: entry.querySelector('.on-device-reminder-input').value.trim(),
+            narratorReminder: entry.querySelector('.on-device-narrator-reminder-input').value.trim()
+        };
+        const unchanged = ['instructions', 'reminder', 'narratorReminder']
+            .every(key => own[key] === String(template[key] || '').trim());
+        if (unchanged) delete prompts[entry.dataset.modelId];
+        else prompts[entry.dataset.modelId] = own;
+    });
+    return prompts;
 }
 
 const defaultSettings = {
@@ -22217,7 +22279,8 @@ async function saveAppSettings() {
 
     const newSettings = {
         apiKey: document.getElementById('api-key-input').value.trim(),
-        availableModels: models
+        availableModels: models,
+        onDevicePrompts: collectOnDevicePrompts()
     };
 
     if (db) {
@@ -22280,6 +22343,8 @@ async function resetAppSettings() {
       reminder: m.reminder || '',
       narratorReminder: m.narratorReminder || ''
     }));
+    document.getElementById('on-device-model-list').innerHTML = '';
+    appSettings.onDevicePrompts = {};
     await saveAppSettings();
   }
 }
@@ -22811,7 +22876,8 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
       instructions: m.instructions || "",
       reminder: m.reminder || "",
       narratorReminder: m.narratorReminder || ""
-    }))
+    })),
+    onDevicePrompts: (appSettings && appSettings.onDevicePrompts) || {}
   };
   const exportData = {
     version: 3, 
@@ -22929,6 +22995,17 @@ function createAvatarWithEffect(imageUrl, size, altText = '') {
                }
                if (updated) { modelsHydrated++; } else { modelsSkipped++; }
            } else { modelsSkipped++; }
+       });
+       // On-device prompts are taken only for models that have none here yet.
+       const incomingOnDevice = importedAppSettings.onDevicePrompts || {};
+       appSettings.onDevicePrompts = appSettings.onDevicePrompts || {};
+       Object.entries(incomingOnDevice).forEach(([id, prompts]) => {
+           if (!getOnDeviceModel(id) || appSettings.onDevicePrompts[id] || !prompts) return;
+           appSettings.onDevicePrompts[id] = {
+               instructions: String(prompts.instructions || ''),
+               reminder: String(prompts.reminder || ''),
+               narratorReminder: String(prompts.narratorReminder || '')
+           };
        });
        if (db) {
            const transaction = db.transaction(['settings'], 'readwrite');

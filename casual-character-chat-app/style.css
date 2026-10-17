@@ -3401,16 +3401,20 @@ max-height: 27em;
     font-size: 0.9em;
 }
 
+.on-device-model-entry {
+    padding: 8px 10px;
+    border: 1px solid #40444b;
+    border-radius: 5px;
+    background-color: rgba(0,0,0,0.2);
+    color: #fff;
+}
+
 .on-device-model-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 9px;
-    padding: 6px 10px;
-    border: 1px solid #40444b;
-    border-radius: 5px;
-    background-color: rgba(0,0,0,0.2);
-    color: #fff;
+    min-height: 28px;
 }
 
 .add-scenario-button {
