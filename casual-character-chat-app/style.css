@@ -3392,6 +3392,27 @@ max-height: 27em;
 
 
 
+.on-device-model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 9px 0 18px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9em;
+}
+
+.on-device-model-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    padding: 6px 10px;
+    border: 1px solid #40444b;
+    border-radius: 5px;
+    background-color: rgba(0,0,0,0.2);
+    color: #fff;
+}
+
 .add-scenario-button {
 	background-color: rgba(25, 104, 196, 0.90);
 	padding: 6px 14px;

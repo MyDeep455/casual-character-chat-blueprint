@@ -381,6 +381,12 @@
                                 <select id="image-gen-provider-select">
                                     <option value="pollinations">Free (no API key)</option>
                                     <option value="openrouter">OpenRouter (uses your key)</option>
+                                    <optgroup label="Free anime models · AI Horde (slower)">
+                                        <option value="horde-illustrious">Illustrious XL</option>
+                                        <option value="horde-noobai">NoobAI XL</option>
+                                        <option value="horde-pony">Pony XL</option>
+                                        <option value="horde-anima">Anima Turbo</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="setting" id="image-gen-model-setting">
@@ -863,6 +869,12 @@
             <div id="model-list-container" class="scenario-list-container">
                 </div>
             <button type="button" id="add-model-btn" class="add-scenario-button">+ Add new Model</button>
+
+            <div id="on-device-models-section">
+                <hr class="settings-separator">
+                <label>Downloaded on-device models:</label>
+                <div id="on-device-model-list" class="on-device-model-list"></div>
+            </div>
 
             <div class="form-buttons">
                 <button type="button" id="cancel-app-settings-btn">Cancel</button>

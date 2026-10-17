@@ -643,6 +643,333 @@ function mergeContinuationText(originalText, continuationText) {
     return `${originalEndTrimmed} ${addition}`.trim();
 }
 
+// --- On-device models ---------------------------------------------------------
+// Free models that run inside the browser itself with wllama (llama.cpp built
+// for WebAssembly, using WebGPU where the browser has it). Each one is
+// downloaded once from Hugging Face into the browser's private file storage
+// (OPFS) and chats never leave the device. wllama keeps the whole model in a
+// memory that is capped at 4 GB, so 7-8B models cannot load even at Q3 - that
+// is why the largest one here is 4B.
+const WLLAMA_CDN = 'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.8.1/esm/';
+const ON_DEVICE_MODEL_PREFIX = 'on-device/';
+const ON_DEVICE_MODELS = [
+    { id: 'on-device/gemma-3-1b', name: 'Gemma 3 1B', icon: '📱', sizeGb: 0.8, nCtx: 8192,
+      url: 'https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf' },
+    { id: 'on-device/hunyuan-1.8b', name: 'Hunyuan 1.8B', icon: '📱', sizeGb: 1.1, nCtx: 8192,
+      url: 'https://huggingface.co/bartowski/tencent_Hunyuan-1.8B-Instruct-GGUF/resolve/main/tencent_Hunyuan-1.8B-Instruct-Q4_K_M.gguf' },
+    { id: 'on-device/qwen3-4b', name: 'Qwen3 4B', icon: '🖥️', sizeGb: 2.5, nCtx: 6144,
+      url: 'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf' },
+];
+// The longest reply asked of an on-device model; the history is trimmed so
+// that this much room is always left in its context.
+const ON_DEVICE_MAX_REPLY_TOKENS = 1024;
+
+function isOnDeviceModelId(id) {
+    return typeof id === 'string' && id.startsWith(ON_DEVICE_MODEL_PREFIX);
+}
+
+function getOnDeviceModel(id) {
+    return ON_DEVICE_MODELS.find(m => m.id === id) || null;
+}
+
+// 📱 runs on phones too, 🖥️ needs a computer. ✓ means already downloaded.
+function onDeviceModelLabel(model, downloaded) {
+    return `${model.icon} ${model.name} · ${downloaded ? '✓' : model.sizeGb + ' GB'}`;
+}
+
+// The settings a model entry would carry. On-device models are not entries in
+// the editable list, so they borrow the instructions and reminders of the first
+// model in it, which every shipped model shares.
+function findModelSettings(id) {
+    const list = (typeof appSettings !== 'undefined' && appSettings && appSettings.availableModels) || [];
+    const own = list.find(m => m.id === id);
+    if (own || !isOnDeviceModelId(id)) return own;
+    const model = getOnDeviceModel(id);
+    if (!model) return undefined;
+    const template = list.find(m => m.instructions) || STARTER_PACK_MODELS[0] || {};
+    return {
+        id: model.id,
+        name: model.name,
+        instructions: template.instructions || '',
+        reminder: template.reminder || '',
+        narratorReminder: template.narratorReminder || ''
+    };
+}
+
+// The chat code reads every reply as an OpenAI-style SSE stream. For an
+// on-device model this answers the same request with a stream made locally, so
+// streaming, Stop, Regenerate and Continue all work unchanged.
+function providerFetch(url, init, modelId, onStatus = null) {
+    if (isOnDeviceModelId(modelId)) return OnDeviceAI.fetch(modelId, init, onStatus);
+    return fetch(url, init);
+}
+
+const OnDeviceAI = (() => {
+    let libPromise = null;
+    let engine = null;
+    let engineModelId = null;
+    // One model, one request at a time: a reply that is asked for while reply
+    // suggestions are still being written waits for them.
+    let queue = Promise.resolve();
+    const quietLogger = { debug() {}, log() {}, warn: console.warn.bind(console), error: console.error.bind(console) };
+
+    function lib() {
+        if (!libPromise) {
+            libPromise = import(WLLAMA_CDN + 'index.js').catch(error => {
+                libPromise = null;
+                throw error;
+            });
+        }
+        return libPromise;
+    }
+
+    async function cachedFileNames() {
+        try {
+            const { CacheManager } = await lib();
+            const entries = await new CacheManager().list();
+            return entries.filter(e => e.size > 0 && e.size === e.metadata?.originalSize).map(e => e.name);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function fileNameOf(model) {
+        return model.url.split('/').pop();
+    }
+
+    async function downloadedIds() {
+        const names = await cachedFileNames();
+        return ON_DEVICE_MODELS.filter(m => names.some(n => n.endsWith('_' + fileNameOf(m)))).map(m => m.id);
+    }
+
+    async function remove(id) {
+        const model = getOnDeviceModel(id);
+        if (!model) return;
+        if (engineModelId === id) await unload();
+        const { CacheManager } = await lib();
+        await new CacheManager().deleteMany(e => e.name.endsWith('_' + fileNameOf(model)));
+    }
+
+    async function unload() {
+        const old = engine;
+        engine = null;
+        engineModelId = null;
+        if (old) await old.exit().catch(() => {});
+    }
+
+    async function ensureLoaded(model, onStatus, signal) {
+        if (engine && engineModelId === model.id) return engine;
+        await unload();
+        onStatus?.(`Starting ${model.name}…`);
+        const { Wllama } = await lib();
+        const instance = new Wllama({ default: WLLAMA_CDN + 'wasm/wllama.wasm' }, { suppressNativeLog: true, logger: quietLogger });
+        let lastPercent = -1;
+        try {
+            await instance.loadModelFromUrl(model.url, {
+                n_ctx: model.nCtx,
+                reasoning: false,
+                signal,
+                progressCallback: ({ loaded, total }) => {
+                    const percent = total ? Math.floor(loaded / total * 100) : 0;
+                    if (percent === lastPercent) return;
+                    lastPercent = percent;
+                    onStatus?.(percent < 100
+                        ? `Downloading ${model.name} (once) - ${percent}% of ${model.sizeGb} GB`
+                        : `Starting ${model.name}…`);
+                }
+            });
+        } catch (error) {
+            await instance.exit().catch(() => {});
+            throw error;
+        }
+        engine = instance;
+        engineModelId = model.id;
+        refreshOnDeviceModelLabels();
+        return engine;
+    }
+
+    // Small chat templates (Gemma's especially) refuse two turns of the same
+    // role in a row and a conversation that opens with the assistant, both of
+    // which a roleplay history has all the time. The oldest turns are dropped
+    // until the rest fits the context with room left for the reply.
+    function fitMessages(messages, nCtx) {
+        const estimate = text => Math.ceil(String(text || '').length / 3) + 6;
+        const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+        const turns = [];
+        for (const m of messages) {
+            if (m.role === 'system' || !m.content) continue;
+            const role = m.role === 'assistant' ? 'assistant' : 'user';
+            const last = turns[turns.length - 1];
+            if (last && last.role === role) last.content += '\n\n' + m.content;
+            else turns.push({ role, content: String(m.content) });
+        }
+        let budget = nCtx - ON_DEVICE_MAX_REPLY_TOKENS - estimate(system) - 32;
+        const kept = [];
+        for (let i = turns.length - 1; i >= 0; i--) {
+            const cost = estimate(turns[i].content);
+            if (kept.length > 0 && cost > budget) break;
+            budget -= cost;
+            kept.unshift(turns[i]);
+        }
+        if (kept.length > 0 && kept[0].role === 'assistant') kept.unshift({ role: 'user', content: '(Begin.)' });
+        return system ? [{ role: 'system', content: system }, ...kept] : kept;
+    }
+
+    function abortError() {
+        return new DOMException('The on-device reply was stopped.', 'AbortError');
+    }
+
+    async function generate(model, request, signal, onStatus, send) {
+        const llm = await ensureLoaded(model, onStatus, signal);
+        if (signal?.aborted) throw abortError();
+        const stream = await llm.createChatCompletion({
+            messages: fitMessages(request.messages || [], model.nCtx),
+            temperature: Number.isFinite(request.temperature) ? request.temperature : 0.7,
+            top_p: Number.isFinite(request.top_p) ? request.top_p : 0.95,
+            min_p: 0.05,
+            penalty_repeat: 1.08,
+            penalty_last_n: 256,
+            max_tokens: ON_DEVICE_MAX_REPLY_TOKENS,
+            chat_template_kwargs: { enable_thinking: false },
+            stream: true,
+            abortSignal: signal || undefined
+        });
+        // Hunyuan wraps every reply in <answer>…</answer>. The tags are cut
+        // out of the stream, holding back a partial tag split across chunks.
+        let pending = '';
+        const tagPattern = /<\/?answer>/gi;
+        const heldTail = text => {
+            const lastOpen = text.lastIndexOf('<');
+            if (lastOpen === -1) return 0;
+            const tail = text.slice(lastOpen).toLowerCase();
+            return ('</answer>'.startsWith(tail) || '<answer>'.startsWith(tail)) ? text.length - lastOpen : 0;
+        };
+        for await (const chunk of stream) {
+            const delta = chunk?.choices?.[0]?.delta;
+            if (delta && typeof delta.content === 'string') {
+                pending = (pending + delta.content).replace(tagPattern, '');
+                const hold = heldTail(pending);
+                delta.content = pending.slice(0, pending.length - hold);
+                pending = pending.slice(pending.length - hold);
+            }
+            send(chunk);
+        }
+        if (pending) send({ choices: [{ index: 0, delta: { content: pending } }] });
+    }
+
+    // Resolves at once, as a real fetch does when the headers arrive; the
+    // download and the reply then come through the body. The download progress
+    // goes to `onStatus`, which shows it in the reply bubble.
+    function fetchReply(modelId, init = {}, onStatus = null) {
+        const model = getOnDeviceModel(modelId);
+        const signal = init.signal || null;
+        if (signal?.aborted) return Promise.reject(abortError());
+        let request = {};
+        try { request = JSON.parse(init.body || '{}'); } catch (_) {}
+        const encoder = new TextEncoder();
+        const body = new ReadableStream({
+            start(controller) {
+                const send = data => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+                const job = queue.then(async () => {
+                    if (!model) throw new Error(`Unknown on-device model: ${modelId}`);
+                    if (signal?.aborted) throw abortError();
+                    await generate(model, request, signal, onStatus, send);
+                });
+                queue = job.catch(() => {});
+                job.then(() => {
+                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                    controller.close();
+                }, error => {
+                    if (signal?.aborted || error?.name === 'AbortError') {
+                        controller.error(abortError());
+                        return;
+                    }
+                    console.error('[on-device]', error);
+                    send({ error: { message: describeError(error, model) } });
+                    controller.close();
+                });
+            }
+        });
+        return Promise.resolve(new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+    }
+
+    function describeError(error, model) {
+        const text = String(error?.message || error || '');
+        if (/memory|allocat|OOM/i.test(text)) {
+            return `${model?.name || 'This model'} needs more memory than this device can give it. Try a smaller on-device model.`;
+        }
+        if (error?.type === 'download_error' || /fetch|network|download/i.test(text)) {
+            return `Could not download ${model?.name || 'the model'}. Check the internet connection and try again.`;
+        }
+        return `On-device model failed: ${text}`;
+    }
+
+    return { fetch: fetchReply, downloadedIds, remove, unload };
+})();
+
+// Adds a ✓ to the on-device models already downloaded, in every model list.
+async function refreshOnDeviceModelLabels() {
+    const ids = await OnDeviceAI.downloadedIds();
+    document.querySelectorAll('option[data-on-device]').forEach(option => {
+        const model = getOnDeviceModel(option.value);
+        if (model) option.textContent = onDeviceModelLabel(model, ids.includes(model.id));
+    });
+}
+
+// A page opened from a file cannot start the module worker wllama runs in, so
+// on-device models are offered only where the app is served over http(s).
+function appendOnDeviceModelOptions(select) {
+    if (location.protocol === 'file:') return;
+    const group = document.createElement('optgroup');
+    group.label = 'On this device · free · private';
+    ON_DEVICE_MODELS.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.dataset.onDevice = '1';
+        option.textContent = onDeviceModelLabel(model, false);
+        group.appendChild(option);
+    });
+    select.appendChild(group);
+}
+
+// App Settings: the downloaded on-device models, each with a delete button.
+const TRASH_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+async function renderOnDeviceModelList() {
+    const container = document.getElementById('on-device-model-list');
+    if (!container) return;
+    if (location.protocol === 'file:') {
+        document.getElementById('on-device-models-section')?.classList.add('hidden');
+        return;
+    }
+    const ids = await OnDeviceAI.downloadedIds();
+    container.innerHTML = '';
+    if (ids.length === 0) {
+        container.textContent = 'None yet.';
+        return;
+    }
+    ids.forEach(id => {
+        const model = getOnDeviceModel(id);
+        const row = document.createElement('div');
+        row.className = 'on-device-model-row';
+        const label = document.createElement('span');
+        label.textContent = `${model.icon} ${model.name} · ${model.sizeGb} GB`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'delete-scenario-btn';
+        remove.title = 'Delete download';
+        remove.innerHTML = TRASH_ICON_SVG;
+        remove.addEventListener('click', async () => {
+            remove.disabled = true;
+            await OnDeviceAI.remove(id).catch(error => console.error('[on-device]', error));
+            renderOnDeviceModelList();
+            refreshOnDeviceModelLabels();
+        });
+        row.append(label, remove);
+        container.appendChild(row);
+    });
+}
+
 const defaultSettings = {
         fontSize: '18',
         temperature: '0.70',
@@ -2986,6 +3313,7 @@ function populateModelSelector() {
         option.textContent = model.name;
         modelSelect.appendChild(option);
     });
+    appendOnDeviceModelOptions(modelSelect);
 
     setSelectValueWithFallback(modelSelect, [previouslySelectedModel, defaultSettings.model]);
 
@@ -2998,8 +3326,10 @@ function populateModelSelector() {
             option.textContent = model.name;
             suggestionModelSelect.appendChild(option);
         });
+        appendOnDeviceModelOptions(suggestionModelSelect);
         suggestionModelSelect.value = prevSuggModel || suggestionModelId || '';
     }
+    refreshOnDeviceModelLabels();
 }
 
 
@@ -5467,7 +5797,7 @@ async function handleChatSubmit(type, { autoTurn = false, diceOnly = false } = {
     ].join('\n');
 
     const currentModelId = modelSelect.value || defaultSettings.model;
-    const modelSettings = appSettings.availableModels.find(m => m.id === currentModelId);
+    const modelSettings = findModelSettings(currentModelId);
 
     loadingIndicator.classList.remove('hidden');
     dialogBtn.disabled = true;
@@ -5666,14 +5996,14 @@ const fetchBody = JSON.stringify({
         top_p: 0.95
     }
 });
-const response = await fetch(fetchUrl, {
+const response = await providerFetch(fetchUrl, {
     method: 'POST',
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: streamSignal,
     body: fetchBody
-});
+}, currentModel, text => showBubbleStatus(newMessageId, text));
 
     clearStreamTimers();
             if (response.status === 429) {
@@ -6091,7 +6421,7 @@ if (messageElement) {
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
-    const modelSettings = appSettings.availableModels.find(m => m.id === currentModelId);
+    const modelSettings = findModelSettings(currentModelId);
     const isMultiChar = chat.participants && chat.participants.length > 1;
     const mappedHistoryForAPI = historyForAPIcall.map(msg => {
     const activePersona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
@@ -6279,14 +6609,14 @@ const fetchBody = JSON.stringify({
         top_p: 0.95
     }
 });
-const response = await fetch(fetchUrl, {
+const response = await providerFetch(fetchUrl, {
     method: 'POST',
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: streamSignal,
     body: fetchBody
-});
+}, currentModelId, text => showBubbleStatus(messageId, text));
             clearStreamTimers();
             if (response.status === 429) {
                 const limitText = await response.text().catch(() => '');
@@ -6706,7 +7036,7 @@ if (messageElement) {
     const activePersonaId = chat.activePersonaId;
     const persona = activePersonaId ? personas[activePersonaId] : null;
     const currentModelId = modelSelect.value || defaultSettings.model;
-    const modelSettings = appSettings.availableModels.find(m => m.id === currentModelId);
+    const modelSettings = findModelSettings(currentModelId);
 
     const globalDialogReminder = applyUserPlaceholder(applyCharPlaceholder(
     (modelSettings && modelSettings.reminder) ? modelSettings.reminder.trim() : '',
@@ -6885,14 +7215,14 @@ const fetchBody = JSON.stringify({
         top_p: 0.95
     }
 });
-const response = await fetch(fetchUrl, {
+const response = await providerFetch(fetchUrl, {
     method: 'POST',
     headers: isLocal
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyToSend}` },
     signal: streamSignal,
     body: fetchBody
-});
+}, currentModelId, text => showBubbleStatus(messageId, originalText + " " + text));
             clearStreamTimers();
 
             if (response.status === 429) {
@@ -12428,14 +12758,14 @@ personaEditorAvatarImg.onerror = () => {
     async function callAISimple(systemPrompt, userMessage, selectedModelId, signal = null, reasoningEffort = 'auto', { chat = null } = {}) {
         const modelId = selectedModelId || modelSelect?.value || defaultSettings.model;
         const lookupId = modelId.replace(/:online$/, '');
-        const modelSettings = (appSettings.availableModels || []).find(m => m.id === lookupId);
+        const modelSettings = findModelSettings(lookupId);
         const apiKeyToSend = (modelSettings?.apiKey) || appSettings.apiKey;
         const targetApiUrlToSend = (modelSettings?.targetApiUrl) || DEFAULT_API_URL;
         const messages = [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage }
         ];
-        const response = await fetch(targetApiUrlToSend, {
+        const response = await providerFetch(targetApiUrlToSend, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -12448,7 +12778,7 @@ personaEditorAvatarImg.onerror = () => {
                 ...getReasoningRequestConfig(targetApiUrlToSend, reasoningEffort, modelId)
             }),
             ...(signal ? { signal } : {})
-        });
+        }, modelId);
         if (!response.ok) throw new Error(await response.text());
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -12658,7 +12988,28 @@ personaEditorAvatarImg.onerror = () => {
     // comes back as base64 and has no lasting URL, so it is stored like a paid
     // one. The same prompt and seed do not give the same picture back here:
     // any volunteer's model may take the job.
-    async function generateViaHorde({ prompt, seed, signal = null, onStatus = null }) {
+    async function generateViaHorde({ prompt, seed, signal = null, onStatus = null, preset = null }) {
+        const size = preset?.size || AI_HORDE_SIZE;
+        const fullPrompt = (preset?.prefix || '') + String(prompt);
+        const params = preset ? {
+            width: size,
+            height: size,
+            steps: preset.steps,
+            cfg_scale: preset.cfg,
+            sampler_name: preset.sampler,
+            clip_skip: preset.clipSkip,
+            seed: String(seed),
+            n: 1
+        } : {
+            width: AI_HORDE_SIZE,
+            height: AI_HORDE_SIZE,
+            steps: AI_HORDE_STEPS,
+            cfg_scale: 7,
+            sampler_name: 'k_euler_a',
+            karras: true,
+            seed: String(seed),
+            n: 1
+        };
         const headers = {
             'Content-Type': 'application/json',
             'apikey': AI_HORDE_ANON_KEY,
@@ -12674,17 +13025,10 @@ personaEditorAvatarImg.onerror = () => {
             headers,
             signal,
             body: JSON.stringify({
-                prompt: String(prompt).slice(0, AI_HORDE_PROMPT_CHARS),
-                params: {
-                    width: AI_HORDE_SIZE,
-                    height: AI_HORDE_SIZE,
-                    steps: AI_HORDE_STEPS,
-                    cfg_scale: 7,
-                    sampler_name: 'k_euler_a',
-                    karras: true,
-                    seed: String(seed),
-                    n: 1
-                },
+                // The Horde reads everything after ### as the negative prompt.
+                prompt: fullPrompt.slice(0, AI_HORDE_PROMPT_CHARS) + (preset?.negative ? ' ### ' + preset.negative : ''),
+                params,
+                ...(preset ? { models: preset.models } : {}),
                 // Matches the main free service, which does not filter either.
                 // The Horde still runs its own CSAM filter on every image.
                 nsfw: true,
@@ -12748,8 +13092,8 @@ personaEditorAvatarImg.onerror = () => {
                 provider: 'horde',
                 dataUrl: dataURL,
                 model: generation.model || null,
-                width: AI_HORDE_SIZE,
-                height: AI_HORDE_SIZE
+                width: size,
+                height: size
             };
         } finally {
             // A request left in the queue would still take up a volunteer's GPU.
@@ -12834,9 +13178,29 @@ personaEditorAvatarImg.onerror = () => {
         };
     }
 
+    // Free anime models on AI Horde, picked by name. Each lists the volunteers'
+    // models of the same family, so a request is not stuck behind one worker.
+    // The settings follow each model's own recommendations.
+    const SDXL_ANIME_NEGATIVE = 'lowres, worst quality, low quality, bad anatomy, bad hands, extra fingers, watermark, signature, text';
+    const HORDE_IMAGE_PRESETS = {
+        'horde-illustrious': { models: ['WAI-NSFW-illustrious-SDXL'], size: 1024, steps: 25, cfg: 6, sampler: 'k_euler_a', clipSkip: 2,
+            prefix: 'masterpiece, best quality, ', negative: SDXL_ANIME_NEGATIVE },
+        'horde-noobai': { models: ['noobEvo', 'NTR MIX IL-Noob XL', 'noob_v_pencil XL'], size: 1024, steps: 25, cfg: 6, sampler: 'k_euler_a', clipSkip: 2,
+            prefix: 'masterpiece, best quality, ', negative: SDXL_ANIME_NEGATIVE },
+        'horde-pony': { models: ['Pony Diffusion XL', 'WAI-ANI-NSFW-PONYXL'], size: 1024, steps: 25, cfg: 6, sampler: 'k_euler_a', clipSkip: 2,
+            prefix: 'score_9, score_8_up, score_7_up, ', negative: 'score_4, score_5, score_6, ' + SDXL_ANIME_NEGATIVE },
+        'horde-anima': { models: ['Anima-Turbo-v1.1'], size: 1024, steps: 8, cfg: 1, sampler: 'k_euler', clipSkip: 1,
+            prefix: '', negative: '' },
+    };
+
     const IMAGE_PROVIDERS = {
         pollinations: { label: 'free', storesBytes: false, generate: generateViaPollinations },
         openrouter: { label: 'OpenRouter, paid', storesBytes: true, generate: generateViaOpenRouter },
+        ...Object.fromEntries(Object.entries(HORDE_IMAGE_PRESETS).map(([key, preset]) => [key, {
+            label: 'AI Horde, free',
+            storesBytes: true,
+            generate: args => generateViaHorde({ ...args, preset })
+        }])),
     };
 
     const IMAGE_PROMPT_SYSTEM = `You turn a roleplay scene into a prompt for an image generator.
@@ -13032,7 +13396,8 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                     model: imageGenModel,
                     width: IMAGE_GEN_SIZE,
                     height: IMAGE_GEN_SIZE,
-                    signal: controller.signal
+                    signal: controller.signal,
+                    onStatus: state => pendingBlock?.setHint(describeHordeWait(state))
                 });
             } catch (err) {
                 // Only the free path has a backup: a paid provider was chosen
@@ -14120,6 +14485,7 @@ document.getElementById('tag-search-input').addEventListener('input', scheduleCh
 
 appSettingsBtn.addEventListener('click', () => {
     loadAppSettingsFromDB();
+    renderOnDeviceModelList();
     appSettingsModal.classList.remove('hidden');
 });
 
