@@ -676,7 +676,7 @@ function getOnDeviceModel(id) {
 
 // 📱 runs on phones too, 🖥️ needs a computer. ✓ means already downloaded.
 function onDeviceModelLabel(model, downloaded) {
-    return `${model.icon} ${model.name} · ${downloaded ? '✓' : model.sizeGb + ' GB'}`;
+    return `${model.icon} ${model.name} · free · ${downloaded ? '✓' : model.sizeGb + ' GB'}`;
 }
 
 // The settings a model entry would carry. On-device models are not entries in
@@ -931,7 +931,7 @@ async function refreshOnDeviceModelLabels() {
 function appendOnDeviceModelOptions(select) {
     if (location.protocol === 'file:') return;
     const group = document.createElement('optgroup');
-    group.label = 'On this device · free · private';
+    group.label = 'On this device · no API key · private';
     ON_DEVICE_MODELS.forEach(model => {
         const option = document.createElement('option');
         option.value = model.id;
@@ -977,7 +977,7 @@ async function renderOnDeviceModelList() {
             </details>`;
         const name = entry.querySelector('.on-device-model-name');
         const setName = isDownloaded => {
-            name.textContent = `${model.icon} ${model.name} · ${isDownloaded ? '✓ ' : ''}${model.sizeGb} GB`;
+            name.textContent = `${model.icon} ${model.name} · free · ${isDownloaded ? '✓ ' : ''}${model.sizeGb} GB`;
         };
         setName(downloaded.includes(model.id));
         entry.querySelector('.on-device-instructions-input').value = prompts.instructions;
