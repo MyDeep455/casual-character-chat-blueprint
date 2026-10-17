@@ -20342,7 +20342,9 @@ const IMAGE_GEN_STORED_LIMIT = 6;
 // the telling detail is often in the last lines of a long reply, and cutting
 // early loses it. A full "very long" reply is roughly 3000 characters.
 const IMAGE_PROMPT_SCENE_CHARS = 4000;
-const IMAGE_PROMPT_APPEARANCE_CHARS = 1200;
+// The whole character description, since many cards describe the looks only
+// after personality and backstory. The model picks out the appearance itself.
+const IMAGE_PROMPT_APPEARANCE_CHARS = 3000;
 // Used only when no text model is available to distil, so the raw scene text
 // becomes the prompt. Still bounded, since image models ignore long tails.
 const IMAGE_PROMPT_FALLBACK_CHARS = 800;
@@ -33084,6 +33086,7 @@ personaEditorAvatarImg.onerror = () => {
     const IMAGE_PROMPT_SYSTEM = `You turn a roleplay scene into a prompt for an image generator.
 Reply with ONLY the prompt: a single line of comma-separated visual phrases, at most 60 words.
 Describe what is literally visible - subject, appearance, clothing, pose, setting, lighting, mood, art style.
+From the character reference, use only physical appearance (face, hair, eyes, body, typical clothing); ignore personality, backstory and behavior.
 Do not write dialogue, narration, names, or any commentary about the request.`;
 
     // Raw roleplay prose makes a poor image prompt, so it is distilled first.
