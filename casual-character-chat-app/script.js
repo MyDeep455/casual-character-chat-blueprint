@@ -485,7 +485,8 @@ const AI_HORDE_SIZE = 512;
 const AI_HORDE_STEPS = 20;
 const AI_HORDE_PROMPT_CHARS = 1000;
 const AI_HORDE_POLL_MS = 4000;
-const AI_HORDE_TIMEOUT_MS = 300000;
+// The Horde itself drops a request that no volunteer took within 20 minutes.
+const AI_HORDE_TIMEOUT_MS = 1200000;
 
 const OPENROUTER_REASONING_EFFORTS = new Set([
     'none',
@@ -2439,6 +2440,7 @@ async function saveAppSettings() {
 
     const newSettings = {
         apiKey: document.getElementById('api-key-input').value.trim(),
+        hordeKey: document.getElementById('horde-key-input').value.trim(),
         availableModels: models,
         onDevicePrompts: collectOnDevicePrompts()
     };
@@ -2485,6 +2487,7 @@ async function loadAppSettingsFromDB() {
     }
 
     document.getElementById('api-key-input').value = appSettings.apiKey || '';
+    document.getElementById('horde-key-input').value = appSettings.hordeKey || '';
     modelListContainer.innerHTML = '';
     if (appSettings.availableModels) {
         appSettings.availableModels.forEach(model => createModelEntry(model));
@@ -13113,12 +13116,22 @@ personaEditorAvatarImg.onerror = () => {
 
     // What the pending block says while a Horde request waits. The Horde's own
     // wait_time estimate is horde-wide and was off by a factor of twenty in
-    // testing, so only the queue position is shown.
+    // testing, so only the queue position is shown. The position counts every
+    // request on the Horde, also those for other models, so it can drop
+    // by hundreds at once when a volunteer of the picked model frees up.
     function describeHordeWait(state) {
         if (state?.processing > 0) return 'AI Horde is drawing your image now…';
         const position = Number(state?.queue_position) || 0;
         const where = position > 0 ? ` (position ${position})` : '';
-        return `Waiting in the AI Horde queue${where}. Free requests wait behind others, so this can take a few minutes.`;
+        const tip = appSettings?.hordeKey ? '' : ' A free AI Horde key in App Settings moves you ahead.';
+        return `Waiting in the AI Horde queue${where}. This can take a few minutes.${tip}`;
+    }
+
+    // The Horde serves requests by the sender's kudos. Without a key a
+    // request goes out as Anonymous (priority -50); a registered account never
+    // drops below 25 kudos, so its requests always go first.
+    function hordeApiKey() {
+        return appSettings?.hordeKey || AI_HORDE_ANON_KEY;
     }
 
     // Free, no key, used only as the backup when Pollinations fails. The image
@@ -13149,7 +13162,7 @@ personaEditorAvatarImg.onerror = () => {
         };
         const headers = {
             'Content-Type': 'application/json',
-            'apikey': AI_HORDE_ANON_KEY,
+            'apikey': hordeApiKey(),
             'Client-Agent': AI_HORDE_CLIENT_AGENT
         };
         const readError = async (response) => {
@@ -17261,7 +17274,8 @@ async function loadStarterPack() {
                 appSettings = {
                     ...starterAppSettings,
                     availableModels: starterModels,
-                    apiKey: (appSettings && appSettings.apiKey) || starterAppSettings.apiKey || ''
+                    apiKey: (appSettings && appSettings.apiKey) || starterAppSettings.apiKey || '',
+                    hordeKey: (appSettings && appSettings.hordeKey) || ''
                 };
 
                 if (db) {

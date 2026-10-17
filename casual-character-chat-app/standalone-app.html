@@ -11000,6 +11000,12 @@ mark.highlight.current-match {
     <input type="password" id="api-key-input" class="settings-input" placeholder="sk-or-...">
 </div>
 
+<div class="settings-input-group">
+    <label for="horde-key-input">AI Horde Key (free, optional):</label>
+    <input type="password" id="horde-key-input" class="settings-input" placeholder="Get one free at aihorde.net/register">
+    <p class="setting-note">Free anime pictures skip ahead of everyone waiting without a key.</p>
+</div>
+
 
             <hr class="settings-separator">
 
@@ -20506,7 +20512,8 @@ const AI_HORDE_SIZE = 512;
 const AI_HORDE_STEPS = 20;
 const AI_HORDE_PROMPT_CHARS = 1000;
 const AI_HORDE_POLL_MS = 4000;
-const AI_HORDE_TIMEOUT_MS = 300000;
+// The Horde itself drops a request that no volunteer took within 20 minutes.
+const AI_HORDE_TIMEOUT_MS = 1200000;
 
 const OPENROUTER_REASONING_EFFORTS = new Set([
     'none',
@@ -22460,6 +22467,7 @@ async function saveAppSettings() {
 
     const newSettings = {
         apiKey: document.getElementById('api-key-input').value.trim(),
+        hordeKey: document.getElementById('horde-key-input').value.trim(),
         availableModels: models,
         onDevicePrompts: collectOnDevicePrompts()
     };
@@ -22506,6 +22514,7 @@ async function loadAppSettingsFromDB() {
     }
 
     document.getElementById('api-key-input').value = appSettings.apiKey || '';
+    document.getElementById('horde-key-input').value = appSettings.hordeKey || '';
     modelListContainer.innerHTML = '';
     if (appSettings.availableModels) {
         appSettings.availableModels.forEach(model => createModelEntry(model));
@@ -33134,12 +33143,22 @@ personaEditorAvatarImg.onerror = () => {
 
     // What the pending block says while a Horde request waits. The Horde's own
     // wait_time estimate is horde-wide and was off by a factor of twenty in
-    // testing, so only the queue position is shown.
+    // testing, so only the queue position is shown. The position counts every
+    // request on the Horde, also those for other models, so it can drop
+    // by hundreds at once when a volunteer of the picked model frees up.
     function describeHordeWait(state) {
         if (state?.processing > 0) return 'AI Horde is drawing your image now…';
         const position = Number(state?.queue_position) || 0;
         const where = position > 0 ? ` (position ${position})` : '';
-        return `Waiting in the AI Horde queue${where}. Free requests wait behind others, so this can take a few minutes.`;
+        const tip = appSettings?.hordeKey ? '' : ' A free AI Horde key in App Settings moves you ahead.';
+        return `Waiting in the AI Horde queue${where}. This can take a few minutes.${tip}`;
+    }
+
+    // The Horde serves requests by the sender's kudos. Without a key a
+    // request goes out as Anonymous (priority -50); a registered account never
+    // drops below 25 kudos, so its requests always go first.
+    function hordeApiKey() {
+        return appSettings?.hordeKey || AI_HORDE_ANON_KEY;
     }
 
     // Free, no key, used only as the backup when Pollinations fails. The image
@@ -33170,7 +33189,7 @@ personaEditorAvatarImg.onerror = () => {
         };
         const headers = {
             'Content-Type': 'application/json',
-            'apikey': AI_HORDE_ANON_KEY,
+            'apikey': hordeApiKey(),
             'Client-Agent': AI_HORDE_CLIENT_AGENT
         };
         const readError = async (response) => {
@@ -37282,7 +37301,8 @@ async function loadStarterPack() {
                 appSettings = {
                     ...starterAppSettings,
                     availableModels: starterModels,
-                    apiKey: (appSettings && appSettings.apiKey) || starterAppSettings.apiKey || ''
+                    apiKey: (appSettings && appSettings.apiKey) || starterAppSettings.apiKey || '',
+                    hordeKey: (appSettings && appSettings.hordeKey) || ''
                 };
 
                 if (db) {
@@ -38209,7 +38229,7 @@ No one else, including the developer, can access your characters or conversation
         <li><strong>Image Source:</strong> Chooses who draws the picture.
             <ul>
                 <li><strong>Free (no API key):</strong> The default. A public service that costs nothing, has no limit, and needs no account whatsoever. In exchange it queues requests when it is busy, so a picture can take anywhere from about a second to a minute, and the quality is basic. Only a short link is saved with your chat, so these pictures take up almost no storage — but they are re-fetched from that service each time, and will stop appearing if it ever goes offline. If the service fails to deliver a picture, the app automatically tries a free backup, <strong>AI Horde</strong>, a community service where volunteers generate images on their own computers. The placeholder then says so and shows your place in its queue. The backup is slower (often one to a few minutes) and draws smaller pictures (512×512), and because it leaves no link behind, its pictures are saved in your browser like OpenRouter ones and count toward the 6-per-chat limit.</li>
-                <li><strong>Free anime models (AI Horde):</strong> Illustrious XL, NoobAI XL, Pony XL and Anima Turbo, drawn at 1024×1024 by AI Horde volunteers. Free and without a key, but you wait in a queue, often a few minutes (Anima Turbo has the fewest volunteers). These pictures are saved in your browser and count toward the 6-per-chat limit.</li>
+                <li><strong>Free anime models (AI Horde):</strong> Illustrious XL, NoobAI XL, Pony XL and Anima Turbo, drawn at 1024×1024 by AI Horde volunteers. Free and without a key, but you wait in a queue, often a few minutes (Anima Turbo has the fewest volunteers). To wait less, register for free at <a href="https://aihorde.net/register" target="_blank" rel="noopener">aihorde.net/register</a> and paste the key into <strong>App Settings → AI Horde Key</strong>: requests with a key are served before everyone waiting without one. The queue position counts every request on AI Horde, also those for other models, so it can jump forward quickly when a volunteer for your model frees up. The app waits up to 20 minutes, the longest AI Horde keeps a request. These pictures are saved in your browser and count toward the 6-per-chat limit.</li>
                 <li><strong>OpenRouter (uses your key):</strong> Uses the API key you already entered in App Settings. Much faster and far better looking, from about $0.01 to $0.13 per image depending on the model. It also keeps your character's look: in the prompt box, pick the character's <strong>avatar</strong> (the default) or <strong>background</strong> picture under <em>Keep look from</em>, and the model redraws that character in the new scene instead of guessing from text. Pick <em>None</em> for a picture from the prompt alone. These pictures are stored inside your browser, so they keep working offline, and are limited to 6 per chat to protect your browser's storage.</li>
             </ul>
         </li>
@@ -38654,7 +38674,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Please review the privacy policy of your chosen AI provider for details on how they handle your data on their end.
             </p>
             <p>
-                The free image source sends your image prompt <strong>directly from your browser</strong> to the public image service Pollinations (image.pollinations.ai). If that service fails, the same prompt is sent to the backup service <strong>AI Horde</strong> (aihorde.net), where it is processed by computers run by independent volunteers; the free anime image sources send it there directly. Only the image prompt is sent - you see and can edit it before anything leaves your browser - never the rest of your chat or your API keys. Use the OpenRouter image source instead if you do not want prompts to go to these services. With the OpenRouter image source, the character picture you pick in the prompt box (avatar or background) is sent to OpenRouter together with the prompt, so the model can keep the character's look; pick <em>None</em> to send the prompt only.
+                The free image source sends your image prompt <strong>directly from your browser</strong> to the public image service Pollinations (image.pollinations.ai). If that service fails, the same prompt is sent to the backup service <strong>AI Horde</strong> (aihorde.net), where it is processed by computers run by independent volunteers; the free anime image sources send it there directly. Only the image prompt is sent - you see and can edit it before anything leaves your browser - never the rest of your chat or your API keys. The one exception is an AI Horde key you enter in App Settings: it is sent to AI Horde, and only there, to place your requests in its queue. Use the OpenRouter image source instead if you do not want prompts to go to these services. With the OpenRouter image source, the character picture you pick in the prompt box (avatar or background) is sent to OpenRouter together with the prompt, so the model can keep the character's look; pick <em>None</em> to send the prompt only.
             </p>
             <p>
                 <strong>On-device models</strong> run entirely inside your browser: chats with them are not sent anywhere. Choosing one downloads its model file once from Hugging Face (huggingface.co) and the engine that runs it from jsDelivr (cdn.jsdelivr.net); like any download, this shows those services your IP address, but nothing you write.
