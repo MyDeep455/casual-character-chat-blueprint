@@ -1053,6 +1053,7 @@ const defaultSettings = {
         imageGenEnabled: 'true',
         imageGenProvider: 'pollinations',
         imageGenModel: 'google/gemini-3.1-flash-lite-image',
+        imageGenReference: 'avatar',
         autoSummarize: 'false',
         autoAtmosphere: 'false',
     };
@@ -1073,6 +1074,8 @@ const defaultSettings = {
     let imageGenEnabled = true;
     let imageGenProvider = 'pollinations';
     let imageGenModel = 'google/gemini-3.1-flash-lite-image';
+    // Which of the character's pictures the image model keeps their look from.
+    let imageGenReference = 'avatar';
     let ttsEnabled = false;
     let ttsCurrentVoiceURI = '';
     let replyLength = 'default';
@@ -1570,7 +1573,7 @@ function showCustomPrompt(message, defaultValue = '') {
 // `pendingSuggestion` lets the dialog open instantly with whatever text is
 // already available and improve it later, instead of making the user wait on a
 // network round trip before the box even appears. Anything the user types wins.
-function showCustomLargePrompt(message, placeholder = '', defaultValue = '', rows = 6, pendingSuggestion = null) {
+function showCustomLargePrompt(message, placeholder = '', defaultValue = '', rows = 6, pendingSuggestion = null, extraElement = null) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.className = 'custom-alert-overlay';
@@ -1604,6 +1607,7 @@ function showCustomLargePrompt(message, placeholder = '', defaultValue = '', row
         buttonContainer.appendChild(okButton);
         modal.appendChild(messageP);
         modal.appendChild(textarea);
+        if (extraElement) modal.appendChild(extraElement);
 
         let refiningNote = null;
         if (pendingSuggestion) {
@@ -2696,6 +2700,10 @@ async function resetAppSettings() {
             }
             case 'imageGenModel':
                 imageGenModel = value || defaultSettings.imageGenModel;
+                syncImageModelSelect();
+                break;
+            case 'imageGenReference':
+                imageGenReference = ['avatar', 'background', 'none'].includes(value) ? value : 'avatar';
                 break;
             case 'autoSummarize':
                 autoSummarizeEnabled = (value === 'true' || value === true);
@@ -13183,51 +13191,76 @@ personaEditorAvatarImg.onerror = () => {
 
     // Paid, reuses the OpenRouter key already in App Settings. Returns base64,
     // which is re-encoded to webp so the stored copy stays around 100KB.
-    async function generateViaOpenRouter({ prompt, model, width = IMAGE_GEN_SIZE, height = IMAGE_GEN_SIZE, signal = null }) {
+    // With a reference picture the model redraws that character in the new
+    // scene instead of guessing their look from the prompt alone.
+    async function generateViaOpenRouter({ prompt, model, reference = null, width = IMAGE_GEN_SIZE, height = IMAGE_GEN_SIZE, signal = null }) {
         const modelId = model || imageGenModel;
         const modelSettings = (appSettings.availableModels || []).find(m => m.id === modelId);
         const apiKey = (modelSettings?.apiKey) || appSettings.apiKey;
         if (!apiKey) throw new Error('Set your API key in App Settings first - only free image generation works without API.');
 
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT_MS);
-        // A user cancel and the timeout both have to reach the same request.
-        const onAbort = () => controller.abort();
-        if (signal) {
-            if (signal.aborted) controller.abort();
-            else signal.addEventListener('abort', onAbort);
-        }
-        let response;
-        try {
-            response = await fetch(OPENROUTER_IMAGE_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ model: modelId, prompt, n: 1 }),
-                signal: controller.signal
-            });
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
-                throw new Error('Image request timed out.');
+        const referenceUrl = reference ? await referenceImageUrl(reference.source, signal) : null;
+        const send = async (withReference) => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT_MS);
+            // A user cancel and the timeout both have to reach the same request.
+            const onAbort = () => controller.abort();
+            if (signal) {
+                if (signal.aborted) controller.abort();
+                else signal.addEventListener('abort', onAbort);
             }
-            throw err;
-        } finally {
-            clearTimeout(timer);
-            if (signal) signal.removeEventListener('abort', onAbort);
-        }
-
-        if (!response.ok) {
-            const body = await response.text().catch(() => '');
+            try {
+                return await fetch(OPENROUTER_IMAGE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(withReference
+                        ? {
+                            model: modelId,
+                            prompt: referencePrompt(prompt, reference.kind),
+                            n: 1,
+                            input_references: [{ type: 'image_url', image_url: { url: referenceUrl } }]
+                        }
+                        : { model: modelId, prompt, n: 1 }),
+                    signal: controller.signal
+                });
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+                    throw new Error('Image request timed out.');
+                }
+                throw err;
+            } finally {
+                clearTimeout(timer);
+                if (signal) signal.removeEventListener('abort', onAbort);
+            }
+        };
+        const readFailure = async (failed) => {
+            const body = await failed.text().catch(() => '');
             let parsed = null;
             try { parsed = JSON.parse(body); } catch (_) {}
-            const refusal = explainImageRefusal(parsed || body, { status: response.status });
-            if (refusal) throw new ImageRefusalError(refusal);
+            const refusal = explainImageRefusal(parsed || body, { status: failed.status });
+            if (refusal) return new ImageRefusalError(refusal);
             // Not a content refusal, so surface the provider's own wording.
-            const message = parsed?.error?.message || body.slice(0, 200) || response.statusText;
-            throw new Error(`Image request failed (${response.status}): ${message}`);
+            const message = parsed?.error?.message || body.slice(0, 200) || failed.statusText;
+            return new Error(`Image request failed (${failed.status}): ${message}`);
+        };
+
+        let usedReference = Boolean(referenceUrl);
+        let response = await send(usedReference);
+        if (!response.ok) {
+            const failure = await readFailure(response);
+            // A model typed in by hand may not take a reference picture; it
+            // still gets the plain prompt rather than failing outright.
+            const retryPlain = usedReference && response.status === 400
+                && failure.name !== 'ImageRefusalError'
+                && !OPENROUTER_IMAGE_MODELS.some(m => m.id === modelId);
+            if (!retryPlain) throw failure;
+            usedReference = false;
+            response = await send(false);
+            if (!response.ok) throw await readFailure(response);
         }
         const json = await response.json();
         const b64 = json?.data?.[0]?.b64_json;
@@ -13248,6 +13281,7 @@ personaEditorAvatarImg.onerror = () => {
             dataUrl: dataURL,
             model: modelId,
             cost: (typeof json?.usage?.cost === 'number') ? json.usage.cost : null,
+            reference: usedReference ? reference.kind : null,
             width,
             height
         };
@@ -13268,9 +13302,146 @@ personaEditorAvatarImg.onerror = () => {
             prefix: '', negative: '' },
     };
 
+    // OpenRouter image models that can take the character's picture as a
+    // reference, cheapest first. Prices are for one 1K picture as OpenRouter
+    // listed them in October 2026; what a picture really cost is still read
+    // from each reply and added to the chat's total.
+    const OPENROUTER_IMAGE_MODELS = [
+        { id: 'black-forest-labs/flux-3-image-klein', name: 'FLUX 3 Klein', price: '$0.009' },
+        { id: 'black-forest-labs/flux.2-klein-4b', name: 'FLUX.2 Klein 4B', price: '$0.015' },
+        { id: 'bytedance-seed/seedream-5-0-flash', name: 'Seedream 5 Flash', price: '$0.018' },
+        { id: 'qwen/qwen-image-2.1-turbo', name: 'Qwen Image 2.1 Turbo', price: '$0.018' },
+        { id: 'qwen/qwen-image-3', name: 'Qwen Image 3', price: '$0.033' },
+        { id: 'google/gemini-3.1-flash-lite-image', name: 'Gemini 3.1 Flash Lite Image', price: '$0.034' },
+        { id: 'bytedance-seed/seedream-4.5', name: 'Seedream 4.5', price: '$0.04' },
+        { id: 'google/gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image', price: '$0.067' },
+        { id: 'google/gemini-3-pro-image', name: 'Gemini 3 Pro Image', price: '$0.13' },
+    ];
+    const IMAGE_MODEL_CUSTOM = '__custom';
+
+    // The model picker lists the known models with their price. Any other id
+    // stays reachable through "Other model…", which shows the id box.
+    function syncImageModelSelect() {
+        const select = document.getElementById('image-gen-model-select');
+        const input = document.getElementById('image-gen-model-input');
+        if (!select || !input) return;
+        if (!select.options.length) {
+            OPENROUTER_IMAGE_MODELS.forEach(model => select.add(new Option(`${model.name} · ~${model.price}`, model.id)));
+            select.add(new Option('Other model…', IMAGE_MODEL_CUSTOM));
+        }
+        const known = OPENROUTER_IMAGE_MODELS.some(model => model.id === imageGenModel);
+        select.value = known ? imageGenModel : IMAGE_MODEL_CUSTOM;
+        input.classList.toggle('hidden', known);
+    }
+
+    // The pictures a character can lend the image model, in the order offered.
+    function imageReferenceOptions(character) {
+        const options = [];
+        if (character?.avatar) options.push({ kind: 'avatar', label: 'Avatar', source: character.avatar });
+        if (character?.background) options.push({ kind: 'background', label: 'Background', source: character.background });
+        return options;
+    }
+
+    // Thumbnails in the prompt box, so the choice explains itself. The last
+    // pick is remembered; a saved "background" falls back to the avatar for a
+    // character who has no background picture.
+    function buildReferencePicker(options) {
+        if (!options.length) return null;
+        const choices = [...options, { kind: 'none', label: 'None' }];
+        let current = choices.some(choice => choice.kind === imageGenReference) ? imageGenReference : choices[0].kind;
+
+        const row = document.createElement('div');
+        row.className = 'image-reference-picker';
+        const label = document.createElement('span');
+        label.className = 'image-reference-label';
+        label.textContent = 'Keep look from:';
+        row.appendChild(label);
+
+        const buttons = choices.map(choice => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'image-reference-choice';
+            if (choice.source) {
+                const image = document.createElement('img');
+                image.src = getImageUrl(choice.source);
+                image.alt = '';
+                button.appendChild(image);
+            } else {
+                const none = document.createElement('span');
+                none.className = 'image-reference-none';
+                none.textContent = '⊘';
+                button.appendChild(none);
+            }
+            const caption = document.createElement('span');
+            caption.textContent = choice.label;
+            button.appendChild(caption);
+            button.addEventListener('click', () => {
+                current = choice.kind;
+                update();
+                applySetting('imageGenReference', current);
+                saveSettingToDB('imageGenReference', current).catch(err => console.error('Could not save setting imageGenReference:', err));
+            });
+            row.appendChild(button);
+            return { choice, button };
+        });
+        const update = () => buttons.forEach(({ choice, button }) => {
+            button.classList.toggle('is-selected', choice.kind === current);
+            button.setAttribute('aria-pressed', String(choice.kind === current));
+        });
+        update();
+        return {
+            element: row,
+            selected: () => choices.find(choice => choice.kind === current && choice.source) || null
+        };
+    }
+
+    // The reference goes up inline as a JPEG of at most 1024px: the provider
+    // may not be able to reach a stored link, and a full-size PNG only adds
+    // upload time. A link the browser may not read back (CORS) is sent as is.
+    async function referenceImageUrl(source, signal = null) {
+        const url = getImageUrl(source);
+        try {
+            const blob = source instanceof Blob ? source : await (await fetch(url, { signal })).blob();
+            const objectUrl = URL.createObjectURL(blob);
+            try {
+                const image = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = objectUrl;
+                });
+                const scale = Math.min(1, 1024 / Math.max(image.naturalWidth, image.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                const ctx = canvas.getContext('2d');
+                // JPEG has no transparency; white reads as "no background".
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/jpeg', 0.9);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        } catch (err) {
+            if (err?.name === 'AbortError') throw err;
+            if (/^https?:/i.test(url)) return url;
+            throw new Error('The reference picture could not be read. Pick another one, or None.');
+        }
+    }
+
+    // Tells the model the reference is the character to keep, not a picture
+    // to copy: the scene in the prompt decides pose, place and framing.
+    function referencePrompt(prompt, kind) {
+        const keep = kind === 'background'
+            ? 'Keep the look of the reference image: the same character(s), place and art style. Change only what this scene needs'
+            : 'Keep the character from the reference image: same face, hair, eyes, body, outfit and art style. Show them in this scene, with pose, place and framing changed to fit it';
+        return `${keep}: ${prompt}`;
+    }
+
     const IMAGE_PROVIDERS = {
         pollinations: { label: 'free', storesBytes: false, generate: generateViaPollinations },
-        openrouter: { label: 'OpenRouter, paid', storesBytes: true, generate: generateViaOpenRouter },
+        openrouter: { label: 'OpenRouter, paid', storesBytes: true, takesReference: true, generate: generateViaOpenRouter },
         ...Object.fromEntries(Object.entries(HORDE_IMAGE_PRESETS).map(([key, preset]) => [key, {
             label: 'AI Horde, free',
             storesBytes: true,
@@ -13368,7 +13539,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
         const where = document.createElement('em');
         where.textContent = 'Chat Settings → Features → Image Source';
         body.appendChild(where);
-        body.append(' and switch to OpenRouter with your own API key — around $0.002 per image.');
+        body.append(' and switch to OpenRouter with your own API key — from about $0.01 per image, and it keeps your character\'s look.');
         hint.appendChild(body);
 
         const dismiss = document.createElement('button');
@@ -13436,6 +13607,9 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             // lands rather than holding the dialog shut until then.
             const refineController = new AbortController();
             const suggestion = buildImagePrompt(variation.main, speaker, refineController.signal);
+            const referencePicker = provider.takesReference
+                ? buildReferencePicker(imageReferenceOptions(speaker))
+                : null;
             let finalPrompt;
             try {
                 finalPrompt = await showCustomLargePrompt(
@@ -13445,7 +13619,8 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                     // Roomy, so a whole distilled prompt or a long fallback is
                     // visible without scrolling a small box to check the end.
                     12,
-                    suggestion
+                    suggestion,
+                    referencePicker?.element
                 );
             } finally {
                 // Nothing is waiting on it once the dialog closes.
@@ -13454,6 +13629,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
             if (finalPrompt === null) return;
             const prompt = String(finalPrompt).trim();
             if (!prompt) return;
+            const reference = referencePicker?.selected() || null;
 
             const controller = new AbortController();
             if (messageElement) {
@@ -13470,6 +13646,7 @@ Do not write dialogue, narration, names, or any commentary about the request.`;
                     prompt,
                     seed,
                     model: imageGenModel,
+                    reference,
                     width: IMAGE_GEN_SIZE,
                     height: IMAGE_GEN_SIZE,
                     signal: controller.signal,
@@ -15262,6 +15439,20 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
     if (imageGenToggleEl) addSettingListener(imageGenToggleEl, 'imageGenEnabled', 'change');
     if (imageGenProviderEl) addSettingListener(imageGenProviderEl, 'imageGenProvider', 'change');
     if (imageGenModelEl) addSettingListener(imageGenModelEl, 'imageGenModel', 'change');
+    const imageGenModelSelectEl = document.getElementById('image-gen-model-select');
+    if (imageGenModelSelectEl && imageGenModelEl) {
+        syncImageModelSelect();
+        imageGenModelSelectEl.addEventListener('change', () => {
+            if (imageGenModelSelectEl.value === IMAGE_MODEL_CUSTOM) {
+                imageGenModelEl.classList.remove('hidden');
+                imageGenModelEl.focus();
+            } else {
+                imageGenModelEl.value = imageGenModelSelectEl.value;
+                imageGenModelEl.dispatchEvent(new Event('change'));
+            }
+            if (typeof refreshOpenAccordionHeight === 'function') refreshOpenAccordionHeight();
+        });
+    }
 
     if (typeof window !== 'undefined') {
         if (responsiveViewportQuery) {

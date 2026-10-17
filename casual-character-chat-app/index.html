@@ -390,8 +390,12 @@
                                 </select>
                             </div>
                             <div class="setting" id="image-gen-model-setting">
-                                <label for="image-gen-model-input">Image Model:</label>
-                                <input type="text" id="image-gen-model-input" placeholder="google/gemini-3.1-flash-lite-image">
+                                <label for="image-gen-model-select">
+                                    <span>Image Model:</span>
+                                    <span class="setting-info-icon" data-tooltip="Price per picture. The model keeps your character's look from their avatar or background, picked in the prompt box.">ℹ️</span>
+                                </label>
+                                <select id="image-gen-model-select"></select>
+                                <input type="text" id="image-gen-model-input" class="hidden" placeholder="OpenRouter model ID">
                             </div>
                         </div>
                     </div>
