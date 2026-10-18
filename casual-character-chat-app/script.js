@@ -4057,6 +4057,7 @@ if (dashboardAvatarUrl) {
         <span class="chat-session-name" data-chat-id="${escapeHtml(chatId)}">${escapeHtml(chat.name)}</span>
         <div class="chat-session-actions">
           <button class="move-chat-btn" data-chat-id="${escapeHtml(chatId)}" title="Move this chat to a group">Move</button>
+          <button class="copy-chat-btn" data-chat-id="${escapeHtml(chatId)}" title="Copy this chat as text">Copy</button>
           <button class="rename-chat-btn" data-chat-id="${escapeHtml(chatId)}">Rename</button>
           <button class="delete-chat-btn" data-chat-id="${escapeHtml(chatId)}">Delete</button>
         </div>`;
@@ -4085,6 +4086,9 @@ if (dashboardAvatarUrl) {
   });
   chatSessionListDiv.querySelectorAll('.move-chat-btn').forEach(button => {
     button.addEventListener('click', (e) => openMoveChatModal(charId, e.currentTarget.dataset.chatId));
+  });
+  chatSessionListDiv.querySelectorAll('.copy-chat-btn').forEach(button => {
+    button.addEventListener('click', (e) => copyWholeChat(charId, e.currentTarget.dataset.chatId));
   });
   chatSessionListDiv.querySelectorAll('.rename-chat-btn').forEach(button => {
     button.addEventListener('click', (e) => handleRenameChat(charId, e.currentTarget.dataset.chatId));
@@ -4307,8 +4311,9 @@ function updatePersonaEditorTokenCount() {
         const group = openChatGroupId ? getChatGroups(character)[openChatGroupId] : null;
         if (chatGroupBar) chatGroupBar.classList.toggle('hidden', !group);
         if (chatGroupBarName) chatGroupBarName.textContent = group ? group.name : '';
-        // Groups do not nest, so hide the create button's whole row while one is open.
-        if (chatListGroupActions) chatListGroupActions.classList.toggle('hidden', !!group);
+        // Groups do not nest, so hide the create button while one is open.
+        // Paste Chat stays, and pastes into the open group.
+        document.getElementById('new-chat-group-btn')?.classList.toggle('hidden', !!group);
     }
 
     function scrollChatListToTop() {
@@ -15981,6 +15986,527 @@ editorTextareasToResize.forEach(id => {
         showChatToast(copied ? '📋 Copied to the clipboard.' : 'Your browser did not allow copying.');
     }
 
+
+    // ── Copy & paste a whole chat ──
+    // A copied chat goes onto the clipboard twice: as readable text for any
+    // other app, and as the complete chat (variants, memories, bookmarks,
+    // mood, pictures) for this app. The complete copy rides along as its own
+    // clipboard type where the browser allows it, and always inside an HTML
+    // comment, which other apps drop. Pasting into a chat list or an empty
+    // chat restores it in full. If only the text survived (it went through a
+    // messenger or an editor first), the text is read back into messages.
+    const CHAT_CLIPBOARD_TITLE = '── Casual Character Chat ──';
+    const CHAT_CLIPBOARD_RULE = '──────────────────────────';
+    const CHAT_CLIPBOARD_END = '── End of Chat ──';
+    const CHAT_CLIPBOARD_MARK = 'ccc-chat:';
+    const CHAT_CLIPBOARD_WEB_TYPE = 'web application/x-ccc-chat';
+    const CHAT_CLIPBOARD_FORMAT = 'casual-character-chat/chat';
+    const CHAT_CLIPBOARD_SPEAKER_SEPARATOR = ' · ';
+    // Pictures can make a long chat very large; past this the full copy leaves them out.
+    const CHAT_CLIPBOARD_MAX_CHARS = 12 * 1024 * 1024;
+    const NARRATOR_LABEL = 'Narrator';
+
+    function cleanSpeakerLabel(value) {
+        return String(value || '').replace(/\s+/g, ' ').replace(/·/g, '-').trim();
+    }
+
+    function deepCopy(value) {
+        return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+    }
+
+    function utf8ToBase64(text) {
+        const bytes = new TextEncoder().encode(text);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        return btoa(binary);
+    }
+
+    function base64ToUtf8(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+
+    // The readable copy: a short header, then one "Name: text" block per message.
+    function buildChatClipboardText(ownerId, chat) {
+        const owner = characters[ownerId];
+        const persona = chat.activePersonaId ? personas[chat.activePersonaId] : null;
+        const ownerLabel = cleanSpeakerLabel(getCharacterDisplayName(owner)) || 'Character';
+        let userLabel = cleanSpeakerLabel(persona?.chatName || persona?.name) || 'You';
+        // Two speakers with one name could not be told apart again when pasted.
+        if (userLabel === ownerLabel || userLabel === NARRATOR_LABEL) userLabel = `${userLabel} (you)`;
+        const speakers = [ownerLabel, userLabel];
+        const entries = [];
+        (chat.history || []).forEach(message => {
+            let label;
+            let speakerName = ownerLabel;
+            if (message.sender === 'user') {
+                label = userLabel;
+            } else if (message.type === 'story') {
+                label = NARRATOR_LABEL;
+            } else {
+                const speaker = characters[message.speakerId || ownerId];
+                speakerName = cleanSpeakerLabel(getCharacterDisplayName(speaker)) || ownerLabel;
+                label = speakerName === userLabel ? `${speakerName} (character)` : speakerName;
+            }
+            let text = getMessageText(message);
+            text = applyUserPlaceholder(applyCharPlaceholder(text, speakerName), persona);
+            text = String(text || '').replace(/\r\n?/g, '\n').trim();
+            if (!text) return;
+            if (!speakers.includes(label)) speakers.push(label);
+            entries.push({ label, text });
+        });
+        const header = [
+            CHAT_CLIPBOARD_TITLE,
+            `Chat: ${cleanSpeakerLabel(chat.name) || 'Chat'}`,
+            `${owner?.type === 'world' ? 'World' : 'Character'}: ${ownerLabel}`,
+            `User: ${userLabel}`,
+            `Speakers: ${speakers.join(CHAT_CLIPBOARD_SPEAKER_SEPARATOR)}`,
+            CHAT_CLIPBOARD_RULE
+        ];
+        return { header, entries };
+    }
+
+    // The complete copy, for pasting back into the app without losing anything.
+    function buildChatClipboardPayload(ownerId, chat) {
+        const copy = deepCopy(chat);
+        delete copy.id;
+        delete copy.groupId;
+        delete copy.branchedFrom;
+        (copy.history || []).forEach(m => { delete m.isStreaming; delete m.streamingVariant; });
+        const speakerNames = {};
+        (copy.history || []).forEach(m => {
+            const id = m.speakerId;
+            if (id && characters[id] && !speakerNames[id]) speakerNames[id] = cleanSpeakerLabel(getCharacterDisplayName(characters[id]));
+        });
+        const payload = {
+            format: CHAT_CLIPBOARD_FORMAT,
+            version: 1,
+            ownerId,
+            ownerName: cleanSpeakerLabel(getCharacterDisplayName(characters[ownerId])),
+            speakerNames,
+            chat: copy
+        };
+        let json = JSON.stringify(payload);
+        let withoutPictures = false;
+        if (json.length > CHAT_CLIPBOARD_MAX_CHARS) {
+            (copy.history || []).forEach(m => (m.variations || []).forEach(v => { delete v.images; }));
+            json = JSON.stringify(payload);
+            withoutPictures = true;
+        }
+        return { json, withoutPictures };
+    }
+
+    async function writeChatToClipboard(text, html, json) {
+        if (typeof ClipboardItem === 'function' && navigator.clipboard?.write) {
+            const parts = {
+                'text/plain': new Blob([text], { type: 'text/plain' }),
+                'text/html': new Blob([html], { type: 'text/html' })
+            };
+            const withCustomType = ClipboardItem.supports?.(CHAT_CLIPBOARD_WEB_TYPE)
+                ? { ...parts, [CHAT_CLIPBOARD_WEB_TYPE]: new Blob([json], { type: CHAT_CLIPBOARD_WEB_TYPE }) }
+                : null;
+            for (const data of [withCustomType, parts]) {
+                if (!data) continue;
+                try {
+                    await navigator.clipboard.write([new ClipboardItem(data)]);
+                    return true;
+                } catch (_) {}
+            }
+        }
+        // The clipboard API is missing on file:// in some browsers. A copy
+        // event can still set both the text and the HTML.
+        let copied = false;
+        const onCopy = (event) => {
+            event.clipboardData.setData('text/plain', text);
+            event.clipboardData.setData('text/html', html);
+            event.preventDefault();
+            copied = true;
+        };
+        const scratch = document.createElement('textarea');
+        scratch.value = text;
+        scratch.setAttribute('readonly', '');
+        scratch.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(scratch);
+        scratch.select();
+        document.addEventListener('copy', onCopy, true);
+        try { copied = document.execCommand('copy') || copied; } catch (_) {}
+        document.removeEventListener('copy', onCopy, true);
+        scratch.remove();
+        return copied;
+    }
+
+    async function copyWholeChat(ownerId, chatId) {
+        const chat = characters[ownerId]?.chats?.[chatId];
+        if (!chat) return;
+        if (ownerId === currentCharacterId && chatId === currentChatId && (chatTurnInProgress || currentStreamController)) {
+            showChatToast('Wait until the current reply has finished.');
+            return;
+        }
+        const { header, entries } = buildChatClipboardText(ownerId, chat);
+        if (!entries.length) {
+            showChatToast('This chat has no messages to copy yet.');
+            return;
+        }
+        const { json, withoutPictures } = buildChatClipboardPayload(ownerId, chat);
+        const text = [
+            header.join('\n'),
+            ...entries.map(e => `${e.label}: ${e.text}`),
+            CHAT_CLIPBOARD_END
+        ].join('\n\n') + '\n';
+        const html = `<!--${CHAT_CLIPBOARD_MARK}${utf8ToBase64(json)}--><div>`
+            + `<p>${header.map(line => escapeHtml(line)).join('<br>')}</p>`
+            + entries.map(e => `<p><b>${escapeHtml(e.label)}:</b> ${escapeHtml(e.text).replace(/\n/g, '<br>')}</p>`).join('')
+            + `<p>${escapeHtml(CHAT_CLIPBOARD_END)}</p></div>`;
+        const copied = await writeChatToClipboard(text, html, json);
+        if (!copied) {
+            showChatToast('Your browser did not allow copying.');
+            return;
+        }
+        showChatToast(withoutPictures
+            ? `📋 Copied ${entries.length} messages (without pictures, the chat is very large).`
+            : `📋 Copied ${entries.length} messages. Paste them anywhere, or into a chat list to import.`);
+    }
+
+    function parseChatPayload(json) {
+        if (!json) return null;
+        try {
+            const payload = JSON.parse(json);
+            if (payload?.format !== CHAT_CLIPBOARD_FORMAT || !Array.isArray(payload.chat?.history)) return null;
+            return payload;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function extractChatPayloadFromHtml(html) {
+        const match = /<!--\s*ccc-chat:([A-Za-z0-9+/=\s]+?)\s*-->/.exec(html || '');
+        if (!match) return null;
+        try { return parseChatPayload(base64ToUtf8(match[1].replace(/\s+/g, ''))); } catch (_) { return null; }
+    }
+
+    // Reads the readable copy back. Every line that starts with one of the
+    // names from the "Speakers:" line begins a new message; any other line
+    // belongs to the message above it.
+    function parseChatClipboardText(text) {
+        const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+        const start = lines.findIndex(line => /^\s*[─-]{2,}\s*Casual Character Chat\s*[─-]{2,}\s*$/i.test(line));
+        if (start === -1) return null;
+        const meta = {};
+        let i = start + 1;
+        for (; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (/^[─-]{3,}$/.test(line)) break;
+            const field = /^(Chat|Character|World|User|Speakers)\s*:\s*(.*)$/i.exec(line);
+            if (field) meta[field[1].toLowerCase()] = field[2].trim();
+        }
+        if (i >= lines.length) return null;
+        const user = meta.user || 'You';
+        const character = meta.character || meta.world || '';
+        const speakers = [...new Set([
+            ...(meta.speakers || '').split('·').map(s => s.trim()),
+            user, character
+        ].filter(Boolean))].sort((a, b) => b.length - a.length);
+        const messages = [];
+        let current = null;
+        for (i += 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (/^\s*[─-]{2,}\s*End of Chat\s*[─-]{2,}\s*$/i.test(line)) break;
+            const speaker = speakers.find(name => line.startsWith(`${name}:`));
+            if (speaker) {
+                current = { speaker, lines: [line.slice(speaker.length + 1).replace(/^ /, '')] };
+                messages.push(current);
+            } else if (current) {
+                current.lines.push(line);
+            }
+        }
+        return {
+            name: meta.chat || '',
+            character,
+            user,
+            messages: messages
+                .map(m => ({ speaker: m.speaker, text: m.lines.join('\n').trim() }))
+                .filter(m => m.text)
+        };
+    }
+
+    function recognizeChatClipboard(clip) {
+        if (!clip) return null;
+        const payload = parseChatPayload(clip.json) || extractChatPayloadFromHtml(clip.html);
+        if (payload) return { kind: 'full', payload, count: payload.chat.history.length };
+        const parsed = parseChatClipboardText(clip.text);
+        if (parsed?.messages.length) return { kind: 'text', parsed, count: parsed.messages.length };
+        return null;
+    }
+
+    function clipFromDataTransfer(data) {
+        if (!data) return null;
+        return { html: data.getData('text/html'), text: data.getData('text/plain') };
+    }
+
+    // null when the browser does not let the page read the clipboard.
+    async function readClipboardForChat() {
+        if (navigator.clipboard?.read) {
+            try {
+                // Chrome strips HTML comments from what it hands over unless asked not to.
+                const items = await navigator.clipboard.read({ unsanitized: ['text/html'] });
+                const clip = {};
+                for (const item of items) {
+                    for (const [key, type] of [['json', CHAT_CLIPBOARD_WEB_TYPE], ['html', 'text/html'], ['text', 'text/plain']]) {
+                        if (clip[key] || !item.types.includes(type)) continue;
+                        try { clip[key] = await (await item.getType(type)).text(); } catch (_) {}
+                    }
+                }
+                return clip;
+            } catch (_) {}
+        }
+        if (navigator.clipboard?.readText) {
+            try { return { text: await navigator.clipboard.readText() }; } catch (_) {}
+        }
+        return null;
+    }
+
+    // Where reading the clipboard is not allowed, the person pastes into a box instead.
+    function showPasteChatDialog() {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'custom-alert-overlay';
+            const modal = document.createElement('div');
+            modal.className = 'custom-alert-modal';
+            const messageP = document.createElement('p');
+            messageP.textContent = 'Paste the copied chat into the box below (Ctrl+V, or press and hold, then Paste).';
+            const box = document.createElement('textarea');
+            box.className = 'custom-prompt-input paste-chat-textarea';
+            box.rows = 6;
+            box.placeholder = CHAT_CLIPBOARD_TITLE;
+            const buttons = document.createElement('div');
+            buttons.className = 'custom-dialog-buttons';
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.className = 'secondary-btn';
+            const okButton = document.createElement('button');
+            okButton.textContent = 'Paste Chat';
+            okButton.className = 'action-btn';
+            buttons.append(cancelButton, okButton);
+            modal.append(messageP, box, buttons);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            box.focus();
+
+            const finish = (clip) => { overlay.remove(); resolve(clip); };
+            box.addEventListener('paste', (event) => {
+                const clip = clipFromDataTransfer(event.clipboardData);
+                if (!recognizeChatClipboard(clip)) return;
+                event.preventDefault();
+                finish(clip);
+            });
+            okButton.addEventListener('click', () => finish({ text: box.value }));
+            cancelButton.addEventListener('click', () => finish(null));
+            box.addEventListener('keydown', (e) => { if (e.key === 'Escape') finish(null); });
+        });
+    }
+
+    function newPastedMessageId(index) {
+        return 'msg-' + Date.now() + '-' + index + '-' + Math.random().toString(36).slice(2, 8);
+    }
+
+    // Turns a recognized clipboard into the fields of a chat owned by ownerId.
+    // Speakers from another character's chat are matched by name, and fall
+    // back to the owner when nobody here has that name.
+    function buildChatFromClipboard(recognized, ownerId) {
+        const owner = characters[ownerId];
+        const isWorld = owner?.type === 'world';
+        const participants = new Set([ownerId, ...(isWorld ? (owner.characterIds || []).filter(id => characters[id]) : [])]);
+        const findByName = (label) => {
+            const wanted = cleanSpeakerLabel(label).replace(/ \((you|character)\)$/, '').toLowerCase();
+            if (!wanted) return null;
+            const matches = Object.keys(characters).filter(id => {
+                const c = characters[id];
+                if (!c || (c.type === 'world' && id !== ownerId)) return false;
+                return [c.chatName, c.name].some(n => n && cleanSpeakerLabel(n).toLowerCase() === wanted);
+            });
+            return matches.find(id => participants.has(id)) || (matches.length === 1 ? matches[0] : null);
+        };
+
+        if (recognized.kind === 'full') {
+            const source = recognized.payload;
+            const chat = deepCopy(source.chat);
+            const mapSpeaker = (id) => {
+                if (!id || id === source.ownerId) return ownerId;
+                if (characters[id] && (characters[id].type !== 'world' || id === ownerId)) return id;
+                return findByName(source.speakerNames?.[id]) || ownerId;
+            };
+            if (source.ownerId === ownerId) {
+                (chat.participants || []).forEach(id => { if (characters[id]) participants.add(id); });
+            }
+            const idMap = new Map();
+            const history = chat.history
+                .filter(m => m && (m.sender === 'user' || (m.sender === 'ai' && Array.isArray(m.variations) && m.variations.length)))
+                .map((m, index) => {
+                    delete m.isStreaming;
+                    delete m.streamingVariant;
+                    const id = newPastedMessageId(index);
+                    if (m.id) idMap.set(m.id, id);
+                    m.id = id;
+                    if (m.sender === 'ai') {
+                        if (!m.variations[m.activeVariant]) m.activeVariant = 0;
+                        if (m.speakerId) {
+                            m.speakerId = mapSpeaker(m.speakerId);
+                            participants.add(m.speakerId);
+                        }
+                    }
+                    return m;
+                });
+            delete chat.id;
+            delete chat.groupId;
+            delete chat.branchedFrom;
+            return {
+                ...chat,
+                name: cleanSpeakerLabel(chat.name) || 'Pasted Chat',
+                history,
+                participants: [...participants],
+                activePersonaId: chat.activePersonaId && personas[chat.activePersonaId] ? chat.activePersonaId : getDefaultPersonaForCharacter(owner),
+                mood: normalizeMood(chat.mood),
+                summarizedUpToId: idMap.get(chat.summarizedUpToId)
+            };
+        }
+
+        const parsed = recognized.parsed;
+        const history = parsed.messages.map((entry, index) => {
+            const id = newPastedMessageId(index);
+            if (entry.speaker === parsed.user) return { id, sender: 'user', main: entry.text };
+            let speakerId = entry.speaker === parsed.character ? ownerId : findByName(entry.speaker);
+            const message = { id, sender: 'ai', type: 'dialog', variations: [{ main: entry.text, think: null }], activeVariant: 0 };
+            if (!speakerId && entry.speaker === NARRATOR_LABEL) {
+                message.type = 'story';
+                return message;
+            }
+            if (!speakerId) speakerId = ownerId;
+            if (isWorld && speakerId === ownerId) message.type = 'story';
+            if (speakerId !== ownerId) message.speakerId = speakerId;
+            participants.add(speakerId);
+            return message;
+        });
+        const userName = cleanSpeakerLabel(parsed.user).replace(/ \(you\)$/, '');
+        const personaId = Object.keys(personas).find(id => cleanSpeakerLabel(personas[id]?.chatName || personas[id]?.name) === userName);
+        return {
+            name: cleanSpeakerLabel(parsed.name) || 'Pasted Chat',
+            history,
+            memories: '',
+            participants: [...participants],
+            activePersonaId: personaId || getDefaultPersonaForCharacter(owner),
+            mood: null
+        };
+    }
+
+    async function pasteChatAsNew(ownerId, recognized) {
+        const character = characters[ownerId];
+        if (!character || !recognized) return;
+        const built = buildChatFromClipboard(recognized, ownerId);
+        if (!built.history.length) {
+            showCustomAlert('The copied chat has no messages to paste.');
+            return;
+        }
+        if (!character.chats) character.chats = {};
+        const newChatId = 'chat-' + Date.now();
+        const groupId = (openChatGroupId && getChatGroups(character)[openChatGroupId]) ? openChatGroupId : null;
+        character.chats[newChatId] = {
+            ...built,
+            id: newChatId,
+            name: `${built.name.replace(/\s*\(pasted\)$/i, '')} (pasted)`,
+            groupId
+        };
+        await saveSingleCharacterToDB(character);
+        window.__scrollToBottomNextStartChat = true;
+        await startChat(ownerId, newChatId);
+        showChatToast(`📋 Pasted a chat with ${built.history.length} messages.`);
+    }
+
+    async function pasteChatFromButton() {
+        if (!currentCharacterId) return;
+        let recognized = recognizeChatClipboard(await readClipboardForChat());
+        if (!recognized) {
+            const clip = await showPasteChatDialog();
+            if (!clip) return;
+            recognized = recognizeChatClipboard(clip);
+            if (!recognized) {
+                showCustomAlert('That is not a copied chat. Copy one first with 📋 Copy in a chat list, or 📋 Copy Chat in a chat\'s ⋯ menu.');
+                return;
+            }
+        }
+        await pasteChatAsNew(currentCharacterId, recognized);
+    }
+
+    // A chat counts as empty until the user has written in it; an opening
+    // message alone is replaced by the pasted chat.
+    function isChatEmptyForPaste(chat) {
+        const history = chat?.history || [];
+        return history.length <= 1 && !history.some(m => m.sender === 'user');
+    }
+
+    async function pasteChatIntoCurrent(recognized) {
+        const character = characters[currentCharacterId];
+        const chat = getCurrentChat();
+        if (!character || !chat) return;
+        const built = buildChatFromClipboard(recognized, currentCharacterId);
+        if (!built.history.length) return;
+        const keepName = !/^New Chat - /.test(chat.name || '');
+        character.chats[chat.id] = {
+            ...built,
+            id: chat.id,
+            name: keepName ? chat.name : built.name,
+            groupId: chat.groupId ?? null,
+            // A scenario's memories stay unless the pasted chat brings its own.
+            memories: built.memories || chat.memories || ''
+        };
+        await saveSingleCharacterToDB(character);
+        window.__scrollToBottomNextStartChat = true;
+        await startChat(currentCharacterId, chat.id);
+        showChatToast(`📋 Loaded ${built.history.length} messages into this chat.`);
+    }
+
+    document.getElementById('paste-chat-btn')?.addEventListener('click', pasteChatFromButton);
+
+    // Ctrl+V on the chat list pastes a copied chat as a new one.
+    document.addEventListener('paste', (event) => {
+        if (chatListScreen.classList.contains('is-inactive')) return;
+        if (event.target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+        if (document.querySelector('.custom-alert-overlay')) return;
+        if ([...document.querySelectorAll('.modal-content')].some(el => el.getClientRects().length > 0)) return;
+        const recognized = recognizeChatClipboard(clipFromDataTransfer(event.clipboardData));
+        if (!recognized) return;
+        event.preventDefault();
+        pasteChatAsNew(currentCharacterId, recognized);
+    });
+
+    // Pasting a copied chat into the message box of an empty chat offers to load it.
+    messageInput.addEventListener('paste', async (event) => {
+        const chat = getCurrentChat();
+        if (!chat || !isChatEmptyForPaste(chat) || chatTurnInProgress || currentStreamController) return;
+        const clip = clipFromDataTransfer(event.clipboardData);
+        const recognized = recognizeChatClipboard(clip);
+        if (!recognized) return;
+        event.preventDefault();
+        const choice = await showChoiceDialog(
+            `This looks like a copied chat with ${recognized.count} messages. Load it into this chat?`,
+            [
+                { label: 'Cancel', value: null },
+                { label: 'Paste as Text', value: 'text' },
+                { label: 'Load Chat', value: 'load', primary: true }
+            ]
+        );
+        if (choice === 'load') {
+            await pasteChatIntoCurrent(recognized);
+        } else if (choice === 'text') {
+            messageInput.focus();
+            messageInput.setRangeText(clip.text || '', messageInput.selectionStart, messageInput.selectionEnd, 'end');
+            messageInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+
     async function toggleMessageFlag(messageId, flag) {
         const character = characters[currentCharacterId];
         const message = getCurrentChat()?.history?.find(m => m.id === messageId);
@@ -16147,6 +16673,7 @@ editorTextareasToResize.forEach(id => {
             case 'search': openChatSearch(); break;
             case 'bookmarks': openChatSearch({ bookmarksOnly: true }); break;
             case 'stats': openChatStats(); break;
+            case 'copy-chat': copyWholeChat(currentCharacterId, currentChatId); break;
             case 'autoplay': if (autoPlayState.running) stopAutoPlay(); else startAutoPlay(); break;
             case 'dice': rollDiceFromMenu(); break;
             case 'shortcuts': openShortcuts(); break;

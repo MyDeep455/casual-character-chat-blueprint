@@ -217,6 +217,7 @@ h1 {
 #copy-character-btn,
 #start-new-chat-btn,
 #new-chat-group-btn,
+#paste-chat-btn,
 .chat-session-entry button,
 #chat-form button,
 .form-buttons button,
@@ -260,6 +261,7 @@ h1 {
 #copy-character-btn:hover,
 #start-new-chat-btn:hover,
 #new-chat-group-btn:hover,
+#paste-chat-btn:hover,
 .chat-session-entry button:hover,
 #chat-form button:hover,
 .form-buttons button:hover,
@@ -295,6 +297,7 @@ h1 {
 #copy-character-btn:active,
 #start-new-chat-btn:active,
 #new-chat-group-btn:active,
+#paste-chat-btn:active,
 .chat-session-entry button:active,
 #chat-form button:active,
 .form-buttons button:active,
@@ -329,6 +332,7 @@ h1 {
 #copy-character-btn:focus-visible,
 #start-new-chat-btn:focus-visible,
 #new-chat-group-btn:focus-visible,
+#paste-chat-btn:focus-visible,
 .chat-session-entry button:focus-visible,
 #chat-form button:focus-visible,
 .form-buttons button:focus-visible,
@@ -1047,6 +1051,7 @@ h1 {
 
 #chat-list-group-actions {
     display: flex;
+    gap: 10px;
     margin-bottom: 14px;
     flex-shrink: 0;
 }
@@ -1056,6 +1061,24 @@ h1 {
 	padding: 6px 14px;
 	font-size: 16px;
 	white-space: nowrap;
+}
+
+#paste-chat-btn {
+	background-color: rgba(18, 128, 140, 0.88);
+	padding: 6px 14px;
+	font-size: 16px;
+	white-space: nowrap;
+}
+
+.copy-chat-btn {
+    background-color: rgba(18, 128, 140, 0.72);
+}
+
+.paste-chat-textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: inherit;
+    margin-bottom: 12px;
 }
 
 #chat-group-bar {
@@ -5847,7 +5870,13 @@ body.image-gen-off .generate-image-btn {
     margin-bottom: 0;
   }
 
-  #new-chat-group-btn {
+  /* Stacked, at the same width as + Start new Chat above them. */
+  #chat-list-group-actions {
+    flex-direction: column;
+  }
+
+  #new-chat-group-btn,
+  #paste-chat-btn {
     width: 100%;
     max-width: 260px;
     min-width: 160px;
