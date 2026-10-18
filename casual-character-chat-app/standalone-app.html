@@ -3213,7 +3213,8 @@ max-height: 27em;
     box-shadow: 0 2px 8px rgba(220, 53, 69, 0.35);
 }
 
-#scroll-top-fab {
+#scroll-top-fab,
+#scroll-bottom-fab {
     position: fixed;
     bottom: 68px;
     right: 14px;
@@ -3238,20 +3239,23 @@ max-height: 27em;
     transition: opacity 0.3s, transform 0.3s;
 }
 
-#scroll-top-fab.visible {
+#scroll-top-fab.visible,
+#scroll-bottom-fab.visible {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
-#scroll-top-fab:hover {
+#scroll-top-fab:hover,
+#scroll-bottom-fab:hover {
     background: linear-gradient(180deg, rgba(200, 200, 214, 0.55), rgba(140, 140, 158, 0.5));
     border-color: rgba(255, 255, 255, 0.45);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-#scroll-top-fab:active {
+#scroll-top-fab:active,
+#scroll-bottom-fab:active {
     transform: scale(0.92);
 }
 
@@ -5455,7 +5459,8 @@ body.image-gen-off .generate-image-btn {
 		height: min(180px, var(--ai-avatar-size, 200px));
 	}
 
-	#scroll-top-fab {
+	#scroll-top-fab,
+	#scroll-bottom-fab {
 		width: 28px;
 		height: 28px;
 		line-height: 24px;
@@ -6451,7 +6456,8 @@ body.image-gen-off .generate-image-btn {
     right: 20px;
   }
 
-  #scroll-top-fab {
+  #scroll-top-fab,
+  #scroll-bottom-fab {
     display: none;
   }
 
@@ -10615,6 +10621,7 @@ mark.highlight.current-match {
     </form>
         
         <button id="scroll-top-fab" title="Jump to beginning of the Chat">↑</button>
+        <button id="scroll-bottom-fab" title="Jump to the end of the Chat">↓</button>
     </div>
 
     <div id="chat-memories-modal" class="hidden">
@@ -21280,6 +21287,7 @@ const defaultSettings = {
     const reasoningEffortSelect = document.getElementById('reasoning-effort-select');
     const replyOptionsToggle = document.getElementById('reply-options-toggle');
     const scrollTopFab = document.getElementById('scroll-top-fab');
+    const scrollBottomFab = document.getElementById('scroll-bottom-fab');
     const deleteCharacterBtnDashboard = document.getElementById('delete-character-btn-dashboard');
     const blurSlider = document.getElementById('blur-slider');
     const blurValue = document.getElementById('blur-value');
@@ -24932,6 +24940,8 @@ if (saved !== null) {
   }, 0);
 }
 }
+// Refresh the jump arrows even when the restored position fires no scroll event.
+setTimeout(() => chatWindow.dispatchEvent(new Event('scroll')), 0);
 
 }
 
@@ -35619,13 +35629,17 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
         chatWindow.scrollTop = 0;
     });
 
+    scrollBottomFab.addEventListener('click', () => {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    });
+
     let chatScrollSaveTimer = null;
     chatWindow.addEventListener('scroll', () => {
-        if (chatWindow.scrollTop > 400) {
-            scrollTopFab.classList.add('visible');
-        } else {
-            scrollTopFab.classList.remove('visible');
-        }
+        const nearTop = chatWindow.scrollTop <= 400;
+        scrollTopFab.classList.toggle('visible', !nearTop);
+        // The mirror of the up arrow: near the top of a long chat, offer a jump to the end.
+        scrollBottomFab.classList.toggle('visible',
+            nearTop && chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop > 400);
         // Remembered at most every 200 ms: a scroll fires dozens of events a
         // second, and each synchronous localStorage write made it stutter.
         const k = (currentCharacterId && currentChatId)

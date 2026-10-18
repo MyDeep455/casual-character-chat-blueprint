@@ -1222,6 +1222,7 @@ const defaultSettings = {
     const reasoningEffortSelect = document.getElementById('reasoning-effort-select');
     const replyOptionsToggle = document.getElementById('reply-options-toggle');
     const scrollTopFab = document.getElementById('scroll-top-fab');
+    const scrollBottomFab = document.getElementById('scroll-bottom-fab');
     const deleteCharacterBtnDashboard = document.getElementById('delete-character-btn-dashboard');
     const blurSlider = document.getElementById('blur-slider');
     const blurValue = document.getElementById('blur-value');
@@ -4874,6 +4875,8 @@ if (saved !== null) {
   }, 0);
 }
 }
+// Refresh the jump arrows even when the restored position fires no scroll event.
+setTimeout(() => chatWindow.dispatchEvent(new Event('scroll')), 0);
 
 }
 
@@ -15561,13 +15564,17 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
         chatWindow.scrollTop = 0;
     });
 
+    scrollBottomFab.addEventListener('click', () => {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    });
+
     let chatScrollSaveTimer = null;
     chatWindow.addEventListener('scroll', () => {
-        if (chatWindow.scrollTop > 400) {
-            scrollTopFab.classList.add('visible');
-        } else {
-            scrollTopFab.classList.remove('visible');
-        }
+        const nearTop = chatWindow.scrollTop <= 400;
+        scrollTopFab.classList.toggle('visible', !nearTop);
+        // The mirror of the up arrow: near the top of a long chat, offer a jump to the end.
+        scrollBottomFab.classList.toggle('visible',
+            nearTop && chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop > 400);
         // Remembered at most every 200 ms: a scroll fires dozens of events a
         // second, and each synchronous localStorage write made it stutter.
         const k = (currentCharacterId && currentChatId)

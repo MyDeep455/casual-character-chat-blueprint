@@ -3191,7 +3191,8 @@ max-height: 27em;
     box-shadow: 0 2px 8px rgba(220, 53, 69, 0.35);
 }
 
-#scroll-top-fab {
+#scroll-top-fab,
+#scroll-bottom-fab {
     position: fixed;
     bottom: 68px;
     right: 14px;
@@ -3216,20 +3217,23 @@ max-height: 27em;
     transition: opacity 0.3s, transform 0.3s;
 }
 
-#scroll-top-fab.visible {
+#scroll-top-fab.visible,
+#scroll-bottom-fab.visible {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
 }
 
-#scroll-top-fab:hover {
+#scroll-top-fab:hover,
+#scroll-bottom-fab:hover {
     background: linear-gradient(180deg, rgba(200, 200, 214, 0.55), rgba(140, 140, 158, 0.5));
     border-color: rgba(255, 255, 255, 0.45);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-#scroll-top-fab:active {
+#scroll-top-fab:active,
+#scroll-bottom-fab:active {
     transform: scale(0.92);
 }
 
@@ -5433,7 +5437,8 @@ body.image-gen-off .generate-image-btn {
 		height: min(180px, var(--ai-avatar-size, 200px));
 	}
 
-	#scroll-top-fab {
+	#scroll-top-fab,
+	#scroll-bottom-fab {
 		width: 28px;
 		height: 28px;
 		line-height: 24px;
@@ -6429,7 +6434,8 @@ body.image-gen-off .generate-image-btn {
     right: 20px;
   }
 
-  #scroll-top-fab {
+  #scroll-top-fab,
+  #scroll-bottom-fab {
     display: none;
   }
 
