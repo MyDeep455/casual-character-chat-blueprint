@@ -15570,11 +15570,12 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
 
     let chatScrollSaveTimer = null;
     chatWindow.addEventListener('scroll', () => {
-        const nearTop = chatWindow.scrollTop <= 400;
-        scrollTopFab.classList.toggle('visible', !nearTop);
-        // The mirror of the up arrow: near the top of a long chat, offer a jump to the end.
-        scrollBottomFab.classList.toggle('visible',
-            nearTop && chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop > 400);
+        // One arrow at a time, pointing to the farther end: ↓ in the top half, ↑ in
+        // the bottom half. Neither shows within 400px of the end it would jump to.
+        const maxScroll = chatWindow.scrollHeight - chatWindow.clientHeight;
+        const inTopHalf = chatWindow.scrollTop < maxScroll / 2;
+        scrollTopFab.classList.toggle('visible', !inTopHalf && chatWindow.scrollTop > 400);
+        scrollBottomFab.classList.toggle('visible', inTopHalf && maxScroll - chatWindow.scrollTop > 400);
         // Remembered at most every 200 ms: a scroll fires dozens of events a
         // second, and each synchronous localStorage write made it stutter.
         const k = (currentCharacterId && currentChatId)
