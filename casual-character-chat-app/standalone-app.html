@@ -20562,8 +20562,11 @@ const OPENROUTER_REASONING_EFFORTS = new Set([
     'xhigh',
     'max'
 ]);
-const REASONING_REQUIRED_MODELS = new Set([
-    'z-ai/glm-5.3-flash'
+// What "Off" is quietly sent as for models that answer an error when reasoning
+// is switched off.
+const REASONING_OFF_FALLBACKS = new Map([
+    ['z-ai/glm-5.3-flash', 'low'],
+    ['minimax/minimax-m3.1-flash', 'minimal']
 ]);
 
 function isOpenRouterChatCompletionsUrl(value) {
@@ -20588,12 +20591,10 @@ function getReasoningRequestConfig(targetApiUrl, reasoningEffort = 'auto', model
         ? reasoningEffort.toLowerCase()
         : 'auto';
 
-    // These models answer an error when reasoning is switched off, so
-    // "Off" is quietly sent as "Low" for them. A suffix such as ":online"
-    // or ":free" names the same model.
+    // A suffix such as ":online" or ":free" names the same model.
     const baseModel = String(model || '').toLowerCase().replace(/:[^/]*$/, '');
-    if (normalizedEffort === 'none' && REASONING_REQUIRED_MODELS.has(baseModel)) {
-        normalizedEffort = 'low';
+    if (normalizedEffort === 'none' && REASONING_OFF_FALLBACKS.has(baseModel)) {
+        normalizedEffort = REASONING_OFF_FALLBACKS.get(baseModel);
     }
 
     if (OPENROUTER_REASONING_EFFORTS.has(normalizedEffort)) {
@@ -24528,6 +24529,9 @@ chatScreen.style.pointerEvents = 'none';
 
 
     function showCharacterSelection() {
+        // Before the display switch below, which resets the chat's scroll position.
+        saveChatScrollPosition();
+        releaseChatScrollHold();
         stopParticles();
         if (window._musicFeatureReady) leaveChatMusic();
         if ('speechSynthesis' in window) speechSynthesis.cancel();
@@ -24829,7 +24833,97 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
 
 
 
+    // A chat's place is remembered as the message at the top of the view and
+    // how far the view starts into it. A pixel distance from the top of the chat
+    // would not survive a refresh: it changes when the web fonts arrive after the
+    // chat was drawn, and with every lazily loaded image above the view.
+    const CHAT_SCROLL_HOLD_MS = 15000;
+    const CHAT_SCROLL_RELEASE_EVENTS = ['wheel', 'pointerdown', 'keydown'];
+    let chatScrollSaveTimer = null;
+    let chatScrollHold = null;
+
+    function chatScrollKey() {
+        return `chatScrollPos:${currentCharacterId}:${currentChatId}`;
+    }
+
+    function readChatScrollPosition() {
+        const viewTop = chatWindow.getBoundingClientRect().top;
+        const anchor = [...chatWindow.querySelectorAll('.message[data-message-id]')]
+            .find(el => el.getBoundingClientRect().bottom > viewTop);
+        return {
+            top: chatWindow.scrollTop,
+            messageId: anchor?.dataset.messageId,
+            offset: anchor ? anchor.getBoundingClientRect().top - viewTop : 0,
+            atBottom: chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop < 2
+        };
+    }
+
+    function applyChatScrollPosition(position) {
+        if (position.atBottom) {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return;
+        }
+        const anchor = position.messageId
+            && chatWindow.querySelector(`.message[data-message-id="${CSS.escape(position.messageId)}"]`);
+        if (anchor) {
+            chatWindow.scrollTop += anchor.getBoundingClientRect().top - chatWindow.getBoundingClientRect().top - position.offset;
+        } else {
+            chatWindow.scrollTop = position.top;
+        }
+    }
+
+    function loadChatScrollPosition() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(chatScrollKey()));
+            // Chats last read before anchors stored a bare pixel distance.
+            return typeof saved === 'number' ? { top: saved } : saved;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // Also called on the way out of a chat: the 200 ms wait after a scroll may
+    // still be running, and an image that loaded since the last scroll can have
+    // moved the end of the chat without scrolling anything.
+    function saveChatScrollPosition() {
+        clearTimeout(chatScrollSaveTimer);
+        chatScrollSaveTimer = null;
+        if (chatScrollHold || !currentChatId || chatScreen.classList.contains('is-inactive')) return;
+        try { localStorage.setItem(chatScrollKey(), JSON.stringify(readChatScrollPosition())); } catch (_) {}
+    }
+
+    // While a chat opens, its height can still change: the web fonts may not have
+    // arrived and images are loading. Until the reader touches something the view
+    // stays on the remembered spot, re-applied before each changed layout is
+    // painted. Nothing is saved meanwhile, so a position taken from an unfinished
+    // layout can never replace the real one.
+    function holdChatScrollPosition(position) {
+        releaseChatScrollHold();
+        const observer = new ResizeObserver(() => applyChatScrollPosition(position));
+        observer.observe(chatWindow);
+        for (const child of chatWindow.children) observer.observe(child);
+        CHAT_SCROLL_RELEASE_EVENTS.forEach(type => {
+            document.addEventListener(type, releaseChatScrollHold, { capture: true, passive: true });
+        });
+        chatScrollHold = { observer, timer: setTimeout(releaseChatScrollHold, CHAT_SCROLL_HOLD_MS) };
+    }
+
+    function releaseChatScrollHold() {
+        if (!chatScrollHold) return;
+        chatScrollHold.observer.disconnect();
+        clearTimeout(chatScrollHold.timer);
+        CHAT_SCROLL_RELEASE_EVENTS.forEach(type => {
+            document.removeEventListener(type, releaseChatScrollHold, true);
+        });
+        chatScrollHold = null;
+    }
+
     async function startChat(charId, chatId) {
+    saveChatScrollPosition();
+    releaseChatScrollHold();
+    // Redrawing the chat already on screen (after an edit, a deleted message, a
+    // swapped variant) only has to put the view back; it waits for nothing.
+    const openingChat = chatScreen.classList.contains('is-inactive');
     // Only clear the selected group-chat name tag when actually switching to a
     // different chat. Re-rendering the same chat (after editing/deleting a
     // message, switching a variant, etc.) must keep the current selection.
@@ -24932,13 +25026,12 @@ if (window.__scrollToBottomNextStartChat) {
         window.__scrollToBottomNextStartChat = false;
     }, 0);
 } else {
-    const k = `chatScrollPos:${currentCharacterId}:${currentChatId}`;
-const saved = localStorage.getItem(k);
-if (saved !== null) {
-  setTimeout(() => {
-    chatWindow.scrollTop = parseInt(saved, 10);
-  }, 0);
-}
+    setTimeout(() => {
+        const position = loadChatScrollPosition();
+        if (!position) return;
+        applyChatScrollPosition(position);
+        if (openingChat) holdChatScrollPosition(position);
+    }, 0);
 }
 // Refresh the jump arrows even when the restored position fires no scroll event.
 setTimeout(() => chatWindow.dispatchEvent(new Event('scroll')), 0);
@@ -35633,7 +35726,6 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
         chatWindow.scrollTop = chatWindow.scrollHeight;
     });
 
-    let chatScrollSaveTimer = null;
     chatWindow.addEventListener('scroll', () => {
         // One arrow at a time, pointing to the farther end: ↓ in the top half, ↑ in
         // the bottom half. Neither shows within 400px of the end it would jump to.
@@ -35641,18 +35733,11 @@ cancelScenarioSelectionBtn.addEventListener('click', () => {
         const inTopHalf = chatWindow.scrollTop < maxScroll / 2;
         scrollTopFab.classList.toggle('visible', !inTopHalf && chatWindow.scrollTop > 400);
         scrollBottomFab.classList.toggle('visible', inTopHalf && maxScroll - chatWindow.scrollTop > 400);
+        chatWindow._autoScroll = chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop < 50;
         // Remembered at most every 200 ms: a scroll fires dozens of events a
         // second, and each synchronous localStorage write made it stutter.
-        const k = (currentCharacterId && currentChatId)
-  ? `chatScrollPos:${currentCharacterId}:${currentChatId}`
-  : 'chatScrollPos';
-        const scrollTopNow = chatWindow.scrollTop;
         if (chatScrollSaveTimer) clearTimeout(chatScrollSaveTimer);
-        chatScrollSaveTimer = setTimeout(() => {
-            chatScrollSaveTimer = null;
-            try { localStorage.setItem(k, String(scrollTopNow)); } catch (_) {}
-        }, 200);
-        chatWindow._autoScroll = chatWindow.scrollHeight - chatWindow.clientHeight - chatWindow.scrollTop < 50;
+        chatScrollSaveTimer = setTimeout(saveChatScrollPosition, 200);
     }, { passive: true });
 
     chatWindow.addEventListener('dblclick', (event) => {
@@ -37461,6 +37546,8 @@ Reply with JSON only, for example {"effect":"rain","mood":"Sad"}.`;
     messageInput.addEventListener('input', scheduleChatDraftSave);
     window.addEventListener('pagehide', saveChatDraftNow);
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveChatDraftNow(); });
+    window.addEventListener('pagehide', saveChatScrollPosition);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) saveChatScrollPosition(); });
 
     // ── Voice input ──
     const voiceInputBtn = document.getElementById('voice-input-btn');
