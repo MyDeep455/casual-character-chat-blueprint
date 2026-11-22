@@ -13010,7 +13010,7 @@ personaEditorAvatarImg.onerror = () => {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKeyToSend}`,
-                'HTTP-Referer': window.location.href,
+                'HTTP-Referer': 'https://casual-character-chat.vercel.app/',
                 'X-Title': 'Casual Character Chat'
             },
             body: JSON.stringify({
