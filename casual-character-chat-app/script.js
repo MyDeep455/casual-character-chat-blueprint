@@ -11197,6 +11197,7 @@ const bgSlideshow = (() => {
         timer = hideTimer = null;
         slides = [];
         index = -1;
+        playingBackground = null;
         layer.classList.add('hidden');
         slideEls.forEach(el => {
             el.classList.remove('is-shown');
@@ -11204,12 +11205,38 @@ const bgSlideshow = (() => {
         });
     }
 
+    // The card's background as stored: a Blob gets a fresh object URL on
+    // every read, so it is recognised by identity rather than by address.
+    let playingBackground = null;
+
+    // True when this exact show is already on screen. Re-rendering the same
+    // chat (a swipe, an edit, a regenerated reply) then leaves it running
+    // where it is instead of jumping back to the first picture.
+    function isAlreadyPlaying(character, list, nextIntervalMs) {
+        if (!slides.length || list.length !== slides.length) return false;
+        if (nextIntervalMs !== intervalMs) return false;
+        if (character.background !== playingBackground) return false;
+        const blobBackground = character.background instanceof Blob;
+        return list.every((slide, i) =>
+            slide.fit === slides[i].fit &&
+            ((i === 0 && blobBackground) || slide.src === slides[i].src));
+    }
+
     function start(character) {
-        stop();
         const list = bgSlideshowSlides(character);
+        const nextIntervalMs = list.length
+            ? normalizeBgSlideshow(character.bgSlideshow).interval * 1000
+            : 0;
+        if (list.length && isAlreadyPlaying(character, list, nextIntervalMs)) {
+            // The unused copy of a Blob background's address is not needed.
+            if (character.background instanceof Blob) URL.revokeObjectURL(list[0].src);
+            return;
+        }
+        stop();
         if (list.length < 2) return;
         slides = list;
-        intervalMs = normalizeBgSlideshow(character.bgSlideshow).interval * 1000;
+        playingBackground = character.background;
+        intervalMs = nextIntervalMs;
         layer.classList.remove('hidden');
         showSlide(0);
     }
