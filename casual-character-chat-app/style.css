@@ -6888,6 +6888,18 @@ body.image-gen-off .generate-image-btn {
     margin: 0;
 }
 
+/* The lore rows hold a single button: give it the width of one of the two
+   scenario buttons and the same gap above it. */
+#lore-flat-container .scenario-action-row,
+#lore-keyword-container .scenario-action-row {
+    margin-top: 14px;
+}
+
+#lore-flat-container .scenario-action-row .add-scenario-button,
+#lore-keyword-container .scenario-action-row .add-scenario-button {
+    flex: 0 1 calc(50% - 4px);
+}
+
 
 /* ═══════════════════════════════════════════════════════════
    NEW FEATURES — F, A, E, B, C, D
