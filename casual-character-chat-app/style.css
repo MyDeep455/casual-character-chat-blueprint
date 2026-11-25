@@ -8602,9 +8602,26 @@ body.image-gen-off .generate-image-btn {
     overflow-y: hidden;
     background-color: rgba(0, 0, 0, 0.22);
     border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 8px;
+    border-radius: 8px 8px 0 0;   /* the slideshow bar closes the frame below */
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.editor-gallery-strip img {
+    -webkit-user-drag: none;
+}
+
+.editor-gallery-strip.is-drag-scrolling,
+.editor-gallery-strip.is-drag-scrolling .editor-gallery-thumb,
+.editor-gallery-strip.is-drag-scrolling .editor-gallery-add {
+    cursor: grabbing;
+}
+
+.editor-gallery-strip.is-drag-scrolling .editor-gallery-thumb:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 .editor-gallery-strip::-webkit-scrollbar {
@@ -8677,28 +8694,60 @@ body.image-gen-off .generate-image-btn {
     font-style: italic;
 }
 
-/* --- background slideshow (below the gallery strip) ------------------- */
+/* --- background slideshow: a slim bar attached under the gallery strip -- */
 .bg-slideshow-section {
-    margin-top: 10px;
-    padding: 8px 12px;
-    background-color: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
 }
 
-.bg-slideshow-toggle-row {
+/* Both are <label>s, so #character-form label would give them its 20px
+   headline margin, bold weight and shadow. Needs the id to outrank it. */
+#character-form .bg-slideshow-toggle-row,
+#character-form .bg-slideshow-opt-label {
+    margin: 0;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-shadow: none;
+}
+
+#character-form .bg-slideshow-toggle-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: 0;
     cursor: pointer;
-    font-size: 0.95em;
+    font-size: 0.82em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#character-form .bg-slideshow-opt-label {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* A smaller switch than the settings-page one, to match the slim bar. */
+.bg-slideshow-toggle-row .toggle-switch {
+    width: 34px;
+    height: 19px;
+    border-radius: 10px;
+}
+
+.bg-slideshow-toggle-row .toggle-switch::after {
+    top: 2px;
+    left: 2px;
+    width: 13px;
+    height: 13px;
+}
+
+.bg-slideshow-toggle-row .toggle-switch:checked::after {
+    left: 17px;
 }
 
 .bg-slideshow-options {
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 5px;
+    padding: 6px 0 2px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

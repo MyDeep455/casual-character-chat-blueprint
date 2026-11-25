@@ -10729,6 +10729,7 @@ function renderEditorGallery() {
         const img = document.createElement('img');
         img.src = src;
         img.alt = '';
+        img.draggable = false;   // a mouse drag scrolls the strip instead
         thumb.appendChild(img);
 
         thumb.addEventListener('click', () => openGalleryActionModal(index));
@@ -10742,6 +10743,51 @@ function renderEditorGallery() {
     if (hint) hint.classList.toggle('hidden', editorGallery.length === 0);
     refreshEditorSlideshow();   // slideshow badges + status line
 }
+
+// Holding the mouse on the strip and dragging sideways scrolls it, like a
+// finger does on touch screens. Once the pointer has moved a few pixels it is
+// a drag, not a tap: the click that ends it is swallowed so no picker opens.
+(function enableGalleryDragScroll() {
+    const strip = document.getElementById('editor-gallery-strip');
+    if (!strip) return;
+    let drag = null;
+    let swallowClick = false;
+
+    strip.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        drag = { id: e.pointerId, x: e.clientX, left: strip.scrollLeft, moved: false };
+    });
+    strip.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const dx = e.clientX - drag.x;
+        if (!drag.moved) {
+            if (Math.abs(dx) < 5) return;
+            drag.moved = true;
+            strip.classList.add('is-drag-scrolling');
+            try { strip.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+        }
+        strip.scrollLeft = drag.left - dx;
+        e.preventDefault();
+    });
+    const endDrag = (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        if (drag.moved) {
+            swallowClick = true;
+            setTimeout(() => { swallowClick = false; }, 0);
+            strip.classList.remove('is-drag-scrolling');
+        }
+        drag = null;
+    };
+    strip.addEventListener('pointerup', endDrag);
+    strip.addEventListener('pointercancel', endDrag);
+    strip.addEventListener('click', (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        e.preventDefault();
+        e.stopPropagation();
+    }, true);
+    strip.addEventListener('dragstart', (e) => e.preventDefault());
+})();
 
 const galleryUploader = document.getElementById('gallery-uploader');
 const galleryAddBtn = document.getElementById('editor-gallery-add-btn');
