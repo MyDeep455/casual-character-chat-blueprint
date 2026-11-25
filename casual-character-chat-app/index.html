@@ -552,17 +552,17 @@
             <input type="checkbox" id="bg-slideshow-toggle" class="toggle-switch">
         </label>
         <div id="bg-slideshow-options" class="bg-slideshow-options hidden">
-            <label for="bg-slideshow-interval" class="bg-slideshow-interval-label">
-                <span>Time per image:</span>
+            <label for="bg-slideshow-interval" class="bg-slideshow-opt-label">Time per image</label>
+            <div class="bg-slideshow-opt-control">
+                <input type="range" id="bg-slideshow-interval" class="bg-slideshow-range" min="0" max="18" step="1" value="5">
                 <span id="bg-slideshow-interval-value">10 s</span>
-            </label>
-            <input type="range" id="bg-slideshow-interval" class="bg-slideshow-range" min="0" max="18" step="1" value="5">
-            <label for="bg-slideshow-fit" class="bg-slideshow-fit-label">Gallery images in the slideshow:</label>
-            <select id="bg-slideshow-fit">
-                <option value="contain">Show the whole image (blurred edges)</option>
-                <option value="cover">Fill the screen (crops the edges)</option>
+            </div>
+            <label for="bg-slideshow-fit" class="bg-slideshow-opt-label">Image fit</label>
+            <select id="bg-slideshow-fit" title="How gallery images fill the chat background">
+                <option value="contain">Whole image</option>
+                <option value="cover">Fill screen</option>
             </select>
-            <p class="editor-gallery-hint" id="bg-slideshow-status"></p>
+            <p class="editor-gallery-hint" id="bg-slideshow-status">Tap a gallery image to add or remove it.</p>
         </div>
     </div>
 </div>

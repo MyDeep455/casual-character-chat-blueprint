@@ -8701,8 +8701,8 @@ body.image-gen-off .generate-image-btn {
 
 /* --- background slideshow (below the gallery strip) ------------------- */
 .bg-slideshow-section {
-    margin-top: 12px;
-    padding: 10px 12px;
+    margin-top: 10px;
+    padding: 8px 12px;
     background-color: rgba(0, 0, 0, 0.18);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
@@ -8719,30 +8719,42 @@ body.image-gen-off .generate-image-btn {
 }
 
 .bg-slideshow-options {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 12px;
 }
 
-.bg-slideshow-interval-label,
-.bg-slideshow-fit-label {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
+.bg-slideshow-opt-label {
     margin: 0;
-    font-size: 0.88em;
-    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.82em;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.bg-slideshow-opt-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
 }
 
 #bg-slideshow-interval-value {
+    min-width: 3.2em;
+    text-align: right;
+    font-size: 0.82em;
     color: #fff;
     font-variant-numeric: tabular-nums;
 }
 
 .bg-slideshow-range {
+    flex: 1;
+    min-width: 0;
     width: 100%;
-    margin: 2px 0 4px;
+    margin: 0;
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
@@ -8755,8 +8767,8 @@ body.image-gen-off .generate-image-btn {
 .bg-slideshow-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: #5b9bd5;
     cursor: pointer;
@@ -8764,8 +8776,8 @@ body.image-gen-off .generate-image-btn {
 }
 
 .bg-slideshow-range::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border: none;
     border-radius: 50%;
     background: #5b9bd5;
@@ -8779,19 +8791,43 @@ body.image-gen-off .generate-image-btn {
 }
 
 #bg-slideshow-fit {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    justify-self: start;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    height: 28px;
+    padding: 0 28px 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    -webkit-appearance: none;
+    appearance: none;
+    color: #fff;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 0.82em;
+    line-height: 26px;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+#bg-slideshow-fit:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+#bg-slideshow-fit:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
+}
+
+#bg-slideshow-fit option {
     background: #2a2a3a;
     color: #fff;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.88em;
-    box-sizing: border-box;
 }
 
 #bg-slideshow-status {
-    margin-top: 2px;
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 12px;
 }
 
 /* 🎞️ badge on gallery thumbnails that are in the slideshow. Two classes plus
@@ -10934,17 +10970,17 @@ mark.highlight.current-match {
             <input type="checkbox" id="bg-slideshow-toggle" class="toggle-switch">
         </label>
         <div id="bg-slideshow-options" class="bg-slideshow-options hidden">
-            <label for="bg-slideshow-interval" class="bg-slideshow-interval-label">
-                <span>Time per image:</span>
+            <label for="bg-slideshow-interval" class="bg-slideshow-opt-label">Time per image</label>
+            <div class="bg-slideshow-opt-control">
+                <input type="range" id="bg-slideshow-interval" class="bg-slideshow-range" min="0" max="18" step="1" value="5">
                 <span id="bg-slideshow-interval-value">10 s</span>
-            </label>
-            <input type="range" id="bg-slideshow-interval" class="bg-slideshow-range" min="0" max="18" step="1" value="5">
-            <label for="bg-slideshow-fit" class="bg-slideshow-fit-label">Gallery images in the slideshow:</label>
-            <select id="bg-slideshow-fit">
-                <option value="contain">Show the whole image (blurred edges)</option>
-                <option value="cover">Fill the screen (crops the edges)</option>
+            </div>
+            <label for="bg-slideshow-fit" class="bg-slideshow-opt-label">Image fit</label>
+            <select id="bg-slideshow-fit" title="How gallery images fill the chat background">
+                <option value="contain">Whole image</option>
+                <option value="cover">Fill screen</option>
             </select>
-            <p class="editor-gallery-hint" id="bg-slideshow-status"></p>
+            <p class="editor-gallery-hint" id="bg-slideshow-status">Tap a gallery image to add or remove it.</p>
         </div>
     </div>
 </div>
@@ -31308,7 +31344,6 @@ const bgSlideshowOptions = document.getElementById('bg-slideshow-options');
 const bgSlideshowInterval = document.getElementById('bg-slideshow-interval');
 const bgSlideshowIntervalValue = document.getElementById('bg-slideshow-interval-value');
 const bgSlideshowFit = document.getElementById('bg-slideshow-fit');
-const bgSlideshowStatus = document.getElementById('bg-slideshow-status');
 const galleryActionSlideshowBtn = document.getElementById('gallery-action-slideshow-btn');
 const galleryActionSlideshowLabel = document.getElementById('gallery-action-slideshow-label');
 
@@ -31332,23 +31367,6 @@ function refreshEditorSlideshow() {
         });
     }
 
-    if (!on || !bgSlideshowStatus) return;
-    const marked = editorGallery.filter(src => editorSlideshowMarks.has(src)).length;
-    const bgField = document.getElementById('char-background');
-    const hasBackground = !!(bgField && bgField.value.trim());
-    const total = marked + (hasBackground ? 1 : 0);
-
-    let text;
-    if (editorGallery.length === 0) {
-        text = 'Add images to the gallery above, then tap one to put it in the slideshow.';
-    } else {
-        const parts = [];
-        if (hasBackground) parts.push('the background');
-        parts.push(`${marked} gallery image${marked === 1 ? '' : 's'} (marked 🎞️)`);
-        text = `Plays ${parts.join(' + ')}. Tap a gallery image to add or remove it.`;
-    }
-    if (total < 2) text += ' At least two images are needed for it to play.';
-    bgSlideshowStatus.textContent = text;
 }
 
 function resetEditorSlideshow(raw, gallery) {

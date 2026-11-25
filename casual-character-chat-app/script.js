@@ -10988,7 +10988,6 @@ const bgSlideshowOptions = document.getElementById('bg-slideshow-options');
 const bgSlideshowInterval = document.getElementById('bg-slideshow-interval');
 const bgSlideshowIntervalValue = document.getElementById('bg-slideshow-interval-value');
 const bgSlideshowFit = document.getElementById('bg-slideshow-fit');
-const bgSlideshowStatus = document.getElementById('bg-slideshow-status');
 const galleryActionSlideshowBtn = document.getElementById('gallery-action-slideshow-btn');
 const galleryActionSlideshowLabel = document.getElementById('gallery-action-slideshow-label');
 
@@ -11012,23 +11011,6 @@ function refreshEditorSlideshow() {
         });
     }
 
-    if (!on || !bgSlideshowStatus) return;
-    const marked = editorGallery.filter(src => editorSlideshowMarks.has(src)).length;
-    const bgField = document.getElementById('char-background');
-    const hasBackground = !!(bgField && bgField.value.trim());
-    const total = marked + (hasBackground ? 1 : 0);
-
-    let text;
-    if (editorGallery.length === 0) {
-        text = 'Add images to the gallery above, then tap one to put it in the slideshow.';
-    } else {
-        const parts = [];
-        if (hasBackground) parts.push('the background');
-        parts.push(`${marked} gallery image${marked === 1 ? '' : 's'} (marked 🎞️)`);
-        text = `Plays ${parts.join(' + ')}. Tap a gallery image to add or remove it.`;
-    }
-    if (total < 2) text += ' At least two images are needed for it to play.';
-    bgSlideshowStatus.textContent = text;
 }
 
 function resetEditorSlideshow(raw, gallery) {
