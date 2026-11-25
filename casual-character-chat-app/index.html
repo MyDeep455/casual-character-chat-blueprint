@@ -139,6 +139,10 @@
 </div>
 
     <div id="chat-screen" class="is-inactive">
+        <div id="chat-bg-slideshow" class="hidden" aria-hidden="true">
+            <div class="chat-bg-slide"><canvas class="chat-bg-slide-blur"></canvas><div class="chat-bg-slide-img"></div></div>
+            <div class="chat-bg-slide"><canvas class="chat-bg-slide-blur"></canvas><div class="chat-bg-slide-img"></div></div>
+        </div>
         <canvas id="particle-canvas"></canvas>
         <div id="chat-header">
     <button id="back-to-selection-btn" title="Back to Chat List"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
@@ -542,6 +546,25 @@
         <button type="button" id="editor-gallery-add-btn" class="editor-gallery-add" title="Add images to the gallery" aria-label="Add images to the gallery">+</button>
     </div>
     <p class="editor-gallery-hint" id="editor-gallery-hint">Tap an image to set it as avatar or background.</p>
+    <div id="bg-slideshow-section" class="bg-slideshow-section">
+        <label for="bg-slideshow-toggle" class="bg-slideshow-toggle-row">
+            <span>🎞️ Background Slideshow in Chat</span>
+            <input type="checkbox" id="bg-slideshow-toggle" class="toggle-switch">
+        </label>
+        <div id="bg-slideshow-options" class="bg-slideshow-options hidden">
+            <label for="bg-slideshow-interval" class="bg-slideshow-interval-label">
+                <span>Time per image:</span>
+                <span id="bg-slideshow-interval-value">10 s</span>
+            </label>
+            <input type="range" id="bg-slideshow-interval" class="bg-slideshow-range" min="0" max="18" step="1" value="5">
+            <label for="bg-slideshow-fit" class="bg-slideshow-fit-label">Gallery images in the slideshow:</label>
+            <select id="bg-slideshow-fit">
+                <option value="contain">Show the whole image (blurred edges)</option>
+                <option value="cover">Fill the screen (crops the edges)</option>
+            </select>
+            <p class="editor-gallery-hint" id="bg-slideshow-status"></p>
+        </div>
+    </div>
 </div>
 
                 <div id="world-char-picker-section" class="hidden">
@@ -904,6 +927,7 @@
         <p class="image-crop-hint" id="image-crop-hint">Drag to reposition &middot; scroll to zoom</p>
         <div class="image-crop-workspace">
             <div class="image-crop-stage" id="image-crop-stage">
+                <canvas id="image-crop-fill" class="hidden" aria-hidden="true"></canvas>
                 <img id="image-crop-img" src="" alt="Image being adjusted" draggable="false">
                 <div class="image-crop-frame" id="image-crop-frame"></div>
             </div>
@@ -924,6 +948,20 @@
                     <path d="M12 2.5v19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.6 2.8"/>
                     <path d="M9.4 6.6 3.2 12l6.2 5.4z" fill="currentColor"/>
                     <path d="M14.6 6.6 20.8 12l-6.2 5.4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button type="button" id="image-crop-fill-btn" class="image-crop-icon-btn hidden"
+                    title="Empty edges: blurred copy of the image (click for black)"
+                    aria-label="Empty edges: blurred copy of the image (click for black)" aria-pressed="false">
+                <svg class="image-crop-fill-icon-blur" width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2.5" y="4" width="19" height="16" rx="2.5" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="1.4"/>
+                    <circle cx="5.6" cy="8" r="1.1" fill="currentColor" fill-opacity="0.55"/>
+                    <circle cx="18.4" cy="16" r="1.1" fill="currentColor" fill-opacity="0.55"/>
+                    <rect x="8" y="7" width="8" height="10" rx="1" fill="currentColor"/>
+                </svg>
+                <svg class="image-crop-fill-icon-black" width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2.5" y="4" width="19" height="16" rx="2.5" fill="#000" stroke="currentColor" stroke-width="1.4"/>
+                    <rect x="8" y="7" width="8" height="10" rx="1" fill="currentColor"/>
                 </svg>
             </button>
             <button type="button" id="image-crop-reset-btn">Reset</button>
@@ -949,6 +987,10 @@
             <button type="button" id="gallery-action-bg-btn" class="gallery-action-btn">
                 <span class="gallery-action-btn-icon" aria-hidden="true">🖼️</span>
                 <span>Set as Background</span>
+            </button>
+            <button type="button" id="gallery-action-slideshow-btn" class="gallery-action-btn hidden">
+                <span class="gallery-action-btn-icon" aria-hidden="true">🎞️</span>
+                <span id="gallery-action-slideshow-label">Add to Slideshow</span>
             </button>
             <button type="button" id="gallery-action-download-btn" class="gallery-action-btn">
                 <span class="gallery-action-btn-icon" aria-hidden="true">⬇️</span>

@@ -1100,6 +1100,8 @@ const defaultSettings = {
 };
     // Working copy of the open card's gallery — written back on save.
     let editorGallery = [];
+    // Gallery pictures (by value) marked for the background slideshow.
+    let editorSlideshowMarks = new Set();
     let currentChatId = null;
     let worldCharSelectedIds = new Set();
     let worldCharPickerTempIds = new Set();
@@ -3969,6 +3971,7 @@ document.fonts.ready.then(() => {
   chatListScreen.classList.remove('is-inactive');
   tutorialOnScreenChange('chat-list');
   chatScreen.classList.add('is-inactive');
+  bgSlideshow.stop();
   characterSelectionScreen.style.pointerEvents = 'none';
   chatListScreen.style.pointerEvents = 'auto';
   chatScreen.style.pointerEvents = 'none';
@@ -4446,6 +4449,7 @@ function updatePersonaEditorTokenCount() {
         function showMainScreen() {
     chatListScreen.classList.add('is-inactive');
     chatScreen.classList.add('is-inactive');
+    bgSlideshow.stop();
     characterSelectionScreen.classList.remove('is-inactive');
     tutorialOnScreenChange('character-selection');
     characterSelectionScreen.style.pointerEvents = 'auto';
@@ -4474,6 +4478,7 @@ chatScreen.style.pointerEvents = 'none';
     void chatWindow.offsetHeight;
     chatWindow.style.display = 'flex';
     chatScreen.classList.add('is-inactive');
+    bgSlideshow.stop();
     characterSelectionScreen.style.pointerEvents = 'auto';
 chatListScreen.style.pointerEvents = 'none';
 chatScreen.style.pointerEvents = 'none';
@@ -4768,6 +4773,71 @@ async function imageFileToWebp(file, quality = 0.80, maxSide = 0) {
 
 
 
+// Paints a soft, blurred copy of `img` that covers a w × h area of `ctx`,
+// the same "the picture extends itself" look the avatars get from
+// .effect-container. Used wherever a background has to reach past its own
+// edges: the crop frame's fill and the slideshow backdrops.
+//
+// The picture is shrunk to a few dozen pixels and grown back in doubling
+// steps. Bilinear smoothing at every step turns that into an even blur, so
+// no canvas `filter` support is needed (Safari has none) and the cost stays
+// tiny even for a full-resolution result. `darken` dims the copy a little so
+// the real picture still reads as the picture.
+function paintBlurredCover(ctx, img, w, h, darken = 0.18) {
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+    if (!nw || !nh || !w || !h) return;
+
+    const k = 36 / Math.max(w, h);
+    let cw = Math.max(1, Math.round(w * k));
+    let ch = Math.max(1, Math.round(h * k));
+    let step = document.createElement('canvas');
+    step.width = cw;
+    step.height = ch;
+    let sctx = step.getContext('2d');
+    sctx.imageSmoothingEnabled = true;
+    sctx.imageSmoothingQuality = 'high';
+    // A touch larger than "cover", so it reads as a zoomed-in copy.
+    const cover = Math.max(cw / nw, ch / nh) * 1.08;
+    sctx.drawImage(img, (cw - nw * cover) / 2, (ch - nh * cover) / 2, nw * cover, nh * cover);
+
+    while (cw * 2 < w && ch * 2 < h) {
+        const next = document.createElement('canvas');
+        next.width = cw * 2;
+        next.height = ch * 2;
+        const nctx = next.getContext('2d');
+        nctx.imageSmoothingEnabled = true;
+        nctx.imageSmoothingQuality = 'high';
+        nctx.drawImage(step, 0, 0, cw, ch, 0, 0, next.width, next.height);
+        step = next;
+        cw = next.width;
+        ch = next.height;
+    }
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    // Bilinear growth leaves faint straight-line bands, one per tiny pixel.
+    // Where the canvas can blur (not Safari) one pass of about a tiny pixel's
+    // width irons them out; the copy is drawn with a bleed so the blur has
+    // picture to pull in at the edges instead of fading them to transparent.
+    const cell = Math.max(w, h) / 36;
+    let pad = 0;
+    if ('filter' in ctx) {
+        ctx.filter = `blur(${Math.max(1, cell * 0.6).toFixed(1)}px)`;
+        if (ctx.filter !== 'none') pad = cell * 1.5;
+    }
+    ctx.drawImage(step, 0, 0, cw, ch, -pad, -pad, w + 2 * pad, h + 2 * pad);
+    ctx.filter = 'none';
+    if (darken > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${darken})`;
+        ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
+}
+
+
+
     // A chat's place is remembered as the message at the top of the view and
     // how far the view starts into it. A pixel distance from the top of the chat
     // would not survive a refresh: it changes when the web fonts arrive after the
@@ -4937,6 +5007,7 @@ if (headerAvatarUrl) {
     chatScreenDiv.style.backgroundImage = 'none';
     starsContainer.classList.add('visible');
 }
+    bgSlideshow.start(character);
 
     chatWindow.innerHTML = '';
     if (!chat.history) chat.history = [];
@@ -7822,6 +7893,7 @@ function updateSingleMessageView(messageId) {
     document.getElementById('card-name').style.height = 'auto';
     tempUploadedImages = {};
     resetEditorGallery([]);
+    resetEditorSlideshow(null, []);
     hideTagSuggestions();
     characterEditorModalContent.scrollTop = 0;
     characterEditorModal.classList.add('hidden');
@@ -8246,6 +8318,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
     tempUploadedImages = {};
     resetEditorGallery([]);
     characterForm.reset();
+    resetEditorSlideshow(null, []);
     refreshTagEditorFromField();
     cardTypeCharacterRadio.checked = true;
     updateEditorForType('character');
@@ -8299,6 +8372,7 @@ document.getElementById('open-world-char-picker-btn').addEventListener('click', 
   }
   worldCharSelectedIds = new Set(character.characterIds || []);
   resetEditorGallery(normalizeGallery(character.gallery));
+  resetEditorSlideshow(character.bgSlideshow, editorGallery);
   updateEditorForType(charType);
 
   const avatarUrl = getImageUrl(character.avatar);
@@ -8325,6 +8399,7 @@ if (editorDisplayUrl) {
   document.getElementById('chat-name').value = isWorld ? '' : (character.chatName || character.name || '');
   document.getElementById('char-avatar').value = avatarUrl;
   document.getElementById('char-background').value = backgroundUrl;
+  refreshEditorSlideshow();   // its status line counts the background
   document.getElementById('chat-list-screen').style.backgroundImage = backgroundUrl ? cssUrl(backgroundUrl) : 'none';
   charInstructionsInput.value = character.instructions || '';
   charDescriptionInput.value = character.description || '';
@@ -9135,6 +9210,7 @@ async function setActivePersonaForChat(personaId) {
   const backgroundValue = document.getElementById('char-background').value;
   // Read before closeEditor() drops the working copy further down.
   const gallery = editorGallery.slice();
+  const bgSlideshowSettings = readEditorSlideshow(gallery);
 
     let finalAvatar = avatarValue;
     let finalBackground = backgroundValue;
@@ -9200,6 +9276,7 @@ async function setActivePersonaForChat(personaId) {
     character.avatar = cardType === 'world' ? '' : finalAvatar;
     character.background = finalBackground;
     character.gallery = gallery;
+    character.bgSlideshow = bgSlideshowSettings;
     character.instructions = instructions;
     character.description = description;
     character.lore = lore;
@@ -9222,6 +9299,7 @@ async function setActivePersonaForChat(personaId) {
       avatar: cardType === 'world' ? '' : finalAvatar,
       background: finalBackground,
       gallery: gallery,
+      bgSlideshow: bgSlideshowSettings,
       instructions: instructions,
       description: description,
       lore: lore,
@@ -9775,15 +9853,20 @@ function restoreLastSession() {
 //
 //  * backgrounds — the current screen rectangle (landscape on desktop, tall on
 //    a phone), because a background is painted onto a full-viewport element
-//    with `background-size: cover`. That also means zooming out below "fills
-//    the frame" is pointless there: the browser would crop the empty margin
-//    straight back off, so the floor stays at cover and the preview is exactly
-//    what the screen will show.
+//    with `background-size: cover`. Zooming out past "fills the frame" is
+//    allowed here too, but the result always keeps the frame's shape: the
+//    part of the frame the picture no longer reaches is filled in (edgeFill),
+//    either with a blurred, enlarged copy of the picture itself — the look
+//    the avatars get from .effect-container — or plain black. The fill is
+//    baked into the stored image, so the preview is exactly what the screen
+//    will show and every surface that paints the background gets it for free.
 // =============================================================
 const openImageAdjuster = (() => {
     const MAX_ZOOM = 10;             // hard ceiling relative to "fills the frame"
     const NUDGE = 0.08;              // +/- button step, in zoom-bar ratio
     const STAGE_MARGIN = 0.17;       // dimmed overflow margin around the frame
+    const FILL_MAX_SIDE = 2560;      // longest edge of a filled (zoomed-out) result
+    const FILL_MODE_KEY = 'cccCropEdgeFill';
 
     const modal = document.getElementById('image-crop-modal');
     if (!modal) return () => Promise.resolve(null);
@@ -9803,6 +9886,14 @@ const openImageAdjuster = (() => {
     const cancelBtn = document.getElementById('image-crop-cancel-btn');
     const resetBtn = document.getElementById('image-crop-reset-btn');
     const flipBtn = document.getElementById('image-crop-flip-btn');
+    const fillCanvas = document.getElementById('image-crop-fill');
+    const fillBtn = document.getElementById('image-crop-fill-btn');
+
+    // How an edgeFill session fills the frame where the picture ends:
+    // 'blur' (a blurred copy of the picture) or 'black'. Remembered across
+    // sessions, it is a matter of taste rather than of the picture.
+    let fillMode = 'blur';
+    try { if (localStorage.getItem(FILL_MODE_KEY) === 'black') fillMode = 'black'; } catch (_) {}
 
     // Live session state. `null` whenever the modal is closed.
     // z = zoom where 1 exactly fills the frame, ox/oy = picture centre offset
@@ -9855,6 +9946,50 @@ const openImageAdjuster = (() => {
         frameEl.style.height = frameH + 'px';
         stage.style.width = (frameW + 2 * marginX) + 'px';
         stage.style.height = (frameH + 2 * Math.round(margin)) + 'px';
+        if (fillCanvas) {
+            fillCanvas.style.width = frameW + 'px';
+            fillCanvas.style.height = frameH + 'px';
+        }
+    }
+
+    // The fill shown behind the picture inside the frame. It is painted with
+    // the same routine (and the same proportions) as the stored result, so
+    // what the frame shows is what the background will look like.
+    function paintFillPreview() {
+        if (!fillCanvas) return;
+        const active = !!(st && st.edgeFill && sourceImg);
+        fillCanvas.classList.toggle('hidden', !active);
+        if (fillBtn) fillBtn.classList.toggle('hidden', !(st && st.edgeFill));
+        if (!active) return;
+
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const w = Math.max(1, Math.round(st.frameW * dpr));
+        const h = Math.max(1, Math.round(st.frameH * dpr));
+        fillCanvas.width = w;
+        fillCanvas.height = h;
+        const ctx = fillCanvas.getContext('2d');
+        if (fillMode === 'black') {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+        } else {
+            paintBlurredCover(ctx, sourceImg, w, h);
+        }
+
+        const black = fillMode === 'black';
+        fillBtn.classList.toggle('is-black', black);
+        fillBtn.setAttribute('aria-pressed', black ? 'true' : 'false');
+        const label = black
+            ? 'Empty edges: black (click for a blurred copy of the image)'
+            : 'Empty edges: blurred copy of the image (click for black)';
+        fillBtn.title = label;
+        fillBtn.setAttribute('aria-label', label);
+    }
+
+    function toggleFillMode() {
+        if (!st || !st.edgeFill) return;
+        fillMode = fillMode === 'black' ? 'blur' : 'black';
+        try { localStorage.setItem(FILL_MODE_KEY, fillMode); } catch (_) {}
+        paintFillPreview();
     }
 
     // Point relative to the centre of the crop frame.
@@ -9873,9 +10008,12 @@ const openImageAdjuster = (() => {
         // Floor: the whole picture fits inside the frame. Zooming out further
         // would not reveal anything new, the cut-out stays the whole picture.
         // Callers that need a frame-filling result keep the floor at cover.
+        // An edgeFill frame is the exception: there the gap is filled in, so
+        // the picture may shrink to half of "fits" to show more of the fill.
+        const zFit = Math.min(1, frameW / layoutW, frameH / layoutH);
         const zMin = options.allowZoomOut === false
             ? 1
-            : Math.min(frameW / layoutW, frameH / layoutH);
+            : (options.edgeFill ? zFit * 0.5 : zFit);
 
         // Ceiling: at zoom 1 the cut-out measures frame / coverScale source
         // pixels, shrinking as the zoom grows. Cap the zoom where its short
@@ -9886,7 +10024,10 @@ const openImageAdjuster = (() => {
         const minCropPx = options.minCropPx || 96;
         const zMax = Math.max(1, Math.min(MAX_ZOOM, cropShort / Math.min(minCropPx, cropShort)));
 
-        return { nw, nh, layoutW, layoutH, frameW, frameH, zMin, zMax, z: 1, ox: 0, oy: 0, flip: 1 };
+        return {
+            nw, nh, layoutW, layoutH, frameW, frameH, zFit, zMin, zMax, z: 1, ox: 0, oy: 0, flip: 1,
+            edgeFill: !!options.edgeFill
+        };
     }
 
     // Keeps the picture glued to the frame: while it is larger than the frame
@@ -9931,6 +10072,8 @@ const openImageAdjuster = (() => {
         // A negative x scale mirrors the picture about its own centre line.
         imgEl.style.transform =
             `translate(-50%, -50%) translate(${st.ox}px, ${st.oy}px) scale(${st.z * st.flip}, ${st.z})`;
+        // The fill is a copy of the picture, so it mirrors along with it.
+        if (fillCanvas) fillCanvas.style.transform = `translate(-50%, -50%) scaleX(${st.flip})`;
         flipBtn.classList.toggle('is-active', st.flip < 0);
         flipBtn.setAttribute('aria-pressed', st.flip < 0 ? 'true' : 'false');
         renderZoomBar();
@@ -10057,8 +10200,9 @@ const openImageAdjuster = (() => {
 
     stage.addEventListener('dblclick', () => {
         if (!st) return;
-        // Toggle between "whole picture visible" and "fills the square".
-        setZoom(st.z > st.zMin + 1e-4 ? st.zMin : 1);
+        // Toggle between "whole picture visible" and "fills the frame".
+        const whole = st.edgeFill ? st.zFit : st.zMin;
+        setZoom(st.z > whole + 1e-4 ? whole : 1);
     });
 
     // --- zoom bar ------------------------------------------------------------
@@ -10145,11 +10289,68 @@ const openImageAdjuster = (() => {
         return { sx, sy, sw, sh };
     }
 
+    // True when the picture no longer reaches every edge of the frame.
+    function frameHasGaps() {
+        const halfW = st.frameW / 2;
+        const halfH = st.frameH / 2;
+        const dispW = st.layoutW * st.z;
+        const dispH = st.layoutH * st.z;
+        const tol = 0.5;
+        return st.ox - dispW / 2 > -halfW + tol || st.ox + dispW / 2 < halfW - tol
+            || st.oy - dispH / 2 > -halfH + tol || st.oy + dispH / 2 < halfH - tol;
+    }
+
+    // edgeFill result: the whole frame, in source pixels (capped), with the
+    // fill painted first and the picture placed on top where the user left it.
+    function renderFilledCanvas() {
+        const perSourcePx = (st.layoutW * st.z) / st.nw;
+        const scale = Math.min(1, FILL_MAX_SIDE / (Math.max(st.frameW, st.frameH) / perSourcePx));
+        const outPerDisplayPx = scale / perSourcePx;   // output px per display px
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(st.frameW * outPerDisplayPx));
+        canvas.height = Math.max(1, Math.round(st.frameH * outPerDisplayPx));
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Mirroring the whole canvas mirrors fill and picture together, the
+        // same way the preview does.
+        if (st.flip < 0) {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+        }
+
+        if (fillMode === 'black') {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+            paintBlurredCover(ctx, sourceImg, canvas.width, canvas.height);
+        }
+
+        // Picture rectangle as the user sees it, relative to the frame's
+        // top-left corner; under the mirror transform x is read right to left.
+        const dispW = st.layoutW * st.z;
+        const dispH = st.layoutH * st.z;
+        const w = dispW * outPerDisplayPx;
+        const h = dispH * outPerDisplayPx;
+        let x = (st.ox - dispW / 2 + st.frameW / 2) * outPerDisplayPx;
+        const y = (st.oy - dispH / 2 + st.frameH / 2) * outPerDisplayPx;
+        if (st.flip < 0) x = canvas.width - x - w;
+        ctx.drawImage(sourceImg, x, y, w, h);
+        return canvas;
+    }
+
     async function applyCrop() {
         if (!st || !sourceImg) return;
         applyBtn.disabled = true;
 
         try {
+            if (st.edgeFill && frameHasGaps()) {
+                finish(await canvasToWebp(renderFilledCanvas(), 0.80));
+                return;
+            }
+
             const { sx, sy, sw, sh } = computeCrop();
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, Math.round(sw));
@@ -10208,6 +10409,7 @@ const openImageAdjuster = (() => {
         applyFrameSize(next.w, next.h);
         imgEl.style.width = st.layoutW + 'px';
         imgEl.style.height = st.layoutH + 'px';
+        paintFillPreview();
         render();
     }
 
@@ -10223,6 +10425,7 @@ const openImageAdjuster = (() => {
         st = null;
         sourceImg = null;
         imgEl.removeAttribute('src');
+        paintFillPreview();   // with no session: hides the fill and its button
     }
 
     function finish(result) {
@@ -10235,6 +10438,7 @@ const openImageAdjuster = (() => {
     applyBtn.addEventListener('click', applyCrop);
     cancelBtn.addEventListener('click', () => finish(null));
     flipBtn.addEventListener('click', toggleFlip);
+    if (fillBtn) fillBtn.addEventListener('click', toggleFillMode);
     resetBtn.addEventListener('click', () => {
         if (!st) return;
         st.z = 1;
@@ -10249,6 +10453,8 @@ const openImageAdjuster = (() => {
      *
      * options.aspect       frame width / height, defaults to 1 (square)
      * options.allowZoomOut false keeps the floor at "fills the frame"
+     * options.edgeFill     true keeps the frame's shape when zoomed out and
+     *                      fills the gaps (blurred copy or black, user's pick)
      * options.minCropPx    smallest cut-out short side, in source pixels
      * options.title        modal heading
      * options.note         extra line under the heading
@@ -10283,6 +10489,7 @@ const openImageAdjuster = (() => {
                 st = buildState(img.naturalWidth, img.naturalHeight, frame.w, frame.h, options);
                 imgEl.style.width = st.layoutW + 'px';
                 imgEl.style.height = st.layoutH + 'px';
+                paintFillPreview();
                 render();
 
                 document.addEventListener('keydown', onKeyDown, true);
@@ -10329,9 +10536,11 @@ function imageAdjustOptionsFor(targetId) {
         'char-background': {
             title: 'Adjust Background Image',
             aspect: (window.innerWidth || 1) / (window.innerHeight || 1),
-            allowZoomOut: false,      // backgrounds are painted with `cover`
+            // Backgrounds are painted with `cover`, so the result has to keep
+            // the frame's shape: zooming out fills the gaps instead.
+            edgeFill: true,
             minCropPx: 120,
-            note: 'the frame matches your screen'
+            note: 'zoom out to show more, the edges are filled in'
         }
     }[targetId];
 }
@@ -10450,6 +10659,7 @@ function renderEditorGallery() {
     // Nothing to tap yet — the hint would only be in the way.
     const hint = document.getElementById('editor-gallery-hint');
     if (hint) hint.classList.toggle('hidden', editorGallery.length === 0);
+    refreshEditorSlideshow();   // slideshow badges + status line
 }
 
 const galleryUploader = document.getElementById('gallery-uploader');
@@ -10527,6 +10737,7 @@ function openGalleryActionModal(index) {
     galleryActionImg.parentElement.style.backgroundImage = cssUrl(src);
     // A world card has no avatar of its own — its tile shows the background.
     galleryActionAvatarBtn.classList.toggle('hidden', cardTypeWorldRadio.checked);
+    syncGalleryActionSlideshowBtn(src);
     galleryActionModal.classList.remove('hidden');
     document.addEventListener('keydown', onGalleryActionKeyDown, true);
 }
@@ -10621,6 +10832,320 @@ if (galleryActionModal) {
         if (e.target === galleryActionModal) closeGalleryActionModal();
     });
 }
+
+
+
+// =============================================================
+// BACKGROUND SLIDESHOW — the chat background as a rotating gallery
+// -------------------------------------------------------------
+// A card can let its chat background cycle through pictures: the background
+// itself first, then every gallery picture marked for the slideshow, each
+// change a slow crossfade. Stored on the card as
+//
+//   bgSlideshow: { enabled, interval (seconds), fit, images (gallery indices) }
+//
+// The background was framed to the screen when it was set, so it is always
+// painted with `cover`. Gallery pictures were not, so `fit` decides for them:
+// 'contain' shows the whole picture on a blurred copy of itself (the same
+// fill the background crop uses), 'cover' fills the screen.
+//
+// The editor works on `editorSlideshowMarks`, the marked gallery pictures by
+// value, so deleting a picture from the strip never shifts a mark onto its
+// neighbour. Indices are only worked out on save.
+// =============================================================
+const BG_SLIDESHOW_STEPS = [3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 90, 120, 180, 240, 300];
+const BG_SLIDESHOW_DEFAULT_INTERVAL = 10;
+const BG_SLIDESHOW_FADE_MS = 1800;
+
+function normalizeBgSlideshow(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const interval = Number(s.interval);
+    return {
+        enabled: s.enabled === true,
+        interval: Number.isFinite(interval) && interval >= 2 ? Math.min(3600, interval) : BG_SLIDESHOW_DEFAULT_INTERVAL,
+        fit: s.fit === 'cover' ? 'cover' : 'contain',
+        images: Array.isArray(s.images) ? s.images.filter(i => Number.isInteger(i) && i >= 0) : []
+    };
+}
+
+function formatSlideshowInterval(seconds) {
+    if (seconds < 60) return `${seconds} s`;
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+}
+
+function nearestSlideshowStep(seconds) {
+    let best = 0;
+    BG_SLIDESHOW_STEPS.forEach((step, i) => {
+        if (Math.abs(step - seconds) < Math.abs(BG_SLIDESHOW_STEPS[best] - seconds)) best = i;
+    });
+    return best;
+}
+
+// What a card's slideshow plays, in order. Empty unless there are at least
+// two pictures to switch between.
+function bgSlideshowSlides(character) {
+    if (!character) return [];
+    const settings = normalizeBgSlideshow(character.bgSlideshow);
+    if (!settings.enabled) return [];
+
+    const slides = [];
+    const backgroundUrl = getImageUrl(character.background);
+    if (backgroundUrl) slides.push({ src: backgroundUrl, fit: 'cover' });
+    const gallery = normalizeGallery(character.gallery);
+    [...new Set(settings.images)].sort((a, b) => a - b).forEach(i => {
+        if (gallery[i]) slides.push({ src: gallery[i], fit: settings.fit });
+    });
+    return slides.length > 1 ? slides : [];
+}
+
+// --- editor ------------------------------------------------------------------
+
+const bgSlideshowToggle = document.getElementById('bg-slideshow-toggle');
+const bgSlideshowOptions = document.getElementById('bg-slideshow-options');
+const bgSlideshowInterval = document.getElementById('bg-slideshow-interval');
+const bgSlideshowIntervalValue = document.getElementById('bg-slideshow-interval-value');
+const bgSlideshowFit = document.getElementById('bg-slideshow-fit');
+const bgSlideshowStatus = document.getElementById('bg-slideshow-status');
+const galleryActionSlideshowBtn = document.getElementById('gallery-action-slideshow-btn');
+const galleryActionSlideshowLabel = document.getElementById('gallery-action-slideshow-label');
+
+function slideshowIntervalFromSlider() {
+    return BG_SLIDESHOW_STEPS[Number(bgSlideshowInterval && bgSlideshowInterval.value)] || BG_SLIDESHOW_DEFAULT_INTERVAL;
+}
+
+// Brings the controls, the thumbnail badges and the status line in line with
+// the working copy. Cheap, so it simply runs after every change.
+function refreshEditorSlideshow() {
+    if (!bgSlideshowToggle) return;
+    const on = bgSlideshowToggle.checked;
+    bgSlideshowOptions.classList.toggle('hidden', !on);
+    bgSlideshowIntervalValue.textContent = formatSlideshowInterval(slideshowIntervalFromSlider());
+
+    const strip = document.getElementById('editor-gallery-strip');
+    if (strip) {
+        strip.classList.toggle('slideshow-on', on);
+        strip.querySelectorAll('.editor-gallery-thumb').forEach((thumb, i) => {
+            thumb.classList.toggle('is-in-slideshow', editorSlideshowMarks.has(editorGallery[i]));
+        });
+    }
+
+    if (!on || !bgSlideshowStatus) return;
+    const marked = editorGallery.filter(src => editorSlideshowMarks.has(src)).length;
+    const bgField = document.getElementById('char-background');
+    const hasBackground = !!(bgField && bgField.value.trim());
+    const total = marked + (hasBackground ? 1 : 0);
+
+    let text;
+    if (editorGallery.length === 0) {
+        text = 'Add images to the gallery above, then tap one to put it in the slideshow.';
+    } else {
+        const parts = [];
+        if (hasBackground) parts.push('the background');
+        parts.push(`${marked} gallery image${marked === 1 ? '' : 's'} (marked 🎞️)`);
+        text = `Plays ${parts.join(' + ')}. Tap a gallery image to add or remove it.`;
+    }
+    if (total < 2) text += ' At least two images are needed for it to play.';
+    bgSlideshowStatus.textContent = text;
+}
+
+function resetEditorSlideshow(raw, gallery) {
+    const settings = normalizeBgSlideshow(raw);
+    editorSlideshowMarks = new Set(settings.images.map(i => gallery[i]).filter(Boolean));
+    if (bgSlideshowToggle) {
+        bgSlideshowToggle.checked = settings.enabled;
+        bgSlideshowInterval.value = String(nearestSlideshowStep(settings.interval));
+        bgSlideshowFit.value = settings.fit;
+    }
+    refreshEditorSlideshow();
+}
+
+function readEditorSlideshow(gallery) {
+    return {
+        enabled: !!(bgSlideshowToggle && bgSlideshowToggle.checked),
+        interval: slideshowIntervalFromSlider(),
+        fit: bgSlideshowFit && bgSlideshowFit.value === 'cover' ? 'cover' : 'contain',
+        images: gallery.map((src, i) => (editorSlideshowMarks.has(src) ? i : -1)).filter(i => i >= 0)
+    };
+}
+
+if (bgSlideshowToggle) {
+    bgSlideshowToggle.addEventListener('change', () => {
+        // Switching it on with nothing picked yet takes the whole gallery,
+        // the likeliest wish; the badges show what was picked.
+        if (bgSlideshowToggle.checked && editorGallery.length > 0
+            && !editorGallery.some(src => editorSlideshowMarks.has(src))) {
+            editorGallery.forEach(src => editorSlideshowMarks.add(src));
+        }
+        refreshEditorSlideshow();
+    });
+    bgSlideshowInterval.addEventListener('input', refreshEditorSlideshow);
+    document.getElementById('char-background')?.addEventListener('input', refreshEditorSlideshow);
+}
+
+if (galleryActionSlideshowBtn) {
+    galleryActionSlideshowBtn.addEventListener('click', () => {
+        const src = editorGallery[galleryActionIndex];
+        closeGalleryActionModal();
+        if (!src) return;
+        if (editorSlideshowMarks.has(src)) editorSlideshowMarks.delete(src);
+        else editorSlideshowMarks.add(src);
+        refreshEditorSlideshow();
+    });
+}
+
+// Called by openGalleryActionModal(): the slideshow choice only shows while
+// the slideshow is switched on.
+function syncGalleryActionSlideshowBtn(src) {
+    if (!galleryActionSlideshowBtn) return;
+    const on = !!(bgSlideshowToggle && bgSlideshowToggle.checked);
+    galleryActionSlideshowBtn.classList.toggle('hidden', !on);
+    galleryActionSlideshowLabel.textContent = editorSlideshowMarks.has(src) ? 'Remove from Slideshow' : 'Add to Slideshow';
+}
+
+// --- chat --------------------------------------------------------------------
+
+// Two stacked slides inside #chat-screen, under the particles and the chat.
+// The incoming one is painted, lifted on top and faded in over the outgoing
+// one, which stays fully opaque underneath until the fade is done — so the
+// picture never dips towards the dark screen in between.
+const bgSlideshow = (() => {
+    const layer = document.getElementById('chat-bg-slideshow');
+    if (!layer) return { start() {}, stop() {} };
+    const slideEls = Array.from(layer.querySelectorAll('.chat-bg-slide'));
+
+    let slides = [];
+    let index = -1;
+    let front = 0;
+    let intervalMs = BG_SLIDESHOW_DEFAULT_INTERVAL * 1000;
+    let timer = null;
+    let hideTimer = null;
+    let session = 0;
+
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                // A host without CORS headers refuses the anonymous request;
+                // the picture still shows without it, only the blur is lost.
+                if (!img.crossOrigin) { reject(new Error('Image failed to load')); return; }
+                const plain = new Image();
+                plain.onload = () => resolve(plain);
+                plain.onerror = () => reject(new Error('Image failed to load'));
+                plain.src = src;
+            };
+            img.src = src;
+        });
+    }
+
+    function paintSlide(el, img, slide) {
+        const blur = el.querySelector('.chat-bg-slide-blur');
+        const pic = el.querySelector('.chat-bg-slide-img');
+        const contain = slide.fit !== 'cover';
+        pic.style.backgroundImage = cssUrl(slide.src);
+        pic.style.backgroundSize = contain ? 'contain' : 'cover';
+        blur.classList.toggle('hidden', !contain);
+        if (!contain) return;
+
+        // Small on purpose: it is a blur, the browser stretches it smoothly.
+        const vw = window.innerWidth || 1;
+        const vh = window.innerHeight || 1;
+        const k = 360 / Math.max(vw, vh);
+        blur.width = Math.max(1, Math.round(vw * k));
+        blur.height = Math.max(1, Math.round(vh * k));
+        const ctx = blur.getContext('2d');
+        ctx.clearRect(0, 0, blur.width, blur.height);
+        try {
+            paintBlurredCover(ctx, img, blur.width, blur.height);
+        } catch (_) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, blur.width, blur.height);
+        }
+    }
+
+    function schedule() {
+        clearTimeout(timer);
+        timer = null;
+        if (slides.length < 2 || document.hidden) return;
+        timer = setTimeout(() => showSlide((index + 1) % slides.length), intervalMs);
+    }
+
+    async function showSlide(i) {
+        const my = session;
+        const slide = slides[i];
+        if (!slide) return;
+
+        let img = null;
+        try {
+            img = await loadImage(slide.src);
+        } catch (_) {
+            img = null;
+        }
+        if (my !== session) return;
+        index = i;
+        if (!img) {   // a broken picture is skipped, the current one stays
+            schedule();
+            return;
+        }
+
+        const incoming = slideEls[1 - front];
+        const outgoing = slideEls[front];
+        // Under the current slide, so dropping a leftover state is invisible.
+        incoming.classList.remove('is-shown');
+        paintSlide(incoming, img, slide);
+        incoming.style.zIndex = '2';
+        outgoing.style.zIndex = '1';
+        void incoming.offsetWidth;   // start the fade from 0
+        incoming.classList.add('is-shown');
+        front = 1 - front;
+
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+            if (my === session) outgoing.classList.remove('is-shown');
+        }, BG_SLIDESHOW_FADE_MS + 120);
+        schedule();
+    }
+
+    function stop() {
+        session++;
+        clearTimeout(timer);
+        clearTimeout(hideTimer);
+        timer = hideTimer = null;
+        slides = [];
+        index = -1;
+        layer.classList.add('hidden');
+        slideEls.forEach(el => {
+            el.classList.remove('is-shown');
+            el.querySelector('.chat-bg-slide-img').style.backgroundImage = 'none';
+        });
+    }
+
+    function start(character) {
+        stop();
+        const list = bgSlideshowSlides(character);
+        if (list.length < 2) return;
+        slides = list;
+        intervalMs = normalizeBgSlideshow(character.bgSlideshow).interval * 1000;
+        layer.classList.remove('hidden');
+        showSlide(0);
+    }
+
+    // Background tabs get no timers worth having; pick up again on return.
+    document.addEventListener('visibilitychange', () => {
+        if (!slides.length) return;
+        if (document.hidden) {
+            clearTimeout(timer);
+            timer = null;
+        } else if (!timer) {
+            schedule();
+        }
+    });
+
+    return { start, stop };
+})();
 
 
 
