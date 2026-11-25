@@ -7069,14 +7069,12 @@ body.image-gen-off .generate-image-btn {
     position: absolute;
     inset: 0;
     opacity: 0;
-    transform: scale(1.035);
-    transition: opacity 1.8s ease-in-out, transform 6s ease-out;
+    transition: opacity 1.8s ease-in-out;
     background-color: #000;
 }
 
 .chat-bg-slide.is-shown {
     opacity: 1;
-    transform: scale(1);
 }
 
 .chat-bg-slide-blur {
@@ -7096,9 +7094,7 @@ body.image-gen-off .generate-image-btn {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .chat-bg-slide,
-    .chat-bg-slide.is-shown {
-        transform: none;
+    .chat-bg-slide {
         transition: opacity 1.2s ease-in-out;
     }
 }
@@ -8221,6 +8217,16 @@ body.image-gen-off .generate-image-btn {
         inset 0 0 0 1px rgba(0, 0, 0, 0.35);
     pointer-events: none;
     z-index: 2;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Brief glow when the zoom clicks onto "fills the frame" or "whole picture". */
+.image-crop-frame.is-snapped {
+    border-color: #d8ccff;
+    box-shadow:
+        0 0 0 2px rgba(167, 139, 250, 0.85),
+        0 0 0 9999px rgba(6, 7, 12, 0.66),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 /* Corner brackets — make the fixed rectangle read as a crop frame. Two
@@ -8317,6 +8323,22 @@ body.image-gen-off .generate-image-btn {
     border-radius: 3px;
     background: linear-gradient(180deg, #a78bfa 0%, #7c5cf0 100%);
     pointer-events: none;
+}
+
+/* Snap points on the zoom bar ("fills the frame", "whole picture"). */
+.image-crop-zoom-tick {
+    position: absolute;
+    left: 50%;
+    width: 14px;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, 50%);
+    pointer-events: none;
+}
+
+.image-crop-zoom-tick.is-active {
+    background: #fff;
 }
 
 .image-crop-zoom-thumb {

@@ -9867,6 +9867,8 @@ const openImageAdjuster = (() => {
     const STAGE_MARGIN = 0.17;       // dimmed overflow margin around the frame
     const FILL_MAX_SIDE = 2560;      // longest edge of a filled (zoomed-out) result
     const FILL_MODE_KEY = 'cccCropEdgeFill';
+    const SNAP_RATIO = 0.035;        // magnetic pull of a snap point, in zoom-bar ratio
+    const WHEEL_IDLE_MS = 300;       // a pause this long ends one wheel gesture
 
     const modal = document.getElementById('image-crop-modal');
     if (!modal) return () => Promise.resolve(null);
@@ -9905,6 +9907,18 @@ const openImageAdjuster = (() => {
     let pinchStart = null;
     let dragLast = null;
     let sliderPointerId = null;
+    let wheelRaw = null;             // unsnapped zoom during a wheel gesture
+    let wheelShown = null;           // the zoom that gesture last displayed
+    let wheelAt = 0;
+    let snapFlashTimer = null;
+
+    // Marks on the zoom bar for the snap points that lie inside its range.
+    const zoomTicks = [0, 1].map(() => {
+        const tick = document.createElement('div');
+        tick.className = 'image-crop-zoom-tick hidden';
+        trackEl.insertBefore(tick, thumbEl);
+        return tick;
+    });
 
     const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
@@ -10026,8 +10040,36 @@ const openImageAdjuster = (() => {
 
         return {
             nw, nh, layoutW, layoutH, frameW, frameH, zFit, zMin, zMax, z: 1, ox: 0, oy: 0, flip: 1,
-            edgeFill: !!options.edgeFill
+            edgeFill: !!options.edgeFill, lastSnap: 1
         };
+    }
+
+    // Zoom levels where the picture's edges meet the frame's: 1 fills the
+    // frame exactly, zFit shows the whole picture with two of its edges on
+    // the frame. Zooming near one of them clicks into place, so nobody has to
+    // nudge the slider until the borders line up.
+    function snapPoints() {
+        const pts = [1];
+        if (st.zFit < 1 - 1e-4) pts.push(st.zFit);
+        return pts.filter(z => z >= st.zMin - 1e-6 && z <= st.zMax + 1e-6);
+    }
+
+    function snapZoom(z) {
+        if (st.zMax - st.zMin < 1e-6) return z;
+        const r = zoomToRatio(z);
+        for (const p of snapPoints()) {
+            if (Math.abs(zoomToRatio(p) - r) < SNAP_RATIO) return p;
+        }
+        return z;
+    }
+
+    function flashSnap() {
+        frameEl.classList.add('is-snapped');
+        clearTimeout(snapFlashTimer);
+        snapFlashTimer = setTimeout(() => frameEl.classList.remove('is-snapped'), 420);
+        if (isTouchOnly && navigator.vibrate) {
+            try { navigator.vibrate(8); } catch (_) {}
+        }
     }
 
     // Keeps the picture glued to the frame: while it is larger than the frame
@@ -10060,6 +10102,17 @@ const openImageAdjuster = (() => {
         fillEl.style.height = pos + 'px';
 
         const locked = st.zMax - st.zMin < 1e-6;
+        const inner = locked ? [] : snapPoints().filter(p => {
+            const r = zoomToRatio(p);
+            return r > 0.01 && r < 0.99;
+        });
+        zoomTicks.forEach((tick, i) => {
+            const p = inner[i];
+            tick.classList.toggle('hidden', p === undefined);
+            if (p === undefined) return;
+            tick.style.bottom = (radius + zoomToRatio(p) * usable) + 'px';
+            tick.classList.toggle('is-active', Math.abs(st.z - p) < 1e-6);
+        });
         trackEl.classList.toggle('is-disabled', locked);
         trackEl.setAttribute('aria-valuenow', Math.round(ratio * 100));
         trackEl.setAttribute('aria-valuetext', st.z.toFixed(2) + '×');
@@ -10076,6 +10129,13 @@ const openImageAdjuster = (() => {
         if (fillCanvas) fillCanvas.style.transform = `translate(-50%, -50%) scaleX(${st.flip})`;
         flipBtn.classList.toggle('is-active', st.flip < 0);
         flipBtn.setAttribute('aria-pressed', st.flip < 0 ? 'true' : 'false');
+
+        // A short glow on the frame when the zoom lands on a snap point.
+        const atSnap = snapPoints().find(p => Math.abs(st.z - p) < 1e-6);
+        if (atSnap !== st.lastSnap) {
+            if (atSnap !== undefined) flashSnap();
+            st.lastSnap = atSnap;
+        }
         renderZoomBar();
     }
 
@@ -10100,9 +10160,22 @@ const openImageAdjuster = (() => {
         render();
     }
 
+    // A step that would jump over a snap point stops on it instead.
     function nudgeZoom(delta) {
         if (!st) return;
-        setZoom(ratioToZoom(zoomToRatio(st.z) + delta));
+        const from = zoomToRatio(st.z);
+        const to = from + delta;
+        let target = null;
+        let best = Infinity;
+        for (const p of snapPoints()) {
+            const r = zoomToRatio(p);
+            const crossed = delta > 0 ? (r > from + 1e-4 && r < to) : (r < from - 1e-4 && r > to);
+            if (crossed && Math.abs(r - from) < best) {
+                best = Math.abs(r - from);
+                target = p;
+            }
+        }
+        setZoom(target !== null ? target : snapZoom(ratioToZoom(to)));
     }
 
     // --- dragging & pinching -------------------------------------------------
@@ -10132,7 +10205,7 @@ const openImageAdjuster = (() => {
 
         const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         const mid = framePoint((a.x + b.x) / 2, (a.y + b.y) / 2);
-        const target = Math.min(st.zMax, Math.max(st.zMin, pinchStart.z * (dist / pinchStart.dist)));
+        const target = snapZoom(Math.min(st.zMax, Math.max(st.zMin, pinchStart.z * (dist / pinchStart.dist))));
         const k = target / pinchStart.z;
 
         // Scale around the original pinch centre, then follow that centre as the
@@ -10195,7 +10268,15 @@ const openImageAdjuster = (() => {
         if (!st) return;
         e.preventDefault();
         const unit = e.deltaMode === 1 ? 0.05 : (e.deltaMode === 2 ? 0.5 : 0.0022);
-        setZoom(st.z * Math.exp(-e.deltaY * unit), framePoint(e.clientX, e.clientY));
+        // Trackpads send many tiny steps. Each is added to an unsnapped
+        // value, so a snap point holds for a moment and then lets go,
+        // rather than swallowing every small step for good.
+        const now = performance.now();
+        if (wheelRaw === null || now - wheelAt > WHEEL_IDLE_MS || wheelShown !== st.z) wheelRaw = st.z;
+        wheelAt = now;
+        wheelRaw = Math.min(st.zMax, Math.max(st.zMin, wheelRaw * Math.exp(-e.deltaY * unit)));
+        setZoom(snapZoom(wheelRaw), framePoint(e.clientX, e.clientY));
+        wheelShown = st.z;
     }, { passive: false });
 
     stage.addEventListener('dblclick', () => {
@@ -10219,13 +10300,13 @@ const openImageAdjuster = (() => {
         e.preventDefault();
         sliderPointerId = e.pointerId;
         try { trackEl.setPointerCapture(e.pointerId); } catch (_) {}
-        setZoom(ratioToZoom(ratioFromClientY(e.clientY)));
+        setZoom(snapZoom(ratioToZoom(ratioFromClientY(e.clientY))));
     });
 
     trackEl.addEventListener('pointermove', (e) => {
         if (!st || sliderPointerId !== e.pointerId) return;
         e.preventDefault();
-        setZoom(ratioToZoom(ratioFromClientY(e.clientY)));
+        setZoom(snapZoom(ratioToZoom(ratioFromClientY(e.clientY))));
     });
 
     function releaseSlider(e) {
@@ -10540,7 +10621,7 @@ function imageAdjustOptionsFor(targetId) {
             // the frame's shape: zooming out fills the gaps instead.
             edgeFill: true,
             minCropPx: 120,
-            note: 'zoom out to show more, the edges are filled in'
+            note: 'zoom out to show more, it snaps where the picture’s borders meet the frame'
         }
     }[targetId];
 }
